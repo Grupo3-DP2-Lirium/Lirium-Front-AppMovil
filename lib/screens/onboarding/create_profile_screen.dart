@@ -26,23 +26,21 @@ class CreateProfileScreen extends StatelessWidget {
               const SizedBox(height: 16),
               // Subtitle
               const Text(
-                'Personaliza tu experiencia\ny comienza a guardar recuerdos',
+                'Comienza el legado de tu ser\nquerido con fotos, videos y\nrecuerdos especiales',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
               ),
               const SizedBox(height: 48),
-              // Illustration placeholder
+              // Create profile illustration
               Container(
-                height: 200,
+                height: 250,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.person_add,
-                  size: 80,
-                  color: Color(0xFF6366F1),
+                  child: Image.asset(
+                    'assets/images/CreaPerfil.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const Spacer(),

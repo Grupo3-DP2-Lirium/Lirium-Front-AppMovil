@@ -26,23 +26,21 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
               // Subtitle
               const Text(
-                'Guarda, comparte y preserva\ntus recuerdos más preciados',
+                'un espacio íntimo para contruir y\npreservar el legado\nde quienes amas',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
               ),
               const SizedBox(height: 48),
-              // Illustration placeholder
+              // Family illustration
               Container(
-                height: 200,
+                height: 250,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.people,
-                  size: 80,
-                  color: Color(0xFF6366F1),
+                  child: Image.asset(
+                    'assets/images/Remory.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const Spacer(),
@@ -67,7 +65,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    'Empezar',
+                    'Siguiente',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
