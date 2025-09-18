@@ -43,3 +43,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# Archivos específicos de Android
+android/local.properties
+android/key.properties
+# android/gradle.properties (opcional, si tiene claves sensibles)
+
+# Archivos de iOS/macOS
+ios/.symlinks/
+macos/.symlinks/
+.ios/
+.idea/
+*.iml
+
+# Archivos específicos de Windows, Linux, y web
+linux/flutter/
+windows/flutter/
+web/
