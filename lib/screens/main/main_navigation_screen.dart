@@ -44,10 +44,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.timeline),
             label: 'Timeline',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Perfiles',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Perfiles'),
           BottomNavigationBarItem(
             icon: Icon(Icons.photo_library),
             label: 'Memorias',

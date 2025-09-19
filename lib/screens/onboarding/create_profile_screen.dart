@@ -1,97 +1,40 @@
 import 'package:flutter/material.dart';
-import '../profile/create_profile_form_screen.dart';
+import '../../components/components.dart';
+import 'share_screen.dart';
 
 class CreateProfileScreen extends StatelessWidget {
   const CreateProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const Spacer(),
-              // Title
-              const Text(
-                'Crea un perfil',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Subtitle
-              const Text(
+    return OnboardingLayout(
+      child: Column(
+        children: [
+          const Spacer(),
+          // Title
+          const AppTitle(title: 'Crea un perfil', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          // Subtitle
+          const AppSubtitle(
+            subtitle:
                 'Comienza el legado de tu ser\nquerido con fotos, videos y\nrecuerdos especiales',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
-              ),
-              const SizedBox(height: 48),
-              // Create profile illustration
-              Container(
-                height: 250,
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    'assets/images/CreaPerfil.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              // Navigation buttons
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Atrás',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 120,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const CreateProfileFormScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      child: const Text(
-                        'Siguiente',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
           ),
-        ),
+          const SizedBox(height: 48),
+          // Create profile illustration
+          const AppIllustration(imagePath: 'assets/images/CreaPerfil.png'),
+          const Spacer(),
+          // Navigation buttons
+          NavigationRow(
+            onBack: () => Navigator.pop(context),
+            onNext: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ShareScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }

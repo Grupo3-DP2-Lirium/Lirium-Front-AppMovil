@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../components/components.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -11,7 +12,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [
     {'text': 'Hola, Fer!', 'isMe': false, 'time': '10:30'},
-    {'text': 'Empezar con Kiro!', 'isMe': false, 'time': '10:30'},
+    {'text': 'Empezar con Remory!', 'isMe': false, 'time': '10:30'},
     {'text': 'Hola! ¿Cómo estás?', 'isMe': true, 'time': '10:32'},
   ];
 
@@ -35,17 +36,9 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.grey[300],
-              child: const Icon(Icons.person, color: Colors.grey),
-            ),
+            const ProfileAvatar(radius: 20),
             const SizedBox(width: 12),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,15 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         : MainAxisAlignment.start,
                     children: [
                       if (!isMe) ...[
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.grey[300],
-                          child: const Icon(
-                            Icons.person,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                        ),
+                        const ProfileAvatar(radius: 16),
                         const SizedBox(width: 8),
                       ],
                       Flexible(
@@ -141,14 +126,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       if (isMe) ...[
                         const SizedBox(width: 8),
-                        CircleAvatar(
+                        const ProfileAvatar(
                           radius: 16,
-                          backgroundColor: const Color(0xFF6366F1),
-                          child: const Icon(
-                            Icons.person,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                          placeholderIcon: Icons.person,
                         ),
                       ],
                     ],
@@ -164,7 +144,7 @@ class _ChatScreenState extends State<ChatScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 10,
                   offset: const Offset(0, -1),
@@ -174,42 +154,13 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: AppTextField(
+                    hintText: 'Escribe un mensaje...',
                     controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Escribe un mensaje...',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: const BorderSide(color: Color(0xFF6366F1)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF6366F1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _sendMessage,
-                  ),
-                ),
+                IconButtonCustom(icon: Icons.send, onPressed: _sendMessage),
               ],
             ),
           ),
