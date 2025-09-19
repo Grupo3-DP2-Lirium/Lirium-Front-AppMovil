@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -90,7 +91,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SecondaryButton(
                   text: 'Crear una cuenta',
                   textColor: const Color(0xFF6366F1),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),
