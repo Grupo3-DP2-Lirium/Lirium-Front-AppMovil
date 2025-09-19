@@ -21,7 +21,10 @@ class ShareScreen extends StatelessWidget {
           ),
           const SizedBox(height: 48),
           // Share illustration
-          const AppIllustration(icon: Icons.share, height: 200),
+          const AppIllustration(
+            imagePath: 'assets/images/Compartelo.png',
+            height: 200,
+          ),
           const Spacer(),
           // Navigation buttons
           NavigationRow(

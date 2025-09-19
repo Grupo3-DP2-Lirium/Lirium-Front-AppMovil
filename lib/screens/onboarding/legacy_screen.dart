@@ -24,7 +24,10 @@ class LegacyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 48),
           // Legacy illustration
-          const AppIllustration(icon: Icons.family_restroom, height: 200),
+          const AppIllustration(
+            imagePath: 'assets/images/ContruyeLegado.png',
+            height: 200,
+          ),
           const Spacer(),
           // Navigation buttons
           NavigationRow(
