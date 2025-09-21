@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/onboarding/welcome_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const RemoryApp());
@@ -18,7 +19,21 @@ class RemoryApp extends StatelessWidget {
           primary: const Color(0xFF6366F1),
         ),
         useMaterial3: true,
-        fontFamily: 'SF Pro Display',
+        textTheme: GoogleFonts.interTextTheme().copyWith(
+          // Headings
+          displayLarge: const TextStyle(fontSize: 42, fontWeight: FontWeight.w800), // H1
+          displayMedium: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700), // H2
+          displaySmall: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600), // H3
+          headlineMedium: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500), // H4
+          headlineSmall: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500), // H5
+          titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500), // H6
+
+          // Body
+          bodyLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400), // Body XLarge
+          bodyMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400), // Body Large
+          bodySmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400), // Body Medium
+          labelSmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400), // Body Small
+        ),
       ),
       home: const WelcomeScreen(),
       debugShowCheckedModeBanner: false,
