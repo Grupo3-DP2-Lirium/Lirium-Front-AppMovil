@@ -4,6 +4,7 @@ import '../profiles/profiles_screen.dart';
 import '../memories/memories_grid_screen.dart';
 import '../chat/chat_screen.dart';
 import '../settings/settings_screen.dart';
+import 'home_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -16,7 +17,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const TimelineScreen(),
+    const HomeScreen(),
     const ProfilesScreen(),
     const MemoriesGridScreen(),
     const ChatScreen(),
@@ -41,16 +42,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         elevation: 8,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.timeline),
-            label: 'Timeline',
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Perfiles'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Perfiles'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.photo_library),
+            icon: Icon(Icons.add_circle_outline),
             label: 'Memorias',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
+          BottomNavigationBarItem(icon: Icon(Icons.movie_creation_outlined), label: 'Videos'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: 'Cuenta'),
         ],
       ),
     );
