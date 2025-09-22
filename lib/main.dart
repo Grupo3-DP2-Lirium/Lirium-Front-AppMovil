@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/screens/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -35,7 +36,7 @@ class RemoryApp extends StatelessWidget {
           labelSmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400), // Body Small
         ),
       ),
-      home: const WelcomeScreen(),
+      home: const CreateMemoryToMemorial(),
       debugShowCheckedModeBanner: false,
     );
   }
