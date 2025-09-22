@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/screens/memories/new_personal_memory_screen.dart';
-import '../../components/cards/memory_card.dart';
+import 'package:flutter_frontend/screens/memories/memory_detail_screen.dart';
+//import '../../components/cards/memory_card.dart';
+import '../../components/cards/memory_personal_card.dart';
 import '../../services/memory_service.dart';
 import '../../models/memory_response.dart';
+import '../../utils/file_url_helper.dart'; // Importar el helper
 
 // TODO: trae el JWT real desde donde se guarde (secure storage, provider, etc.), por ahora aquí
 String get currentJwt => 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NTAzMzM5LCJleHAiOjE3NTg1ODk3Mzl9.BA7jDWvCHZObHbTcTjtfNwcIgqa-EbFXagjUYLZfvQT3PG61pZESamkUzTzgDtFr';
@@ -45,10 +48,10 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
     await _future;
   }
 
-  // Formatea “YYYY-MM”
+  // Formatea "YYYY-MM"
   String _monthKey(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
 
-  // Devuelve “Septiembre 2025”
+  // Devuelve "Septiembre 2025"
   String _monthLabel(DateTime d) {
     const meses = [
       '', 'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -57,9 +60,22 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
     return '${meses[d.month]} ${d.year}';
   }
 
-  // “YYYY-MM-DD”
-  String _yMd(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  void _navigateToMemoryDetail(MemoryResponse memory) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MemoryDetailScreen(
+          memory: memory,
+          jwt: currentJwt,
+        ),
+      ),
+    );
+
+    // Si se editó o eliminó la memoria, refrescar la lista
+    if (result == true && mounted) {
+      _refresh();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +92,6 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -153,14 +168,10 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
                   for (final m in grouped[key]!) ...[
                     Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: MemoryCard(
-                        title: m.title,
-                        subtitle: m.description,
-                        time: _yMd(m.photoDate ?? m.createdDate),
-                        imageCount: m.files.isNotEmpty ? m.files.length : 0,
-                        onTap: () {
-                          // TODO: navegar a detalle de memoria personal
-                        },
+                      child: MemoryCard.fromMemory(
+                        memory: m,
+                        onTap: () => _navigateToMemoryDetail(m),
+                        maxDescriptionLength: 120, // Opcional, usa el valor por defecto si no se especifica
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -208,4 +219,3 @@ class _HeaderCTA extends StatelessWidget {
     );
   }
 }
-
