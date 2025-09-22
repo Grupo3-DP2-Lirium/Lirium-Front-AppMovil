@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/components/buttons/icon_button_custom.dart';
+import 'package:flutter_frontend/screens/memorial/collaborators_screen.dart';
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
@@ -181,7 +182,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      // TODO: colaboradores
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => CollaboratorsScreen(memorialId: widget.memorialId),
+                      ));
                     },
                     icon: const Icon(Icons.group_outlined),
                     label: const Text('Colaboradores'),
