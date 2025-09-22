@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Navegación (conecta a tus rutas)
   void _goToCreateMemorial() {}
-  void _goToPersonalSpace() => Navigator.pushNamed(context, '/personal-space');
+  void _goToPersonalSpace() => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalSpaceScreen()),);
   void _goToAddMemory() {
     //Botón de arriba
   }
@@ -48,21 +48,45 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        titleSpacing: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        automaticallyImplyLeading: false,
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            RichText(
-              text: TextSpan(
-                style: tt.titleLarge?.copyWith(color: Colors.black87),
-                children: const [
-                  TextSpan(text: 'Hola, '),
-                  TextSpan(text: 'Fer!', style: TextStyle(fontWeight: FontWeight.w800)),
-                ],
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: NetworkImage(
+                'https://i.pravatar.cc/150?img=5',
               ),
             ),
-            Text('¿Qué momento especial quieres guardar hoy?',
-                style: tt.bodySmall?.copyWith(color: Colors.black54)),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(color: Colors.black87),
+                    children: const [
+                      TextSpan(text: 'Hola, '),
+                      TextSpan(
+                        text: 'Fer!',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '¿Qué momento especial quieres guardar hoy?',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: Colors.black54),
+                ),
+              ],
+            ),
           ],
         ),
         actions: const [
@@ -72,22 +96,30 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+
       body: FutureBuilder<List<Memorial>>(
         future: _future,
         builder: (context, snap) {
-          final widgets = <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: SizedBox(
-                height: 48,
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _goToAddMemory,
-                  child: const Text('Añadir un recuerdo'),
+          final widgets = <Widget>[];
+
+          final memorials = snap.data ?? <Memorial>[];
+
+          if (memorials.isNotEmpty) {
+            widgets.add(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _goToAddMemory,
+                    child: const Text('Añadir un recuerdo'),
+                  ),
                 ),
               ),
-            ),
-          ];
+            );
+          }
+
 
           if (snap.connectionState == ConnectionState.waiting) {
             widgets.add(const Padding(
@@ -97,12 +129,12 @@ class _HomeScreenState extends State<HomeScreen> {
             return ListView(children: widgets);
           }
 
-          final memorials = snap.data ?? <Memorial>[];
+          //final memorials = snap.data ?? <Memorial>[];
 
           if (memorials.isEmpty) {
             widgets.addAll([
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _StartCard(onCreate: _goToCreateMemorial),
               ),
               const SizedBox(height: 16),
@@ -261,36 +293,40 @@ class _PersonalSpaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
 
-    return _CardContainer(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        //Text('Mi Espacio Personal', style: tt.head?.copyWith(color: Colors.black87)),
-        Text('Mi Espacio Personal', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        Text(
-          '“Un lugar seguro para procesar y guardar tus memorias más profundas”',
-          style: tt.bodyMedium?.copyWith(color: Colors.black54, height: 1.3),
-          textAlign: TextAlign.center,
+    return InkWell(
+      borderRadius: BorderRadius.circular(18), // para que el splash respete las esquinas
+      onTap: onTap, // 👈 tocar la card lleva a PersonalSpaceScreen
+      child: _CardContainer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text('Mi Espacio Personal', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              '“Un lugar seguro para procesar y guardar tus memorias más profundas”',
+              style: tt.bodyMedium?.copyWith(color: Colors.black54, height: 1.3),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 42,
+              child: SecondaryButton(
+                text: 'Añadir una reflexión',
+                textColor: const Color(0xFF6366F1),
+                onPressed: () {
+                  // 👇 botón abre el editor de nueva reflexión
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NewPersonalMemoryScreen()),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 42,
-          child: SecondaryButton(
-            text: 'Añadir una reflexión',
-            textColor: const Color(0xFF6366F1),
-            onPressed: () {
-              // Abre editor de reflexión
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NewPersonalMemoryScreen()),
-              );
-            },
-            //height: 52,
-            //isFullWidth: true,
-          ),
-        ),
-      ]),
+      ),
     );
   }
 }
+

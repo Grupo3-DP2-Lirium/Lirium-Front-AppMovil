@@ -19,6 +19,11 @@ class RemoryApp extends StatelessWidget {
           seedColor: const Color(0xFF6366F1),
           primary: const Color(0xFF6366F1),
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+        ),
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme().copyWith(
           // Headings

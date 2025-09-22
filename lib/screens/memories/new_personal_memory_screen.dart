@@ -1,4 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../services/memory_service.dart';
+
+// TODO: reemplaza por cómo guardas/obtienes tu JWT
+String get currentJwt => "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NTAzMzM5LCJleHAiOjE3NTg1ODk3Mzl9.BA7jDWvCHZObHbTcTjtfNwcIgqa-EbFXagjUYLZfvQT3PG61pZESamkUzTzgDtFr"; // solo el token, sin 'Bearer '
 
 class NewPersonalMemoryScreen extends StatefulWidget {
   const NewPersonalMemoryScreen({super.key});
@@ -10,12 +15,63 @@ class NewPersonalMemoryScreen extends StatefulWidget {
 class _NewPersonalMemoryScreenState extends State<NewPersonalMemoryScreen> {
   final _titleCtrl = TextEditingController();
   final _bodyCtrl  = TextEditingController();
+  bool _saving = false;
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _bodyCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    final title = _titleCtrl.text.trim();
+    final desc  = _bodyCtrl.text.trim();
+
+    if (title.isEmpty || desc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Completa título y contenido')),
+      );
+      return;
+    }
+
+    final memoryJson = {
+      "memorialId": "0EAE29A7-C601-4BB2-931D-3ADBB3E04E55", // TODO: origen real
+      "title": title,
+      "description": desc,
+      "photoDate": DateTime.now().toIso8601String().split('T').first, // o tu fecha real
+      "location": "Lima, Perú",
+      "visible": true,
+      "tags": <String>[],
+      "type": "SPONTANEOUS",
+      "associatedQuestion": null,
+      "questionId": null,
+      "answerId": null
+    };
+
+    setState(() => _saving = true);
+    try {
+      final service = MemoryService();
+      // Si no hay archivos: files: null. Si hay, pasa una lista de File.
+      final result = await service.createPersonalMemory(
+        token: currentJwt,
+        memoryJson: memoryJson,
+        files: null, // o [File('/ruta/a/mi_imagen.png')]
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Memoria guardada con éxito')),
+      );
+      Navigator.pop(context, result); // puedes devolver el JSON creado
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al guardar: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -34,11 +90,10 @@ class _NewPersonalMemoryScreenState extends State<NewPersonalMemoryScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
-              onPressed: () {
-                // TODO: guardar memoria
-                Navigator.pop(context);
-              },
-              icon: Icon(Icons.check_circle, color: cs.primary, size: 28),
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.check_circle, color: cs.primary, size: 28),
               tooltip: 'Guardar',
             ),
           ),
