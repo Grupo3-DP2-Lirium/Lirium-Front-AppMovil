@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_frontend/models/memory_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../config/api_constants.dart';
+import '../models/memory_response.dart';
 
 class MemoryService {
   final http.Client _client;
@@ -53,4 +55,31 @@ class MemoryService {
       );
     }
   }
+
+  Future<PageMemoryResponse> listMemories({
+    required String token,           // solo el JWT sin 'Bearer '
+    required String memorialId,
+    int page = 0,
+    int size = 10,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories?memorialId=$memorialId&page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final map = json.decode(res.body) as Map<String, dynamic>;
+      return PageMemoryResponse.fromJson(map);
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
 }
