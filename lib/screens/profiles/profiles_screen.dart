@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../components/components.dart';
 import '../../components/navigation/tab_bar.dart';
+import 'package:flutter_frontend/screens/memorial/memorial_detail_screen.dart';
 
 class ProfilesScreen extends StatefulWidget {
   const ProfilesScreen({super.key});
@@ -95,7 +96,20 @@ class _ProfilesScreenState extends State<ProfilesScreen>
           name: m["name"]!,
           description: m["description"]!,
           hasHeart: true,
-          onTap: () {},
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MemorialDetailScreen(
+                  memorialId: 'memorial-${index + 1}', // TODO: usa el real
+                  name: m["name"]!,
+                  description: m["description"]!,
+                  coverUrl: null,      // o una URL si tienes
+                  avatarUrl: null,     // o una URL si tienes
+                ),
+              ),
+            );
+          },
         );
       },
     );
