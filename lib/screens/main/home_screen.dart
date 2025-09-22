@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../models/memorial.dart';
 import '../../services/memorial_service.dart';
 import '../../components/buttons/primary_button.dart';
@@ -191,7 +192,12 @@ class _StartCard extends StatelessWidget {
             height: 44,
             child: PrimaryButton(
               text: 'Crear mi primer memorial',
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+                );
+              },
               height: 52,
               isFullWidth: true,
             )

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../components/components.dart';
+import '../../components/navigation/tab_bar.dart';
 
 class ProfilesScreen extends StatefulWidget {
   const ProfilesScreen({super.key});
@@ -15,7 +17,10 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -33,63 +38,66 @@ class _ProfilesScreenState extends State<ProfilesScreen>
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: IconButtonCustom(icon: Icons.add, onPressed: () {}),
+          bottom: Tab_Bar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Mis Perfiles'),
+              Tab(text: 'Colaboraciones')
+            ],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey[600],
-          indicator: BoxDecoration(
-            color: const Color(0xFF6366F1),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          tabs: const [
-            Tab(text: 'Mis Perfiles'),
-            Tab(text: 'Colaboro'),
-            Tab(text: 'Seguidos'),
-          ],
-        ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildMyProfilesTab(),
-          _buildCollaborationTab(),
-          _buildFollowedTab(),
+          _buildCollaborationTab()
         ],
       ),
+
+      // Boton para crear Memorial
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: _tabController.index == 0
+          ? Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: PrimaryButton(
+          text: 'Nuevo Memorial',
+          icon: Icons.add,
+          isFullWidth: true, // ocupa todo el ancho disponible
+          onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+              );
+            },
+        ),
+      )
+          : null,
     );
   }
 
   Widget _buildMyProfilesTab() {
-    return ListView(
+    // Lista de memoriales falsos
+    final fakeMemorials = List.generate(13, (index) {
+      return {
+        "name": "Memorial ${index + 1}",
+        "description":
+        "Este es un memorial de prueba número ${index + 1}. Aquí iría la descripción.",
+      };
+    });
+
+    return ListView.separated(
       padding: const EdgeInsets.all(16),
-      children: [
-        ProfileCard(
-          name: 'Ramiro Perez',
-          description:
-              'Ramiro tenía el don de hacer sentir especial a cada persona. Su humor y carisma unieron a la familia en los momentos más difíciles.',
+      itemCount: fakeMemorials.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final m = fakeMemorials[index];
+        return ProfileCard(
+          name: m["name"]!,
+          description: m["description"]!,
           hasHeart: true,
           onTap: () {},
-        ),
-        const SizedBox(height: 16),
-        ProfileCard(
-          name: 'Cecilio Nieto',
-          description:
-              'Cecilio dejó huellas imborrables con su bondad. Su generosidad no conocía límites y siempre encontró la manera de ayudar a los demás.',
-          hasHeart: true,
-          onTap: () {},
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -111,26 +119,6 @@ class _ProfilesScreenState extends State<ProfilesScreen>
           onTap: () {},
         ),
       ],
-    );
-  }
-
-  Widget _buildFollowedTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.favorite_border, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'No hay perfiles seguidos',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

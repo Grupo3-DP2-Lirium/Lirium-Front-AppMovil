@@ -2,6 +2,7 @@
 export 'buttons/primary_button.dart';
 export 'buttons/secondary_button.dart';
 export 'buttons/icon_button_custom.dart';
+export 'buttons/rectangle_button.dart';
 
 // Forms
 export 'forms/app_text_field.dart';
@@ -29,3 +30,4 @@ export 'layouts/question_layout.dart';
 export 'common/app_illustration.dart';
 export 'common/app_title.dart';
 export 'common/profile_avatar.dart';
+export 'common/app_colors.dart';
