@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/screens/memories/new_personal_memory_screen.dart';
 import '../../components/buttons/secondary_button.dart';
 import '../../components/cards/memory_card.dart'; // usa tu card existente
 
@@ -40,20 +42,15 @@ class PersonalSpaceScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Mi espacio personal'),
+        title: Text('Mi espacio personal', style: Theme.of(context).textTheme.headlineMedium),
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.check_circle, color: cs.primary),
-            onPressed: () {}, // opcional (acción rápida)
-          )
-        ],
+
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -64,23 +61,20 @@ class PersonalSpaceScreen extends StatelessWidget {
             child: Column(
               children: [
                 Text('¿Cómo estás hoy?',
-                    style: tt.titleLarge?.copyWith(color: Colors.black45)),
+                    style: tt.displaySmall?.copyWith(color: Colors.black45)),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: 240,
-                  child: SecondaryButton(
+                  child: PrimaryButton(
                     text: 'Empezar a escribir...',
-                    //onPressed: () {
-                      //Navigator.push(
-                        //context,
-                        //MaterialPageRoute(
-                          //builder: (_) => const NewPersonalMemoryScreen(),
-                        //),
-                      //);
-                    //},
-                    //height: 44,
-                    //isFullWidth: true,
-
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NewPersonalMemoryScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -91,8 +85,8 @@ class PersonalSpaceScreen extends StatelessWidget {
           // Secciones por mes
           for (final entry in data.entries) ...[
             Text(entry.key,
-                style: tt.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700, color: Colors.black87)),
+                style: tt.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600, color: Colors.black87)),
             const SizedBox(height: 12),
             for (final m in entry.value) ...[
               _TimelineDecor(
