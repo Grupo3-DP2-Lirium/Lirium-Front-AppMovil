@@ -41,7 +41,7 @@ class RemoryApp extends StatelessWidget {
           labelSmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400), // Body Small
         ),
       ),
-      home: const CreateMemoryToMemorial(),
+      home: const WelcomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
