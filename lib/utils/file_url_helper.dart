@@ -1,6 +1,6 @@
 // utils/file_url_helper.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/models/memory_response.dart';
+import 'package:flutter_frontend/data/models/memory_response.dart';
 
 class FileUrlHelper {
   // Cambia esta URL por tu URL base real del servidor
