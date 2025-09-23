@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../services/memory_service.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
 
 // TODO: reemplaza por cómo guardas/obtienes tu JWT
 String get currentJwt => "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NTAzMzM5LCJleHAiOjE3NTg1ODk3Mzl9.BA7jDWvCHZObHbTcTjtfNwcIgqa-EbFXagjUYLZfvQT3PG61pZESamkUzTzgDtFr"; // solo el token, sin 'Bearer '

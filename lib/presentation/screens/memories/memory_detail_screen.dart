@@ -1,8 +1,8 @@
 // screens/memories/memory_detail_screen.dart
 import 'package:flutter/material.dart';
-import '../../models/memory_response.dart';
-import '../../services/memory_service.dart';
-import '../../utils/file_url_helper.dart';
+import 'package:flutter_frontend/data/models/memory_response.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/utils/file_url_helper.dart';
 
 class MemoryDetailScreen extends StatefulWidget {
   final MemoryResponse memory;

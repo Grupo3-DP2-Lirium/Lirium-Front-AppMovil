@@ -1,7 +1,7 @@
 // components/cards/memory_card.dart
 import 'package:flutter/material.dart';
-import '../../models/memory_response.dart';
-import '../../utils/file_url_helper.dart';
+import 'package:flutter_frontend/data/models/memory_response.dart';
+import 'package:flutter_frontend/utils/file_url_helper.dart';
 
 class MemoryCard extends StatelessWidget {
   final String title;

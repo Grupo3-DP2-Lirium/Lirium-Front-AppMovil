@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/components/buttons/icon_button_custom.dart';
-import 'package:flutter_frontend/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/components/buttons/icon_button_custom.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;

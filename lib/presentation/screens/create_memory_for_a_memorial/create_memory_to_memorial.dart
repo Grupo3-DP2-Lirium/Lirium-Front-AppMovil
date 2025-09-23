@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/components.dart';
-import 'package:flutter_frontend/screens/create_memory_for_a_memorial/row_of_memories.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/row_of_memories.dart';
+
 
 class CreateMemoryToMemorial extends StatelessWidget {
   const CreateMemoryToMemorial({super.key});

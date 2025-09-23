@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/screens/create_memory_for_a_memorial/create_memory_to_memorial.dart';
-import 'screens/onboarding/welcome_screen.dart';
+import 'package:flutter_frontend/presentation/screens/onboarding/welcome_screen.dart';
+//import 'package:flutter_frontend/screens/create_memory_for_a_memorial/create_memory_to_memorial.dart';
+//import 'screens/onboarding/welcome_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
