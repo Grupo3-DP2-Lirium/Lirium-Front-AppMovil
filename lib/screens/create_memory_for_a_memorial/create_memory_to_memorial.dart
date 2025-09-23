@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/components/components.dart';
 import 'package:flutter_frontend/screens/create_memory_for_a_memorial/row_of_memories.dart';
+import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
 
 class CreateMemoryToMemorial extends StatelessWidget {
   const CreateMemoryToMemorial({super.key});
 
-  void _auxiliar(){
-    
+  void _createMemorial(BuildContext context){
+    Navigator.push(context, MaterialPageRoute(builder: (context) => NewMemorialRelationScreen()));
   }
 
   @override
@@ -51,7 +52,7 @@ class CreateMemoryToMemorial extends StatelessWidget {
             SizedBox(height: 16),
             RowOfMemories(tipo: "compartido"),
             Spacer(),
-            PrimaryButton(text: 'Crear nuevo memorial', onPressed: () => _auxiliar(),),
+            PrimaryButton(text: 'Crear nuevo memorial', onPressed: () => _createMemorial(context)),
           ],
         ),
       ),

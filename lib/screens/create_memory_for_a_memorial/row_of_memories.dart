@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'memorial_data/memorial_data.dart';
+import 'create_memory_select_type.dart';
+
 class RowOfMemories extends StatelessWidget {
   final String tipo;
   const RowOfMemories({super.key, required this.tipo});
@@ -11,20 +13,30 @@ class RowOfMemories extends StatelessWidget {
       spacing: 12,
       runSpacing: 16,
       children: data
-          .map((item) => _buildMemorial(item["name"]!, item["url"]!))
+          .map((item) => _buildMemorial(context, item["name"]!, item["url"]!))
           .toList(),
     );
   }
 
-  Widget _buildMemorial(String name, String imageUrl) {
+  Widget _buildMemorial(BuildContext context, String name, String imageUrl) {
     return SizedBox(
       width: 80,
-      child: Column(
-        children: [
-          CircleAvatar(radius: 40, backgroundImage: NetworkImage(imageUrl)),
-          SizedBox(height: 8),
-          Text(name),
-        ],
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateMemorySelectType(),
+            ),
+          );
+        },
+        child: Column(
+          children: [
+            CircleAvatar(radius: 40, backgroundImage: NetworkImage(imageUrl)),
+            SizedBox(height: 8),
+            Text(name),
+          ],
+        ),
       ),
     );
   }
