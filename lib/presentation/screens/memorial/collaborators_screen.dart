@@ -1,6 +1,6 @@
 // lib/screens/memorial/collaborators_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 
 enum CollaboratorStatus { active, pending }
 

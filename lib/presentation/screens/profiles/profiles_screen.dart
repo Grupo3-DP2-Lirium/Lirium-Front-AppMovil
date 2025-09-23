@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../components/components.dart';
 import '../../components/navigation/tab_bar.dart';
-import 'package:flutter_frontend/screens/memorial/memorial_detail_screen.dart';
 
 class ProfilesScreen extends StatefulWidget {
   const ProfilesScreen({super.key});

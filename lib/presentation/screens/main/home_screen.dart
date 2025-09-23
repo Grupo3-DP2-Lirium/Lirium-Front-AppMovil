@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/screens/memorial/new_memorial/relation_memorial_screen.dart';
-import '../../models/memorial.dart';
-import '../../services/memorial_service.dart';
+import 'package:flutter_frontend/data/models/memorial.dart';
+import 'package:flutter_frontend/data/services/memorial_service.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
 import '../memories/personal_space_screen.dart';

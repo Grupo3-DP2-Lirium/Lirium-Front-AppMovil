@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/screens/memories/new_personal_memory_screen.dart';
-import 'package:flutter_frontend/screens/memories/memory_detail_screen.dart';
+import 'package:flutter_frontend/data/models/memory_response.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/new_personal_memory_screen.dart';
 //import '../../components/cards/memory_card.dart';
 import '../../components/cards/memory_personal_card.dart';
-import '../../services/memory_service.dart';
-import '../../models/memory_response.dart';
-import '../../utils/file_url_helper.dart'; // Importar el helper
+
+//import '../../utils/file_url_helper.dart'; // Importar el helper
 
 // TODO: trae el JWT real desde donde se guarde (secure storage, provider, etc.), por ahora aquí
 String get currentJwt => 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NTAzMzM5LCJleHAiOjE3NTg1ODk3Mzl9.BA7jDWvCHZObHbTcTjtfNwcIgqa-EbFXagjUYLZfvQT3PG61pZESamkUzTzgDtFr';

@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter_frontend/models/memory_response.dart';
+import 'package:flutter_frontend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
-import '../config/api_constants.dart';
 import '../models/memory_response.dart';
 
 class MemoryService {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/rectangle_button.dart';
-import 'package:flutter_frontend/components/common/app_title.dart';
+import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
+import 'package:flutter_frontend/presentation/components/common/app_title.dart';
 
 class NewMemorialRelationScreen extends StatelessWidget {
   const NewMemorialRelationScreen({super.key});

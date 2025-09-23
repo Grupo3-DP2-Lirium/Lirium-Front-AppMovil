@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/components.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class Tab_Bar extends StatelessWidget implements PreferredSizeWidget {
   final TabController controller;
