@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/large_width_button.dart';
-import 'package:flutter_frontend/models/question_category.dart';
+import 'package:flutter_frontend/data/models/question_category.dart';
+import 'package:flutter_frontend/presentation/components/buttons/large_width_button.dart';
 
 class SelectCategoryQuestions extends StatefulWidget {
   final QuestionCategory category;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import '../../components/components.dart';
 
 class MemoriesGridScreen extends StatefulWidget {
@@ -86,7 +87,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreateMemoryToMemorial())),
         backgroundColor: const Color(0xFF6366F1),
         child: const Icon(Icons.add, color: Colors.white),
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/components/buttons/rectangle_button.dart';
-import 'package:flutter_frontend/screens/create_memory_for_a_memorial/select_questions.dart';
-import 'package:flutter_frontend/screens/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
+import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
+import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_questions.dart';
+import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
   const CreateMemorySelectType({super.key});

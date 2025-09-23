@@ -1,4 +1,4 @@
-import 'package:flutter_frontend/models/question_category.dart';
+import 'package:flutter_frontend/data/models/question_category.dart';
 
 final List<QuestionCategory> questionsCategories = [
   QuestionCategory(

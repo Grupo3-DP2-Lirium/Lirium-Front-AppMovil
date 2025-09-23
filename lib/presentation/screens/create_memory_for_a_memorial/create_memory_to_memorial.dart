@@ -15,7 +15,6 @@ class CreateMemoryToMemorial extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back),
         title: Text(
           "Añade un recuerdo",
           style: Theme.of(context).textTheme.titleLarge,
