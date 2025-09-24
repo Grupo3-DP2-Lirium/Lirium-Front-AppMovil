@@ -31,20 +31,20 @@ class RectangleButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.shade400)
+            border: Border.all(color: AppColors.inactive)
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: size * 0.3, color: Colors.black87),
+              Icon(icon, size: size * 0.3, color: Colors.grey[400] ),
               const SizedBox(height: 12),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Colors.grey[400],
                 ),
               ),
             ],
