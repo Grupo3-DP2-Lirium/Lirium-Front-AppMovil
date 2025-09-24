@@ -22,7 +22,8 @@ class SecondaryButton extends StatelessWidget {
       return OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: textColor ?? const Color(0xFF6366F1)),
+          foregroundColor: textColor ?? const Color(0xFF6366F1), // fuerza color activo/inactivo
+          side: const BorderSide(color: Color(0xFF6366F1)),       // borde siempre morado
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
