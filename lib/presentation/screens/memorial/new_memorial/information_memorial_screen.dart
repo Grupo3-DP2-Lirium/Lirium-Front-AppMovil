@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/switch_button.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
@@ -23,6 +25,8 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isCollaborative = false;
+  File? _imageController;
+
 
   @override
   void initState() {
@@ -52,6 +56,11 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                   radius: 60,
                   showCameraIcon: true,
                   placeholderIcon: Icons.image_outlined,
+                  onImageChanged: (file) {
+                    setState(() {
+                      _imageController = file; // <-- aquí guardas la imagen
+                    });
+                  },
                 ),
               ),
               const SizedBox(height: 24),
