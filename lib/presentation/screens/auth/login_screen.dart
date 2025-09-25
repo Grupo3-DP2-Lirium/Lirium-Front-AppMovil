@@ -1,21 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
+import '../../../providers/auth_providers.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  /// Maneja el proceso de login
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Por favor completa todos los campos');
+      return;
+    }
+
+    final success = await ref.read(authProvider.notifier).login(
+      email: email,
+      password: password,
+    );
+
+    if (success && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PreserveQuestionScreen(),
+        ),
+      );
+    }
+  }
+
+  /// Muestra un error en un SnackBar
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    // Mostrar errores automáticamente
+    ref.listen<bool>(authProvider.select((state) => state.error != null),
+        (_, hasError) {
+      if (hasError && authState.error != null) {
+        _showError(authState.error!);
+        ref.read(authProvider.notifier).clearError();
+      }
+    });
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -51,15 +98,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const Spacer(),
               // Login button
               PrimaryButton(
-                text: 'Iniciar',
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PreserveQuestionScreen(),
-                    ),
-                  );
-                },
+                text: authState.isLoading ? 'Iniciando...' : 'Iniciar',
+                onPressed: authState.isLoading ? null : _handleLogin,
               ),
               const SizedBox(height: 16),
               // Social login options
