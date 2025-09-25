@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../components/components.dart';
+import 'package:image_picker/image_picker.dart'; // 👈 importante
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
 
   String _selectedCountryCode = '+1';
+  File? _imageController;
 
   @override
   Widget build(BuildContext context) {
@@ -43,13 +47,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             const SizedBox(height: 20),
             // Profile picture section
-            const Center(
+            Center(
               child: ProfileAvatar(
-                radius: 60,
-                showCameraIcon: true,
-                placeholderIcon: Icons.image_outlined,
+                  radius: 60,
+                  showCameraIcon: true,
+                  placeholderIcon: Icons.image_outlined,
+                  onImageChanged: (file) {
+                    setState(() {
+                      _imageController = file; // <-- aquí guardas la imagen
+                    });
+                  },
+                ),
               ),
-            ),
             const SizedBox(height: 40),
             // Form fields
             AppTextField(
