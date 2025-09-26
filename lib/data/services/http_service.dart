@@ -20,6 +20,25 @@ class HttpService {
     _token = null;
   }
 
+  // headers públicos para reuso (JSON)
+  Map<String, String> authHeaders({bool includeJson = true}) {
+    final h = <String, String>{};
+    if (includeJson) h['Content-Type'] = 'application/json';
+    h['Accept'] = 'application/json';
+    if (_token != null && _token!.isNotEmpty) {
+      h['Authorization'] = 'Bearer $_token';
+    }
+    return h;
+  }
+
+  // aplica auth a multipart
+  void attachAuthToMultipart(http.MultipartRequest req) {
+    req.headers['Accept'] = 'application/json';
+    if (_token != null && _token!.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $_token';
+    }
+  }
+
   Map<String, String> get _headers {
     final headers = {
       'Content-Type': 'application/json',
