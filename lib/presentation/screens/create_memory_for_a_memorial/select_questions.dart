@@ -11,6 +11,21 @@ class SelectQuestions extends StatefulWidget {
 }
 
 class _SelectQuestionsState extends State<SelectQuestions> {
+  int? _selectedCategoryIndex;
+
+  void _selectCategory(int index, dynamic category) {
+    setState(() => _selectedCategoryIndex = index);
+    
+    Future.delayed(const Duration(milliseconds: 200), () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectCategoryQuestions(category: category),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,19 +52,15 @@ class _SelectQuestionsState extends State<SelectQuestions> {
                 itemBuilder: (context, index) {
                   final category = questionsCategories[index];
                   
-                  return LargeWidthButton(
-                    label: category.name,
-                    backgroundColor: Colors.grey[300], 
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SelectCategoryQuestions(
-                            category: category,
-                          ),
-                        ),
-                      );
-                    },
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: LargeWidthButton(
+                      label: category.name,
+                      backgroundColor: _selectedCategoryIndex == index
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey[300],
+                      onPressed: () => _selectCategory(index, category),
+                    ),
                   );
                 },
               ),
