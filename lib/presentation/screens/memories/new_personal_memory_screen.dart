@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 
 // TODO: reemplaza por cómo guardas/obtienes tu JWT
-String get currentJwt => "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NTAzMzM5LCJleHAiOjE3NTg1ODk3Mzl9.BA7jDWvCHZObHbTcTjtfNwcIgqa-EbFXagjUYLZfvQT3PG61pZESamkUzTzgDtFr"; // solo el token, sin 'Bearer '
+String get currentJwt => "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4ODM1OTQ4LCJleHAiOjE3NTg5MjIzNDh9.VsXUueBl_eJN6oBHXL5i30G_RBDbAPF84kXUH78hhr5A2RKMIruOyNoxt1vscDA3"; // solo el token, sin 'Bearer '
 
 class NewPersonalMemoryScreen extends StatefulWidget {
   const NewPersonalMemoryScreen({super.key});

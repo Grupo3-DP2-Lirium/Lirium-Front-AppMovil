@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
@@ -8,7 +9,12 @@ import '../models/memory_response.dart';
 
 class MemoryService {
   final http.Client _client;
-  MemoryService({http.Client? client}) : _client = client ?? http.Client();
+  final HttpService _http;
+
+  MemoryService({http.Client? client})
+      : _client = client ?? http.Client(),
+        _http = HttpService();
+
 
   /// Crea una memoria personal con soporte de archivos (imagenes, audio, etc).
   /// [token] = "Bearer <jwt>" (solo el jwt, sin la palabra Bearer, porque aquí lo añadimos).
@@ -55,8 +61,7 @@ class MemoryService {
     }
   }
 
-  Future<PageMemoryResponse> listMemories({
-    required String token,           // solo el JWT sin 'Bearer '
+  Future<PageMemoryResponse> listMemories({ //el token lo saca desde el login
     required String memorialId,
     int page = 0,
     int size = 10,
@@ -67,15 +72,15 @@ class MemoryService {
 
     final res = await _client.get(
       uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
+      headers: _http.authHeaders(includeJson: false), // Authorization + Accept
     );
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final map = json.decode(res.body) as Map<String, dynamic>;
       return PageMemoryResponse.fromJson(map);
+    } else if (res.statusCode == 401) {
+      // aquí podrías limpiar sesión y redirigir
+      throw Exception('Sesión expirada (401).');
     } else {
       throw Exception('Error ${res.statusCode}: ${res.body}');
     }
