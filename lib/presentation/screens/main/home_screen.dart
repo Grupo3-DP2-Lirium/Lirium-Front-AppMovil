@@ -200,6 +200,7 @@ class _StartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+
           // Ícono morado con sombra suave
           Container(
             height: 44,
