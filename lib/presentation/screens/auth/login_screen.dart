@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
 import 'register_screen.dart';
@@ -13,6 +15,90 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  // Función para hacer login con el backend
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showMessage('Por favor completa todos los campos');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _showMessage('¡Login exitoso!');
+        
+        // Navegar a la siguiente pantalla
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PreserveQuestionScreen()),
+        );
+      } else {
+        _showMessage('Credenciales incorrectas');
+      }
+    } catch (e) {
+      _showMessage('Error de conexión. ¿Está el servidor ejecutándose?');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Función para crear un usuario de prueba con las credenciales que quieres
+  Future<void> _createTestUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'firstName': 'Rodrigo',
+          'firstLastName': 'Usuario',
+          'email': 'rodrigo@test.com',  // Cambié el email para evitar conflictos
+          'password': 'rodrigo',  // La contraseña que quieres usar
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _showMessage('¡Usuario creado! Email: rodrigo@test.com, Password: rodrigo');
+        // Prellenar los campos automáticamente
+        _emailController.text = 'rodrigo@test.com';
+        _passwordController.text = 'rodrigo';
+      } else {
+        _showMessage('Error creando usuario: ${response.body}');
+      }
+    } catch (e) {
+      _showMessage('Error de conexión: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +135,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const Spacer(),
-              // Login button
-              PrimaryButton(
-                text: 'Iniciar',
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PreserveQuestionScreen(),
-                    ),
-                  );
-                },
+              // Botón para crear usuario de prueba
+              SecondaryButton(
+                text: 'Crear usuario de prueba',
+                textColor: const Color(0xFF10B981),
+                onPressed: _isLoading ? null : _createTestUser,
               ),
+              const SizedBox(height: 16),
+              // Login button
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : PrimaryButton(
+                      text: 'Iniciar',
+                      onPressed: _login,
+                    ),
               const SizedBox(height: 16),
               // Social login options
               Row(
