@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _service.fetchMyMemorials();
+    _future = _service.getMyMemorials();
   }
 
   // Navegación (conecta a tus rutas)

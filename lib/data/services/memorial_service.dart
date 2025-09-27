@@ -1,26 +1,35 @@
 import 'dart:convert';
 import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
 import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:http/http.dart' as http;
 
 class MemorialService {
-  final String baseUrl;
+  final http.Client _client;
+  final HttpService _http;
+  final String baseUrl = ApiConstants.baseUrl;
 
-  MemorialService({this.baseUrl = ApiConstants.baseUrl});
+  MemorialService({http.Client? client})
+      : _client = client ?? http.Client(),
+        _http = HttpService();
 
   /// Crear un memorial con o sin imagen
   Future<Memorial> createMemorial(
       MemorialRequestModel request,
       String? imagePath,
-      String token,
       ) async {
     final uri = Uri.parse("$baseUrl/memorials/create");
 
+    // Hacemos un GET para obtener los headers con token
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
     final requestMultipart = http.MultipartRequest("POST", uri)
-      ..headers['Authorization'] = 'Bearer $token'
-      ..headers['Accept'] = 'application/json'
+      ..headers.addAll(_http.authHeaders(includeJson: true)) // ahora Authorization + Accept JSON
       ..fields['memorial'] = jsonEncode(request.toJson());
 
     if (imagePath != null) {
@@ -40,51 +49,47 @@ class MemorialService {
     }
   }
 
-  /// Obtener los memoriales del usuario
-  /*Future<List<Memorial>> fetchMyMemorials(String token) async {
-    final uri = Uri.parse("$baseUrl/memorials");
-
-    final response = await http.get(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
-      return jsonList
-          .map((json) => MemorialResponseModel.fromJson(json).toEntity())
-          .toList();
-    } else {
-      throw Exception(
-          "Error al obtener memoriales: ${response.statusCode} ${response.body}"
-      );
-    }
-  }*/
-
   /// Obtener memoriales colaborativos
-  Future<List<Memorial>> fetchCollaborativeMemorials(String token) async {
-    final uri = Uri.parse("$baseUrl/memorials/collaborative");
+  Future<List<Memorial>> getCollaborativeMemorials() async {
+    try {
+      final response = await _http.get(ApiConstants.collaborativeMemorials);
 
-    final response = await http.get(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+      print('--- Respuesta de /memorials/collaborative ---');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
-      return jsonList
-          .map((json) => MemorialResponseModel.fromJson(json).toEntity())
-          .toList();
-    } else {
-      throw Exception(
-          "Error al obtener memoriales colaborativos: ${response.statusCode} ${response.body}"
-      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data
+            .map((json) => MemorialResponseModel.fromJson(json).toEntity())
+            .toList();
+      } else {
+        throw Exception('Failed to load collaborative memorials (${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<List<Memorial>> getMyMemorials() async {
+    try {
+      final response = await _http.get(ApiConstants.memorials);
+
+      print('--- Respuesta de /memorials ---');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        // Convertir MemorialResponseModel a Memorial y devolver la lista de Memorial
+        return data
+            .map((json) => MemorialResponseModel.fromJson(json).toEntity())
+            .toList();
+      } else {
+        throw Exception('Failed to load memorials (${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
     }
   }
 

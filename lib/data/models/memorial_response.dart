@@ -50,7 +50,7 @@ class MemorialResponseModel {
 
   Memorial toEntity() {
     return Memorial(
-      id: idMemorial,
+      idMemorial: idMemorial,
       name: name,
       nickname: nickname,
       description: description,
@@ -59,6 +59,7 @@ class MemorialResponseModel {
       birthDate: DateTime.parse(birthDate),
       isCollaborative: isCollaborative,
       isJournal: isJournal,
+      createdDate: createdDate,
     );
   }
 

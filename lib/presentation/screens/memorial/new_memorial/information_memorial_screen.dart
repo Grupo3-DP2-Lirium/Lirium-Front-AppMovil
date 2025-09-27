@@ -62,8 +62,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
           isCollaborative: _isCollaborative,
           isJournal: false,
         ),
-        _imageFile?.path,
-        token,
+        _imageFile?.path
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
