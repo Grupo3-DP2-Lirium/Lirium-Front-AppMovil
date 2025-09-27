@@ -51,7 +51,7 @@ class HttpService {
     return headers;
   }
 
-  Future<List<MemorialResponse>> getCollaborativeMemorials() async {
+  Future<List<MemorialResponseModel>> getCollaborativeMemorials() async {
     try {
       final response = await get(ApiConstants.collaborativeMemorials);
 
@@ -63,7 +63,7 @@ class HttpService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => MemorialResponse.fromJson(json)).toList();
+        return data.map((json) => MemorialResponseModel.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load collaborative memorials (${response.statusCode})');
       }
@@ -72,7 +72,7 @@ class HttpService {
     }
   }
 
-  Future<List<MemorialResponse>> getMyMemorials() async {
+  Future<List<MemorialResponseModel>> getMyMemorials() async {
     try {
       final response = await get(ApiConstants.memorials);
 
@@ -82,7 +82,7 @@ class HttpService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => MemorialResponse.fromJson(json)).toList();
+        return data.map((json) => MemorialResponseModel.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load memorials (${response.statusCode})');
       }

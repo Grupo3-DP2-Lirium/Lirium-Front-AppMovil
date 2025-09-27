@@ -5,16 +5,16 @@ import '../data/services/http_service.dart';
 class MemorialProvider extends ChangeNotifier {
   final _api = HttpService();
 
-  List<MemorialResponse> _misMemoriales = [];
-  List<MemorialResponse> _colaborativos = [];
+  List<MemorialResponseModel> _misMemoriales = [];
+  List<MemorialResponseModel> _colaborativos = [];
 
   bool _cargandoMis = false;
   bool _cargandoColab = false;
   String? _errorMis;
   String? _errorColab;
 
-  List<MemorialResponse> get misMemoriales => _misMemoriales;
-  List<MemorialResponse> get colaborativos => _colaborativos;
+  List<MemorialResponseModel> get misMemoriales => _misMemoriales;
+  List<MemorialResponseModel> get colaborativos => _colaborativos;
   bool get cargandoMis => _cargandoMis;
   bool get cargandoColab => _cargandoColab;
   String? get errorMis => _errorMis;

@@ -1,6 +1,8 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:flutter_frontend/data/models/memorial_request.dart';
+import 'package:flutter_frontend/data/repositories/memorial_repository_impl.dart';
 import 'package:flutter_frontend/presentation/components/buttons/switch_button.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
@@ -131,8 +133,41 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                   Expanded(
                     child: PrimaryButton(
                       text: "Guardar",
-                      onPressed: () {
-                        Navigator.pop(context);
+                      onPressed: () async {
+                        try {
+                          // Ejemplo de token (lo ideal es recuperarlo dinámicamente)
+                          const token = "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4OTQzNjUzLCJleHAiOjE3NTkwMzAwNTN9.tgn169JeMAeg5PA3mvb1dM7v4QgNPzXOI6ssRZEY4nBocX_axV_EQrOQqf6fS8i5";
+
+                          final request = MemorialRequestModel(
+                            name: _nameController.text,
+                            gender: "M",
+                            relation: "_relationController",
+                            birthDate: "2000-06-01",
+                            nickname: _nicknameController.text,
+                            description: _descriptionController.text,
+                            isCollaborative: _isCollaborative,
+                            isJournal: false
+                          );
+
+                          final repo = MemorialRepositoryImpl(ApiConstants.baseUrl); // usa ApiConstants.baseUrl internamente
+
+                          final memorial = await repo.createMemorial(
+                            request,
+                            _imageController?.path, // null si no hay imagen
+                            token,
+                          );
+
+                          // Si llega aquí, se creó correctamente
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Memorial creado correctamente")),
+                          );
+
+                          Navigator.pop(context, memorial); // puedes devolver el objeto creado
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Error al crear memorial: $e")),
+                          );
+                        }
                       },
                     ),
                   ),
