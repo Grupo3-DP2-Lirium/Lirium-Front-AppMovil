@@ -1,68 +1,107 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
-import '../../../providers/auth_providers.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-  /// Maneja el proceso de login
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Por favor completa todos los campos');
+  // Función para hacer login con el backend
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showMessage('Por favor completa todos los campos');
       return;
     }
 
-    final success = await ref.read(authProvider.notifier).login(
-      email: email,
-      password: password,
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (success && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PreserveQuestionScreen(),
-        ),
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
       );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _showMessage('¡Login exitoso!');
+        
+        // Navegar a la siguiente pantalla
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PreserveQuestionScreen()),
+        );
+      } else {
+        _showMessage('Credenciales incorrectas');
+      }
+    } catch (e) {
+      _showMessage('Error de conexión. ¿Está el servidor ejecutándose?');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  /// Muestra un error en un SnackBar
-  void _showError(String message) {
+  // Función para crear un usuario de prueba con las credenciales que quieres
+  Future<void> _createTestUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'firstName': 'Rodrigo',
+          'firstLastName': 'Usuario',
+          'email': 'rodrigo@test.com',  // Cambié el email para evitar conflictos
+          'password': 'rodrigo',  // La contraseña que quieres usar
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _showMessage('¡Usuario creado! Email: rodrigo@test.com, Password: rodrigo');
+        // Prellenar los campos automáticamente
+        _emailController.text = 'rodrigo@test.com';
+        _passwordController.text = 'rodrigo';
+      } else {
+        _showMessage('Error creando usuario: ${response.body}');
+      }
+    } catch (e) {
+      _showMessage('Error de conexión: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-
-    // Mostrar errores automáticamente
-    ref.listen<bool>(authProvider.select((state) => state.error != null),
-        (_, hasError) {
-      if (hasError && authState.error != null) {
-        _showError(authState.error!);
-        ref.read(authProvider.notifier).clearError();
-      }
-    });
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -96,11 +135,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const Spacer(),
-              // Login button
-              PrimaryButton(
-                text: authState.isLoading ? 'Iniciando...' : 'Iniciar',
-                onPressed: authState.isLoading ? null : _handleLogin,
+              // Botón para crear usuario de prueba
+              SecondaryButton(
+                text: 'Crear usuario de prueba',
+                textColor: const Color(0xFF10B981),
+                onPressed: _isLoading ? null : _createTestUser,
               ),
+              const SizedBox(height: 16),
+              // Login button
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : PrimaryButton(
+                      text: 'Iniciar',
+                      onPressed: _login,
+                    ),
               const SizedBox(height: 16),
               // Social login options
               Row(

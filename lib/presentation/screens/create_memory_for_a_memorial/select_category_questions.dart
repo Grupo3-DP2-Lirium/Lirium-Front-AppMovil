@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/question_category.dart';
 import 'package:flutter_frontend/presentation/components/buttons/large_width_button.dart';
-import 'question_answer_screen.dart';
+import 'answer_question_screen.dart';
 
 class SelectCategoryQuestions extends StatefulWidget {
   final QuestionCategory category;
@@ -17,19 +17,6 @@ class SelectCategoryQuestions extends StatefulWidget {
 
 class _SelectCategoryQuestionsState extends State<SelectCategoryQuestions> {
   String? selectedQuestion;
-
-  void _selectQuestion(String question) {
-    setState(() => selectedQuestion = question);
-    
-    Future.delayed(const Duration(milliseconds: 200), () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QuestionAnswerScreen(question: question),
-        ),
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +50,21 @@ class _SelectCategoryQuestionsState extends State<SelectCategoryQuestions> {
                 itemBuilder: (context, index) {
                   final question = widget.category.questions[index];
                   final isSelected = selectedQuestion == question;
-                  
                   return LargeWidthButton(
                     label: question,
-                    backgroundColor: isSelected 
-                        ? Theme.of(context).primaryColor 
-                        : Colors.grey.shade300,
-                    onPressed: () => _selectQuestion(question),
+                    backgroundColor: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300,
+                    onPressed: () {
+                      setState(() { selectedQuestion = question; });
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AnswerQuestionScreen(
+                            categoryName: widget.category.name,
+                            question: question,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
