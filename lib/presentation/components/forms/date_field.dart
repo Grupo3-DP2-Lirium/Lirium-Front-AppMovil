@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/components.dart';
 
 class DateTextField extends StatefulWidget {
   final String hintText;
@@ -35,16 +35,16 @@ class _DateTextFieldState extends State<DateTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: widget.controller,
-      readOnly: true,
-      onTap: _selectDate,
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        suffixIcon: const Icon(Icons.calendar_today),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.inactive)
+    return GestureDetector(
+      onTap: _selectDate, // Abre calendario al tocar todo el TextField
+      child: AbsorbPointer(
+        child: AppTextField(
+          controller: widget.controller,
+          enabled: true,
+          hintText: widget.hintText,
+          suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+          // Aquí pasamos el color gris al texto seleccionado
+          obscureText: false
         ),
       ),
     );

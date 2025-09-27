@@ -15,18 +15,32 @@ class BooleanSelectorSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 16)),
-        Switch(
-          value: value,
-          activeTrackColor: AppColors.primary, // color de la pista activa
-          inactiveThumbColor: Colors.white, // bolita inactiva
-          inactiveTrackColor: AppColors.inactive, // pista inactiva
-          onChanged: onChanged,
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.inactive,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.inactive),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+          Switch(
+            value: value,
+            activeTrackColor: AppColors.primary,
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: Colors.grey,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }
