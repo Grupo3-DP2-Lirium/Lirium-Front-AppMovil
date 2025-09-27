@@ -146,7 +146,7 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => MemorialDetailScreen(
-                              memorialId: m.id,
+                              memorialId: m.idMemorial,
                               name: m.name,
                               description: m.description,
                             ),
