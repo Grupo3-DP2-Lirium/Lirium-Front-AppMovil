@@ -136,7 +136,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                       onPressed: () async {
                         try {
                           // Ejemplo de token (lo ideal es recuperarlo dinámicamente)
-                          const token = "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4NzcxNjMwLCJleHAiOjE3NTg4NTgwMzB9.yXGZ19x6CM2HfobNj8DwzioKWWtPjT2U5tn7tgcWnPooObRn7Z-uEPvnXb2q9vpl";
+                          const token = "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4OTQzNjUzLCJleHAiOjE3NTkwMzAwNTN9.tgn169JeMAeg5PA3mvb1dM7v4QgNPzXOI6ssRZEY4nBocX_axV_EQrOQqf6fS8i5";
 
                           final request = MemorialRequestModel(
                             name: _nameController.text,
