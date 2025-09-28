@@ -228,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '¡Bienvenido ${userResponse.firstName}! Cuenta creada exitosamente',
+              '¡Bienvenido ${userResponse['firstName']}! Cuenta creada exitosamente',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),

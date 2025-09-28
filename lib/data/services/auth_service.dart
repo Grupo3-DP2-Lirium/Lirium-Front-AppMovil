@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'http_client.dart';
 import 'storage_service.dart';
+import '../models/register_request.dart';
 
 /// Servicio de autenticación con Dio y almacenamiento seguro
 class AuthService {
@@ -38,6 +39,23 @@ class AuthService {
     await StorageService.deleteToken();
   }
 
+  /// Registro de nuevo usuario
+  Future<Map<String, dynamic>> register(RegisterRequest registerRequest) async {
+    try {
+      final response = await _client.post('/auth/register', data: registerRequest.toJson());
+
+      if (response.statusCode == 201) {
+        // El backend devuelve los datos del usuario creado
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception('Registration failed: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _handleDioError(e);
+      rethrow;
+    }
+  }
+
   /// Verifica si hay una sesión activa válida
   Future<bool> isAuthenticated() async {
     return await StorageService.hasValidToken();
@@ -57,6 +75,8 @@ class AuthService {
         throw Exception('Credenciales incorrectas');
       case 404:
         throw Exception('Usuario no encontrado');
+      case 409:
+        throw Exception('Email ya está registrado');
       case 500:
         throw Exception('Error del servidor');
       default:
