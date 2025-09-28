@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/row_of_memories.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 
 
 class CreateMemoryToMemorial extends StatelessWidget {

@@ -1,4 +1,5 @@
 import 'package:flutter_frontend/domain/entities/memorial.dart';
+import 'file_response.dart';
 
 class MemorialResponseModel {
   final String idMemorial;
@@ -13,6 +14,7 @@ class MemorialResponseModel {
   final String userId;
   final DateTime createdDate;
   final DateTime updatedDate;
+  final FileResponseModel? profilePhoto;
 
   MemorialResponseModel({
     required this.idMemorial,
@@ -27,6 +29,7 @@ class MemorialResponseModel {
     required this.userId,
     required this.createdDate,
     required this.updatedDate,
+    this.profilePhoto,
   });
 
   factory MemorialResponseModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +48,9 @@ class MemorialResponseModel {
       updatedDate: json['updatedDate'] != null
           ? DateTime.parse(json['updatedDate'])
           : DateTime.now(),
+      profilePhoto: json['profilePhoto'] != null
+          ? FileResponseModel.fromJson(json['profilePhoto'])
+          : null,
     );
   }
 
@@ -60,6 +66,8 @@ class MemorialResponseModel {
       isCollaborative: isCollaborative,
       isJournal: isJournal,
       createdDate: createdDate,
+      profilePhotoUrl: profilePhoto?.fileUrl,
+      profilePhotoBase64: profilePhoto?.fileContentBase64,
     );
   }
 
@@ -74,4 +82,5 @@ class MemorialResponseModel {
       'updatedDate': updatedDate.toIso8601String(),
     };
   }
+
 }
