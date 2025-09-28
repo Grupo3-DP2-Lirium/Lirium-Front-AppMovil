@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import '../../components/components.dart';
 import '../../components/navigation/tab_bar.dart';
