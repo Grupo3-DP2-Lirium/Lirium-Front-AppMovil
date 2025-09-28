@@ -9,6 +9,8 @@ class Memorial {
   final bool isCollaborative;
   final bool isJournal;
   final DateTime createdDate;
+  final String? profilePhotoUrl;
+  final String? profilePhotoBase64;
 
   Memorial({
     required this.idMemorial,
@@ -20,7 +22,9 @@ class Memorial {
     required this.birthDate,
     required this.isCollaborative,
     required this.isJournal,
-    required this.createdDate
+    required this.createdDate,
+    this.profilePhotoUrl,
+    this.profilePhotoBase64
   });
 
 }

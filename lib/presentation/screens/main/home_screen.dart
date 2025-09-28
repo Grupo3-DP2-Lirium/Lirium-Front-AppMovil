@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
@@ -23,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _service.getMyMemorials();
+    _future = _service.getMemorials();
   }
 
   // Navegación (conecta a tus rutas)
@@ -156,6 +158,57 @@ class _HomeScreenState extends State<HomeScreen> {
             ]);
           } else {
             // TODO: estado con memoriales (carrusel + resto)
+            widgets.add(
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  "Mis memoriales",
+                  style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+            );
+
+          for (final m in memorials) {
+            widgets.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: InkWell(
+              onTap: () => _openMemorial(m),
+              child: _CardContainer(
+                child: Row(
+                children: [
+                  //Esto es temporal solo para local
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundImage: m.profilePhotoBase64 != null && m.profilePhotoBase64!.isNotEmpty
+                        ? MemoryImage(base64Decode(m.profilePhotoBase64!))
+                        : (m.profilePhotoUrl != null && m.profilePhotoUrl!.isNotEmpty
+                        ? NetworkImage(m.profilePhotoUrl!)
+                        : const AssetImage("assets/images/default_avatar.png")) as ImageProvider,
+                  ),
+                  const SizedBox(width: 16),
+                Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(m.name,
+                    style: tt.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                    if (m.nickname != null && m.nickname!.isNotEmpty)
+                    Text("“${m.nickname}”",
+                    style: tt.bodySmall
+                        ?.copyWith(color: Colors.black54)),
+                  ],
+                ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.black54),
+            ],
+            ),
+            ),
+            ),
+            ),
+            );
+            }
           }
 
           return ListView(children: widgets);

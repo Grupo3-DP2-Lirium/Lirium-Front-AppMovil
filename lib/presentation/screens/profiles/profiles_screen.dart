@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
 import '../../components/components.dart';
 import '../../components/navigation/tab_bar.dart';
+import 'package:provider/provider.dart';
+
 
 class ProfilesScreen extends StatefulWidget {
   const ProfilesScreen({super.key});
@@ -19,13 +24,19 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      setState(() {});
+
+    // cargar data después de que el widget se haya montado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<MemorialProvider>();
+      provider.cargarMisMemoriales();
+      provider.cargarColaborativos();
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<MemorialProvider>();
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -50,7 +61,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildMyProfilesTab(),
+          _buildMisMemoriales(provider),
           _buildCollaborationTab()
         ],
       ),
@@ -63,7 +74,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         child: PrimaryButton(
           text: 'Nuevo Memorial',
           icon: Icons.add,
-          isFullWidth: true, // ocupa todo el ancho disponible
+          isFullWidth: true,
           onPressed: () {
               Navigator.push(
                 context,
@@ -76,36 +87,38 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     );
   }
 
-  Widget _buildMyProfilesTab() {
-    // Lista de memoriales falsos
-    final fakeMemorials = List.generate(13, (index) {
-      return {
-        "name": "Memorial ${index + 1}",
-        "description":
-        "Este es un memorial de prueba número ${index + 1}. Aquí iría la descripción.",
-      };
-    });
+  Widget _buildMisMemoriales(MemorialProvider provider) {
+    if (provider.cargandoMis) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.errorMis != null) {
+      return Center(child: Text("Error: ${provider.errorMis}"));
+    }
+    if (provider.misMemoriales.isEmpty) {
+      return const Center(child: Text("No tienes memoriales aún"));
+    }
 
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: fakeMemorials.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemCount: provider.misMemoriales.length,
       itemBuilder: (context, index) {
-        final m = fakeMemorials[index];
+        final m = provider.misMemoriales[index];
         return ProfileCard(
-          name: m["name"]!,
-          description: m["description"]!,
-          hasHeart: true,
+          name: m.name,
+          description: m.description,
+          profilePhotoBase64: m.profilePhotoBase64,
+          profilePhotoUrl: m.profilePhotoUrl,
+          isShared: m.isCollaborative,
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => MemorialDetailScreen(
-                  memorialId: 'memorial-${index + 1}', // TODO: usa el real
-                  name: m["name"]!,
-                  description: m["description"]!,
-                  coverUrl: null,      // o una URL si tienes
-                  avatarUrl: null,     // o una URL si tienes
+                  memorialId: m.idMemorial,
+                  name: m.name,
+                  description: m.description,
+                  coverUrl: null,
+                  avatarUrl: m.profilePhotoBase64,
                 ),
               ),
             );
@@ -129,7 +142,6 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         ProfileCard(
           name: 'Lila De la Cruz',
           description: '',
-          showRegisterButton: true,
           onTap: () {},
         ),
       ],

@@ -33,7 +33,7 @@ class MemorialProvider extends ChangeNotifier {
     if (_cargandoMis || (_loadedMis && !force)) return;
     _cargandoMis = true; _errorMis = null; notifyListeners();
     try {
-      _misMemoriales = await _service.getMyMemorials();
+      _misMemoriales = await _service.getMemorials();
       _loadedMis = true;
     } catch (e) {
       _errorMis = e.toString();
