@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_questions.dart';
+import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_category.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
@@ -76,7 +76,7 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => SelectQuestions(),
+                                    builder: (context) => SelectCategory(),
                                   ),
                                 )
                 ),

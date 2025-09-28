@@ -38,6 +38,8 @@ dependencies:
   http_parser: ^4.1.2
   # opcional si vas a elegir fotos desde galería/cámara:
   image_picker: ^1.1.2
+  # Autenticación segura
+  dio: ^5.3.2
   flutter_localizations:
     sdk: flutter
   permission_handler: ^11.3.1

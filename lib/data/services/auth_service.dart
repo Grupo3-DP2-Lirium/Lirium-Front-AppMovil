@@ -1,36 +1,86 @@
-// services/auth_service.dart
-import 'dart:convert';
-import 'package:flutter_frontend/config/api_constants.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'http_client.dart';
+import 'storage_service.dart';
+import '../models/register_request.dart';
 
+/// Servicio de autenticación con Dio y almacenamiento seguro
 class AuthService {
-  final http.Client _client;
-  AuthService({http.Client? client}) : _client = client ?? http.Client();
+  final Dio _client = HttpClient.instance;
 
-  /// Login que devuelve un token
+  /// Realiza login y guarda token automáticamente
   Future<String> login({
     required String email,
     required String password,
   }) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/auth/login');
-    final res = await _client.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
+    try {
+      final response = await _client.post('/auth/login', data: {
         'email': email,
         'password': password,
-      }),
-    );
+      });
 
-    if (res.statusCode == 200) {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      // Ajusta la key según tu backend (puede ser 'token' o 'accessToken')
-      return body['token'] as String;
-    } else {
-      throw Exception('Error ${res.statusCode}: ${res.body}');
+      if (response.statusCode == 200) {
+        final token = response.data['token'] as String;
+
+        // Guardar automáticamente en storage seguro
+        await StorageService.saveToken(token);
+
+        return token;
+      } else {
+        throw Exception('Login failed: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _handleDioError(e);
+      rethrow;
+    }
+  }
+
+  /// Cierra sesión eliminando el token
+  Future<void> logout() async {
+    await StorageService.deleteToken();
+  }
+
+  /// Registro de nuevo usuario
+  Future<Map<String, dynamic>> register(RegisterRequest registerRequest) async {
+    try {
+      final response = await _client.post('/auth/register', data: registerRequest.toJson());
+
+      if (response.statusCode == 201) {
+        // El backend devuelve los datos del usuario creado
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception('Registration failed: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _handleDioError(e);
+      rethrow;
+    }
+  }
+
+  /// Verifica si hay una sesión activa válida
+  Future<bool> isAuthenticated() async {
+    return await StorageService.hasValidToken();
+  }
+
+  /// Obtiene información del usuario actual
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    return await StorageService.getUserFromToken();
+  }
+
+  /// Maneja errores de Dio de forma centralizada
+  void _handleDioError(DioException e) {
+    switch (e.response?.statusCode) {
+      case 400:
+        throw Exception('Datos inválidos');
+      case 401:
+        throw Exception('Credenciales incorrectas');
+      case 404:
+        throw Exception('Usuario no encontrado');
+      case 409:
+        throw Exception('Email ya está registrado');
+      case 500:
+        throw Exception('Error del servidor');
+      default:
+        throw Exception('Error de conexión: ${e.message}');
     }
   }
 }

@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/question_category.dart';
 import 'package:flutter_frontend/presentation/components/buttons/large_width_button.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/memorial_data/questions.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_category_questions.dart';
+import 'answer_question_screen.dart';
 
 class SelectQuestions extends StatefulWidget {
-  const SelectQuestions({super.key});
+  final QuestionCategory category;
+  
+  const SelectQuestions({
+    super.key,
+    required this.category,
+  });
 
   @override
   State<SelectQuestions> createState() => _SelectQuestionsState();
 }
 
 class _SelectQuestionsState extends State<SelectQuestions> {
+  String? selectedQuestion;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,27 +32,35 @@ class _SelectQuestionsState extends State<SelectQuestions> {
         child: Column(
           children: [
             Text(
-              "Selecciona una categoría de preguntas",
+              widget.category.name,
               style: Theme.of(context).textTheme.headlineLarge,
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 16),
-
+            Text(
+              "Selecciona una pregunta para responder",
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            
             Expanded(
               child: ListView.builder(
-                itemCount: questionsCategories.length,
+                itemCount: widget.category.questions.length,
                 itemBuilder: (context, index) {
-                  final category = questionsCategories[index];
-                  
+                  final question = widget.category.questions[index];
+                  final isSelected = selectedQuestion == question;
                   return LargeWidthButton(
-                    label: category.name,
-                    backgroundColor: Colors.grey[300], 
+                    label: question,
+                    backgroundColor: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300,
                     onPressed: () {
+                      setState(() { selectedQuestion = question; });
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectCategoryQuestions(
-                            category: category,
+                          builder: (_) => AnswerQuestionScreen(
+                            categoryName: widget.category.name,
+                            question: question,
                           ),
                         ),
                       );
