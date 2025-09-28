@@ -28,6 +28,8 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   bool _isCollaborative = false;
   File? _imageFile;
 
+  final _formKey = GlobalKey<FormState>();
+
   @override
   void initState() {
     super.initState();
@@ -35,9 +37,10 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   }
 
   Future<void> _saveMemorial() async {
-    final token =
-        "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4OTk2ODAxLCJleHAiOjE3NTkwODMyMDF9.r9HJmd7W_4GM2DfWR0mUnCg9L5XSZoMfRExm0FRjtWTGhqSMOCGOkkyPEGHoa_Zx";
     final service = MemorialService();
+    if (!_formKey.currentState!.validate()) {
+      return; // No continúa si hay errores
+    }
 
     String formattedBirthDate = '';
     if (_birthDateController.text.isNotEmpty) {
@@ -76,28 +79,59 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     }
   }
 
-  Widget _buildTextField(TextEditingController controller,
-      {String hintText = "", bool enabled = true, int maxLines = 1}) {
+  Widget _buildTextField(
+      TextEditingController controller, {
+        String hintText = "",
+        bool enabled = true,
+        int maxLines = 1,
+        String? Function(String?)? validator,
+      }) {
     return AppTextField(
       controller: controller,
       hintText: hintText,
       enabled: enabled,
       maxLines: maxLines,
+      validator: validator,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> fields = [
-      _buildTextField(_nameController, hintText: "Nombre"),
-      _buildTextField(_relationController, hintText: "Vínculo", enabled: false),
+      _buildTextField(
+        _nameController,
+        hintText: "Nombre",
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'El nombre es obligatorio';
+          }
+          return null;
+        },
+      ),
+      _buildTextField(
+        _relationController,
+        hintText: "Vínculo",
+        enabled: false,
+      ),
       AppDropdownField(
         controller: _genderController,
         options: ["Masculino", "Femenino", "Otro"],
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'El género es obligatorio';
+          }
+          return null;
+        },
       ),
       DateTextField(
         hintText: "Fecha de nacimiento",
         controller: _birthDateController,
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'La fecha de nacimiento es obligatoria';
+          }
+          return null;
+        },
       ),
       _buildTextField(_nicknameController, hintText: "Apodo"),
       _buildTextField(_descriptionController, hintText: "Descripción...", maxLines: 3),
@@ -107,6 +141,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         onChanged: (v) => setState(() => _isCollaborative = v),
       ),
     ];
+
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -121,34 +156,38 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // ✅ Expanded contiene el Form completo
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: const AppTitle(
-                        title: "Información y Detalles",
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(
+                        child: AppTitle(title: "Información y Detalles"),
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.02),
-                    Center(
-                      child: ProfileAvatar(
-                        radius: screenWidth * 0.15,
-                        showCameraIcon: true,
-                        placeholderIcon: Icons.image_outlined,
-                        onImageChanged: (file) => setState(() => _imageFile = file),
+                      SizedBox(height: screenHeight * 0.02),
+                      Center(
+                        child: ProfileAvatar(
+                          radius: screenWidth * 0.15,
+                          showCameraIcon: true,
+                          placeholderIcon: Icons.image_outlined,
+                          onImageChanged: (file) => setState(() => _imageFile = file),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.03),
-                    ...fields.map((field) => Padding(
-                      padding: EdgeInsets.only(bottom: screenHeight * 0.02),
-                      child: field,
-                    )),
-                  ],
+                      SizedBox(height: screenHeight * 0.03),
+                      // Campos del formulario
+                      ...fields.map((field) => Padding(
+                        padding: EdgeInsets.only(bottom: screenHeight * 0.02),
+                        child: field,
+                      )),
+                    ],
+                  ),
                 ),
               ),
             ),
+            // Botones
             Row(
               children: [
                 Expanded(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 class AppTextField extends StatelessWidget {
   final String? label;
   final String hintText;
@@ -27,7 +26,7 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.maxLines = 1,
     this.enabled = true,
-    this.textColor
+    this.textColor,
   });
 
   @override
@@ -46,11 +45,13 @@ class AppTextField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
+        // 🟢 Usa TextFormField para que validator funcione
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
           validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           onChanged: onChanged,
           maxLines: maxLines,
           enabled: enabled,
