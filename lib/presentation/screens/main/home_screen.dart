@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/models/memorial.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
+import 'package:flutter_frontend/domain/entities/memorial.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _service.fetchMyMemorials();
+    _future = _service.getMyMemorials();
   }
 
   // Navegación (conecta a tus rutas)

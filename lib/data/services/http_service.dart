@@ -4,7 +4,6 @@ import '../../config/api_constants.dart';
 import '../../config/app_config.dart';
 import '../models/memorial_response.dart';
 
-
 class HttpService {
   static final HttpService _instance = HttpService._internal();
   factory HttpService() => _instance;
@@ -20,6 +19,25 @@ class HttpService {
     _token = null;
   }
 
+  // headers públicos para reuso (JSON)
+  Map<String, String> authHeaders({bool includeJson = true}) {
+    final h = <String, String>{};
+    if (includeJson) h['Content-Type'] = 'application/json';
+    h['Accept'] = 'application/json';
+    if (_token != null && _token!.isNotEmpty) {
+      h['Authorization'] = 'Bearer $_token';
+    }
+    return h;
+  }
+
+  // aplica auth a multipart
+  void attachAuthToMultipart(http.MultipartRequest req) {
+    req.headers['Accept'] = 'application/json';
+    if (_token != null && _token!.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $_token';
+    }
+  }
+
   Map<String, String> get _headers {
     final headers = {
       'Content-Type': 'application/json',
@@ -31,47 +49,6 @@ class HttpService {
 
     return headers;
   }
-
-  Future<List<MemorialResponse>> getCollaborativeMemorials() async {
-    try {
-      final response = await get(ApiConstants.collaborativeMemorials);
-
-      // --- AGREGA ESTAS LÍNEAS PARA VER LA RESPUESTA ---
-      print('--- Respuesta de /memorials/collaborative ---');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      // -------------------------------------------------
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => MemorialResponse.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load collaborative memorials (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
-
-  Future<List<MemorialResponse>> getMyMemorials() async {
-    try {
-      final response = await get(ApiConstants.memorials);
-
-      print('--- Respuesta de /memorials ---');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => MemorialResponse.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load memorials (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
-    }
-  }
-
 
   Future<http.Response> get(String endpoint) async {
     try {

@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/services/memorial_service.dart';
+import 'package:flutter_frontend/domain/entities/memorial.dart';
 import '../data/models/memorial_response.dart';
 import '../data/services/http_service.dart';
 
 class MemorialProvider extends ChangeNotifier {
   final _api = HttpService();
 
-  List<MemorialResponse> _misMemoriales = [];
-  List<MemorialResponse> _colaborativos = [];
+  final _service = MemorialService();
+
+  List<Memorial> _misMemoriales = [];
+  List<Memorial> _colaborativos = [];
 
   bool _cargandoMis = false;
   bool _cargandoColab = false;
   String? _errorMis;
   String? _errorColab;
 
-  List<MemorialResponse> get misMemoriales => _misMemoriales;
-  List<MemorialResponse> get colaborativos => _colaborativos;
+  List<Memorial> get misMemoriales => _misMemoriales;
+  List<Memorial> get colaborativos => _colaborativos;
   bool get cargandoMis => _cargandoMis;
   bool get cargandoColab => _cargandoColab;
   String? get errorMis => _errorMis;
@@ -29,7 +33,7 @@ class MemorialProvider extends ChangeNotifier {
     if (_cargandoMis || (_loadedMis && !force)) return;
     _cargandoMis = true; _errorMis = null; notifyListeners();
     try {
-      _misMemoriales = await _api.getMyMemorials();
+      _misMemoriales = await _service.getMyMemorials();
       _loadedMis = true;
     } catch (e) {
       _errorMis = e.toString();
@@ -42,7 +46,7 @@ class MemorialProvider extends ChangeNotifier {
     if (_cargandoColab || (_loadedColab && !force)) return;
     _cargandoColab = true; _errorColab = null; notifyListeners();
     try {
-      _colaborativos = await _api.getCollaborativeMemorials();
+      _colaborativos = await _service.getCollaborativeMemorials();
       _loadedColab = true;
     } catch (e) {
       _errorColab = e.toString();

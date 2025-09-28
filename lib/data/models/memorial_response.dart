@@ -1,37 +1,71 @@
-class MemorialResponse {
-  final String id;
+import 'package:flutter_frontend/domain/entities/memorial.dart';
+
+class MemorialResponseModel {
+  final String idMemorial;
   final String name;
+  final String nickname;
   final String description;
+  final String gender;
+  final String relation;
+  final String birthDate;
   final bool isCollaborative;
+  final bool isJournal;
   final String userId;
   final DateTime createdDate;
   final DateTime updatedDate;
 
-  MemorialResponse({
-    required this.id,
+  MemorialResponseModel({
+    required this.idMemorial,
     required this.name,
+    required this.nickname,
     required this.description,
+    required this.gender,
+    required this.relation,
+    required this.birthDate,
     required this.isCollaborative,
+    required this.isJournal,
     required this.userId,
     required this.createdDate,
     required this.updatedDate,
   });
 
-  factory MemorialResponse.fromJson(Map<String, dynamic> json) {
-    return MemorialResponse(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      isCollaborative: json['isCollaborative'] ?? false,
+  factory MemorialResponseModel.fromJson(Map<String, dynamic> json) {
+    return MemorialResponseModel(
+      idMemorial: json["idMemorial"] ?? '',
+      name: json["name"] ?? '',
+      nickname: json["nickname"] ?? '',
+      description: json["description"] ?? '',
+      gender: json["gender"] ?? '',
+      relation: json["relationType"] ?? '',
+      birthDate: json["birthDate"] ?? '',
+      isCollaborative: json["collaborative"] ?? false,
+      isJournal: json["journal"] ?? false,
       userId: json['userId'] ?? '',
       createdDate: DateTime.parse(json['createdDate']),
-      updatedDate: DateTime.parse(json['updatedDate']),
+      updatedDate: json['updatedDate'] != null
+          ? DateTime.parse(json['updatedDate'])
+          : DateTime.now(),
+    );
+  }
+
+  Memorial toEntity() {
+    return Memorial(
+      idMemorial: idMemorial,
+      name: name,
+      nickname: nickname,
+      description: description,
+      gender: gender,
+      relation: relation,
+      birthDate: DateTime.parse(birthDate),
+      isCollaborative: isCollaborative,
+      isJournal: isJournal,
+      createdDate: createdDate,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': idMemorial,
       'name': name,
       'description': description,
       'isCollaborative': isCollaborative,
