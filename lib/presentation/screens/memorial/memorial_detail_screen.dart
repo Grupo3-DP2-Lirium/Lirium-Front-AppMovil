@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/icon_button_custom.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
@@ -38,6 +40,18 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   void dispose() {
     _tab.dispose();
     super.dispose();
+  }
+
+  ImageProvider? _getAvatarImage(String? avatar) {
+    if (avatar == null || avatar.isEmpty) return null;
+
+    if (avatar.startsWith('data:image')) {
+      final base64Str = avatar.split(',').last;
+      final bytes = base64Decode(base64Str);
+      return MemoryImage(bytes);
+    }
+
+    return NetworkImage(avatar);
   }
 
   @override
@@ -119,9 +133,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         child: CircleAvatar(
                           radius: avatarRadius,
                           backgroundColor: const Color(0xFFE9E8F6),
-                          backgroundImage: (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty)
-                              ? NetworkImage(widget.avatarUrl!)
-                              : null,
+                          backgroundImage: _getAvatarImage(widget.avatarUrl),
                           child: (widget.avatarUrl == null || widget.avatarUrl!.isEmpty)
                               ? const Icon(Icons.person, size: 44, color: Colors.white)
                               : null,

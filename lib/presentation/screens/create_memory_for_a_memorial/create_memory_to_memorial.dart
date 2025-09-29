@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/row_of_memories.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:provider/provider.dart';
 
 
 class CreateMemoryToMemorial extends StatelessWidget {
@@ -10,9 +12,10 @@ class CreateMemoryToMemorial extends StatelessWidget {
   void _createMemorial(BuildContext context){
     Navigator.push(context, MaterialPageRoute(builder: (context) => NewMemorialRelationScreen()));
   }
-
   @override
   Widget build(BuildContext context) {
+    final memorialProvider = context.watch<MemorialProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -40,7 +43,16 @@ class CreateMemoryToMemorial extends StatelessWidget {
               ),
             ),
             SizedBox(height: 16),
-            RowOfMemories(tipo: "memoriales"),
+
+            // Aquí podés pasar los datos a RowOfMemories o hacer que RowOfMemories también acceda al provider
+            memorialProvider.cargandoMis
+                ? Center(child: CircularProgressIndicator())
+                : RowOfMemories(
+              tipo: "memoriales",
+              memoriales: memorialProvider.misMemoriales,
+            ),
+
+            SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: Text(
@@ -50,9 +62,13 @@ class CreateMemoryToMemorial extends StatelessWidget {
               ),
             ),
             SizedBox(height: 16),
-            RowOfMemories(tipo: "compartido"),
+
             Spacer(),
-            PrimaryButton(text: 'Crear nuevo memorial', onPressed: () => _createMemorial(context)),
+
+            PrimaryButton(
+              text: 'Crear nuevo memorial',
+              onPressed: () => _createMemorial(context),
+            ),
           ],
         ),
       ),
