@@ -6,6 +6,7 @@ import 'package:flutter_frontend/presentation/components/buttons/switch_button.d
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/memorial_created_screen.dart';
 
 class InformationMemorialScreen extends StatefulWidget {
   final String relation;
@@ -17,7 +18,9 @@ class InformationMemorialScreen extends StatefulWidget {
       _InformationMemorialScreenState();
 }
 
+/// Screen for entering information about the memorial.
 class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
+  // Controllers for form fields
   final _nameController = TextEditingController();
   final _relationController = TextEditingController();
   final _birthDateController = TextEditingController();
@@ -25,9 +28,13 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   final _descriptionController = TextEditingController();
   final _genderController = TextEditingController();
 
+  // Boolean for collaborative profile switch
   bool _isCollaborative = false;
+
+  // Image selected for the profile avatar
   File? _imageFile;
 
+  // Form key used for validation
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -36,10 +43,11 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     _relationController.text = widget.relation;
   }
 
+  /// Handles the submission of the form and sends the data to the backend
   Future<void> _saveMemorial() async {
     final service = MemorialService();
     if (!_formKey.currentState!.validate()) {
-      return; // No continúa si hay errores
+      return;
     }
 
     String formattedBirthDate = '';
@@ -68,10 +76,12 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         _imageFile?.path
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Memorial creado correctamente")),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MemorialCreatedScreen(memorial: memorial),
+        ),
       );
-      Navigator.pop(context, memorial);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error al crear memorial: $e")),
@@ -79,6 +89,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     }
   }
 
+  /// Helper to build custom text fields with optional validation
   Widget _buildTextField(
       TextEditingController controller, {
         String hintText = "",
@@ -97,6 +108,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Define form fields with validation where required
     final List<Widget> fields = [
       _buildTextField(
         _nameController,
@@ -141,7 +153,6 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         onChanged: (v) => setState(() => _isCollaborative = v),
       ),
     ];
-
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -156,7 +167,6 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ✅ Expanded contiene el Form completo
             Expanded(
               child: Form(
                 key: _formKey,
@@ -177,7 +187,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.03),
-                      // Campos del formulario
+                      // Form fields with spacing
                       ...fields.map((field) => Padding(
                         padding: EdgeInsets.only(bottom: screenHeight * 0.02),
                         child: field,
@@ -187,7 +197,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                 ),
               ),
             ),
-            // Botones
+            // Footer buttons: "Back" and "Save"
             Row(
               children: [
                 Expanded(
