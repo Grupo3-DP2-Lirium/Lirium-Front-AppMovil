@@ -6,6 +6,7 @@ import 'package:flutter_frontend/presentation/components/buttons/switch_button.d
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/memorial_created_screen.dart';
 
 class InformationMemorialScreen extends StatefulWidget {
   final String relation;
@@ -17,7 +18,9 @@ class InformationMemorialScreen extends StatefulWidget {
       _InformationMemorialScreenState();
 }
 
+/// Screen for entering information about the memorial.
 class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
+  // Controllers for form fields
   final _nameController = TextEditingController();
   final _relationController = TextEditingController();
   final _birthDateController = TextEditingController();
@@ -25,8 +28,14 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   final _descriptionController = TextEditingController();
   final _genderController = TextEditingController();
 
+  // Boolean for collaborative profile switch
   bool _isCollaborative = false;
+
+  // Image selected for the profile avatar
   File? _imageFile;
+
+  // Form key used for validation
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -34,10 +43,12 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     _relationController.text = widget.relation;
   }
 
+  /// Handles the submission of the form and sends the data to the backend
   Future<void> _saveMemorial() async {
-    final token =
-        "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4OTk2ODAxLCJleHAiOjE3NTkwODMyMDF9.r9HJmd7W_4GM2DfWR0mUnCg9L5XSZoMfRExm0FRjtWTGhqSMOCGOkkyPEGHoa_Zx";
     final service = MemorialService();
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     String formattedBirthDate = '';
     if (_birthDateController.text.isNotEmpty) {
@@ -65,10 +76,12 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
         _imageFile?.path
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Memorial creado correctamente")),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MemorialCreatedScreen(memorial: memorial),
+        ),
       );
-      Navigator.pop(context, memorial);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error al crear memorial: $e")),
@@ -76,28 +89,61 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     }
   }
 
-  Widget _buildTextField(TextEditingController controller,
-      {String hintText = "", bool enabled = true, int maxLines = 1}) {
+  /// Helper to build custom text fields with optional validation
+  Widget _buildTextField(
+      TextEditingController controller, {
+        String hintText = "",
+        bool enabled = true,
+        int maxLines = 1,
+        String? Function(String?)? validator,
+      }) {
     return AppTextField(
       controller: controller,
       hintText: hintText,
       enabled: enabled,
       maxLines: maxLines,
+      validator: validator,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Define form fields with validation where required
     final List<Widget> fields = [
-      _buildTextField(_nameController, hintText: "Nombre"),
-      _buildTextField(_relationController, hintText: "Vínculo", enabled: false),
+      _buildTextField(
+        _nameController,
+        hintText: "Nombre",
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'El nombre es obligatorio';
+          }
+          return null;
+        },
+      ),
+      _buildTextField(
+        _relationController,
+        hintText: "Vínculo",
+        enabled: false,
+      ),
       AppDropdownField(
         controller: _genderController,
         options: ["Masculino", "Femenino", "Otro"],
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'El género es obligatorio';
+          }
+          return null;
+        },
       ),
       DateTextField(
         hintText: "Fecha de nacimiento",
         controller: _birthDateController,
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'La fecha de nacimiento es obligatoria';
+          }
+          return null;
+        },
       ),
       _buildTextField(_nicknameController, hintText: "Apodo"),
       _buildTextField(_descriptionController, hintText: "Descripción...", maxLines: 3),
@@ -122,33 +168,36 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: const AppTitle(
-                        title: "Información y Detalles",
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(
+                        child: AppTitle(title: "Información y Detalles"),
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.02),
-                    Center(
-                      child: ProfileAvatar(
-                        radius: screenWidth * 0.15,
-                        showCameraIcon: true,
-                        placeholderIcon: Icons.image_outlined,
-                        onImageChanged: (file) => setState(() => _imageFile = file),
+                      SizedBox(height: screenHeight * 0.02),
+                      Center(
+                        child: ProfileAvatar(
+                          radius: screenWidth * 0.15,
+                          showCameraIcon: true,
+                          placeholderIcon: Icons.image_outlined,
+                          onImageChanged: (file) => setState(() => _imageFile = file),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.03),
-                    ...fields.map((field) => Padding(
-                      padding: EdgeInsets.only(bottom: screenHeight * 0.02),
-                      child: field,
-                    )),
-                  ],
+                      SizedBox(height: screenHeight * 0.03),
+                      // Form fields with spacing
+                      ...fields.map((field) => Padding(
+                        padding: EdgeInsets.only(bottom: screenHeight * 0.02),
+                        child: field,
+                      )),
+                    ],
+                  ),
                 ),
               ),
             ),
+            // Footer buttons: "Back" and "Save"
             Row(
               children: [
                 Expanded(

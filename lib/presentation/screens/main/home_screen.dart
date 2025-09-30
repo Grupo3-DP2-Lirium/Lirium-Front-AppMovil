@@ -1,7 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/new_memorial/relation_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/main/widgets/card_container.dart';
+import 'package:flutter_frontend/presentation/screens/main/widgets/date_label_card.dart';
+import 'package:flutter_frontend/presentation/screens/main/widgets/mini_timeline_card.dart';
+import 'package:flutter_frontend/presentation/screens/main/widgets/personal_space_card.dart';
+import 'package:flutter_frontend/presentation/screens/main/widgets/start_card.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
 import '../memories/personal_space_screen.dart';
@@ -23,11 +30,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _service.getMyMemorials();
+    _future = _service.getMemorials();
   }
 
   // Navegación (conecta a tus rutas)
-  void _goToCreateMemorial() {}
+  void _goToCreateMemorial() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+    );
+  }
   void _goToPersonalSpace() => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalSpaceScreen()),);
   void _goToAddMemory() {
     //Botón de arriba
@@ -135,28 +147,82 @@ class _HomeScreenState extends State<HomeScreen> {
             widgets.addAll([
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _StartCard(onCreate: _goToCreateMemorial),
+                child: StartCard(onCreate: _goToCreateMemorial),
               ),
               const SizedBox(height: 16),
-              const _DateLabel(text: '3 de junio'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _MiniTimelineCard(
-                  title: 'Un día como hoy',
-                  subtitle: 'Empezaste a formar parte de Lirium',
-                  onTap: () {},
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _PersonalSpaceCard(onTap: _goToPersonalSpace),
-              ),
-              const SizedBox(height: 24),
+              const DateLabel(text: '3 de junio'),
             ]);
           } else {
             // TODO: estado con memoriales (carrusel + resto)
+            widgets.add(
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  "Mis memoriales",
+                  style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+            );
+
+          for (final m in memorials) {
+            widgets.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: InkWell(
+              onTap: () => _openMemorial(m),
+              child: CardContainer(
+                child: Row(
+                children: [
+                  //Esto es temporal solo para local
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundImage: m.profilePhotoBase64 != null && m.profilePhotoBase64!.isNotEmpty
+                        ? MemoryImage(base64Decode(m.profilePhotoBase64!))
+                        : (m.profilePhotoUrl != null && m.profilePhotoUrl!.isNotEmpty
+                        ? NetworkImage(m.profilePhotoUrl!)
+                        : const AssetImage("assets/images/default_avatar.png")) as ImageProvider,
+                  ),
+                  const SizedBox(width: 16),
+                Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(m.name,
+                    style: tt.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                    if (m.nickname != null && m.nickname!.isNotEmpty)
+                    Text("“${m.nickname}”",
+                    style: tt.bodySmall
+                        ?.copyWith(color: Colors.black54)),
+                  ],
+                ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.black54),
+            ],
+            ),
+            ),
+            ),
+            ),
+            );
+            }
           }
+
+          // Recordatorios
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: MiniTimelineCard(
+              title: 'Un día como hoy',
+              subtitle: 'Empezaste a formar parte de Lirium',
+              onTap: () {},
+            ),
+          );
+          const SizedBox(height: 16);
+          // Espacio Personal
+          Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: PersonalSpaceCard(onTap: _goToPersonalSpace),
+          );
+          const SizedBox(height: 24);
 
           return ListView(children: widgets);
         },
@@ -164,170 +230,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-/// ---------- COMPONENTES PRIVADOS ----------
-
-class _CardContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  const _CardContainer({required this.child, this.padding = const EdgeInsets.all(16)});
-
-  @override
-  Widget build(BuildContext context) {
-    final outline = Theme.of(context).colorScheme.outlineVariant.withOpacity(.5);
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: outline),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _StartCard extends StatelessWidget {
-  final VoidCallback onCreate;
-  const _StartCard({required this.onCreate});
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-
-    return _CardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-
-          // Ícono morado con sombra suave
-          Container(
-            height: 44,
-            width: 44,
-            decoration: BoxDecoration(
-              color: cs.primary,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: cs.primary.withOpacity(.25), blurRadius: 16, offset: const Offset(0, 6))],
-            ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          Text('¡Empezar es fácil!', style: Theme.of(context).textTheme.displaySmall),
-          const SizedBox(height: 8),
-          Text(
-            'Crea tu primer memorial y construye un legado que perdure para siempre',
-            style: tt.bodyMedium?.copyWith(color: Colors.black54, height: 1.3),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 44,
-            child: PrimaryButton(
-              text: 'Crear mi primer memorial',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
-                );
-              },
-              height: 52,
-              isFullWidth: true,
-            )
-
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DateLabel extends StatelessWidget {
-  final String text;
-  const _DateLabel({required this.text});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
-      child: Text(text, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.black54)),
-    );
-  }
-}
-
-class _MiniTimelineCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  const _MiniTimelineCard({required this.title, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardContainer(
-      padding: const EdgeInsets.all(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Row(
-          children: [
-            const CircleAvatar(radius: 18, backgroundColor: Color(0xFFEDEDED)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.black87)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54)),
-              ]),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.remove_red_eye_outlined, size: 18, color: Colors.black54),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PersonalSpaceCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _PersonalSpaceCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(18), // para que el splash respete las esquinas
-      onTap: onTap, // 👈 tocar la card lleva a PersonalSpaceScreen
-      child: _CardContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text('Mi Espacio Personal', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(
-              '“Un lugar seguro para procesar y guardar tus memorias más profundas”',
-              style: tt.bodyMedium?.copyWith(color: Colors.black54, height: 1.3),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 42,
-              child: SecondaryButton(
-                text: 'Añadir una reflexión',
-                textColor: const Color(0xFF6366F1),
-                onPressed: () {
-                  // 👇 botón abre el editor de nueva reflexión
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NewPersonalMemoryScreen()),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-

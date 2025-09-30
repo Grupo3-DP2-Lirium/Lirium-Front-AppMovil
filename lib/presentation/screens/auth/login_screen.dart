@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showMessage('Error de conexión: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
-        }
+    }
   }
 
   // Función para crear un usuario de prueba con las credenciales que quieres
@@ -167,9 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : PrimaryButton(
-                      text: 'Iniciar',
-                      onPressed: _login,
-                    ),
+                text: 'Iniciar',
+                onPressed: _login,
+              ),
               const SizedBox(height: 16),
               // Social login options
               Row(

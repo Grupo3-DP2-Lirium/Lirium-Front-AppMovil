@@ -78,7 +78,7 @@ class MemorySuccessScreen extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => const CreateMemorySelectType(),
+        builder: (_) => const CreateMemorySelectType(memorialId:"1"),
       ),
     );
   }

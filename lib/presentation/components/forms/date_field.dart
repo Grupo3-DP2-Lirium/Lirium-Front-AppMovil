@@ -4,11 +4,13 @@ import 'package:flutter_frontend/presentation/components/components.dart';
 class DateTextField extends StatefulWidget {
   final String hintText;
   final TextEditingController controller;
+  final String? Function(String?)? validator;
 
   const DateTextField({
     super.key,
     required this.hintText,
     required this.controller,
+    this.validator
   });
 
   @override
@@ -44,7 +46,8 @@ class _DateTextFieldState extends State<DateTextField> {
           hintText: widget.hintText,
           suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
           // Aquí pasamos el color gris al texto seleccionado
-          obscureText: false
+          obscureText: false,
+          validator: widget.validator,
         ),
       ),
     );

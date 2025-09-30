@@ -71,25 +71,24 @@ class MemorialService {
     }
   }
 
-  Future<List<Memorial>> getMyMemorials() async {
-    try {
-      final response = await _http.get(ApiConstants.memorials);
+  /// Listar memoriales
+  Future<List<Memorial>> getMemorials() async {
+    final uri = Uri.parse("$baseUrl/memorials/getMemorials");
 
-      print('--- Respuesta de /memorials ---');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(), // aquí ya incluyes token y JSON
+    );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        // Convertir MemorialResponseModel a Memorial y devolver la lista de Memorial
-        return data
-            .map((json) => MemorialResponseModel.fromJson(json).toEntity())
-            .toList();
-      } else {
-        throw Exception('Failed to load memorials (${response.statusCode})');
-      }
-    } catch (e) {
-      throw Exception('Error: $e');
+    if (res.statusCode == 200) {
+      final List<dynamic> jsonList = jsonDecode(res.body);
+      return jsonList
+          .map((json) => MemorialResponseModel.fromJson(json).toEntity())
+          .toList();
+    } else {
+      throw Exception(
+        "Error listando memorials: ${res.statusCode} ${res.body}",
+      );
     }
   }
 

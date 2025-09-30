@@ -4,11 +4,13 @@ import 'package:flutter_frontend/presentation/components/components.dart';
 class AppDropdownField extends StatefulWidget {
   final TextEditingController controller;
   final List<String> options;
+  final String? Function(String?)? validator;
 
   const AppDropdownField({
     super.key,
     required this.controller,
     required this.options,
+    this.validator
   });
 
   @override
@@ -91,6 +93,7 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
           hintText: "Selecciona una opción",
           controller: widget.controller,
           suffixIcon: const Icon(Icons.arrow_drop_down),
+          validator: widget.validator,
         ),
       ),
     );

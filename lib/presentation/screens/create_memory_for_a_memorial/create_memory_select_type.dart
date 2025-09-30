@@ -4,14 +4,15 @@ import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memori
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
-  const CreateMemorySelectType({super.key});
+  final String memorialId; // Necesitas este ID para asociar los recuerdos al memorial
+
+  const CreateMemorySelectType({super.key, required this.memorialId});
 
   @override
   State<CreateMemorySelectType> createState() => _CreateMemorySelectTypeState();
 }
 
 class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,7 +28,7 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
             ),
             SizedBox(height: 16),
 
-            // Primera fil
+            // Primera fila con botones
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -36,11 +37,11 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   label: "Subir fotos y videos",
                   size: 120,
                   onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UploadPicturesAndVideos(),
-                                  ),
-                                )
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UploadPicturesAndVideos(),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 24),
                 RectangleButton(
@@ -48,16 +49,17 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   label: "Escribir una carta",
                   size: 120,
                   onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => CreateMemorySelectType(),
-                                  ),
-                                )
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateMemorySelectType(memorialId: widget.memorialId),
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
+            // Segunda fila
             Text(
               "¿Qué vas a hacer hoy?",
               style: Theme.of(context).textTheme.headlineLarge,
@@ -65,7 +67,6 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
             ),
             SizedBox(height: 16),
 
-            // Primera fil
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -74,15 +75,14 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   label: "Responder preguntas",
                   size: 120,
                   onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SelectCategory(),
-                                  ),
-                                )
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SelectCategory(),
+                    ),
+                  ),
                 ),
               ],
             ),
-
           ],
         ),
       ),
