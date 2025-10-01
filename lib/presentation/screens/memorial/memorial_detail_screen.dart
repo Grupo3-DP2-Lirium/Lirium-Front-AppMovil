@@ -42,456 +42,614 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     super.dispose();
   }
 
-  ImageProvider? _getAvatarImage(String? avatar) {
-    if (avatar == null || avatar.isEmpty) return null;
+  int selectedTab = 0;
 
-    if (avatar.startsWith('data:image')) {
-      final base64Str = avatar.split(',').last;
+  ImageProvider _getAvatarImage() {
+    if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
+      return MemoryImage(base64Decode(widget.avatarUrl!));
+    } else if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
+      return NetworkImage(widget.avatarUrl!);
+    } else {
+      return const AssetImage("assets/images/default_avatar.png");
+    }
+  }
+
+  ImageProvider _getCoverImage() {
+    if (widget.coverUrl == null || widget.coverUrl!.isEmpty) {
+      return const NetworkImage(
+        'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800',
+      );
+    }
+
+    if (widget.coverUrl!.startsWith('data:image')) {
+      final base64Str = widget.coverUrl!.split(',').last;
       final bytes = base64Decode(base64Str);
       return MemoryImage(bytes);
     }
 
-    return NetworkImage(avatar);
+    return NetworkImage(widget.coverUrl!);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final safeTop = MediaQuery.of(context).padding.top;
-    const avatarRadius = 44.0;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxScrolled) => [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            expandedHeight: 240,
-            surfaceTintColor: Colors.transparent,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-            ),
-            clipBehavior: Clip.antiAlias,
-
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              color: Colors.black87,
-              onPressed: () => Navigator.pop(context),
-            ),
-
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: Stack(
-                children: [
-                  // Portada
-                  Positioned.fill(
-                    child: (widget.coverUrl != null && widget.coverUrl!.isNotEmpty)
-                        ? Image.network(widget.coverUrl!, fit: BoxFit.cover)
-                        : Container(color: const Color(0xFFEFEFF6)),
+      body: Stack(
+        children: [
+          // Header Image
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 220,
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: _getCoverImage(),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
                   ),
-                  // Degradado
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.10),
-                              Colors.black.withOpacity(0.40),
+                ),
+              ),
+            ),
+          ),
+
+          // Back Button
+          Positioned(
+            top: 50,
+            left: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+
+          // Settings Button
+          Positioned(
+            top: 50,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white),
+                onPressed: () {},
+              ),
+            ),
+          ),
+
+          // Main Content
+          Positioned(
+            top: 150,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 60),
+
+                    // Name
+                    Text(
+                      widget.name,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Subtitle
+                    const Text(
+                      'Editado por 3 personas · Última actualización\nhace 2 días',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Buttons Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {},
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                side: const BorderSide(color: Color(0xEDD99293)),
+                              ),
+                              child: const Text(
+                                'Ver Memorial completo',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => CollaboratorsScreen(memorialId: widget.memorialId),
+                                ));
+                              },
+                              icon: const Icon(Icons.people, size: 18, color: Color(0xFF6366F1)),
+                              label: const Text('Colaboradores'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                side: const BorderSide(color: Color(0xFF6366F1)),
+                                foregroundColor: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Quote Card
+                    if (widget.description != null && widget.description!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xEDD99293),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Text(
+                            widget.description!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+
+                    // Tabs
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          _buildTab('Actividad reciente', 0),
+                          const SizedBox(width: 8),
+                          _buildTab('Añadir', 1),
+                          const SizedBox(width: 8),
+                          _buildTab('Organizar', 2),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Content based on selected tab
+                    if (selectedTab == 0) _buildActivityTab(),
+                    if (selectedTab == 1) _buildTimelineTab(),
+                    if (selectedTab == 2) _buildOrganizeTab(),
+
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Profile Picture
+          Positioned(
+            top: 120,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  color: Colors.grey[300],
+                  image: DecorationImage(
+                    image: _getAvatarImage(),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(String text, int index) {
+    final isSelected = selectedTab == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedTab = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFEBF0F0),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFEBF0F0),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Tab 0: Actividad reciente
+  Widget _buildActivityTab() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          // Activity Section
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person, color: Colors.grey),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fer (Tú)',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Compartió 7 fotos',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Photo Grid
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.85,
+            children: [
+              _buildPhotoCard(
+                'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+              ),
+              Column(
+                children: [
+                  Expanded(
+                    child: _buildPhotoCard(
+                      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: _buildPhotoCard(
+                      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+                    ),
+                  ),
+                ],
+              ),
+              _buildPhotoCard(
+                'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
+              ),
+              _buildPhotoCard(
+                'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+              ),
+              _buildPhotoCard(
+                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+              ),
+              _buildPhotoCard(
+                'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tab 1: Añadir (Timeline)
+  Widget _buildTimelineTab() {
+    final timelineEvents = [
+      {
+        'year': '1946',
+        'title': 'Nació Lourdes',
+        'image': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+        'hasButton': false,
+      },
+      {
+        'year': '1972',
+        'title': 'Lourdes se convirtió en mamá',
+        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+        'hasButton': true,
+      },
+      {
+        'year': '1984',
+        'title': 'Primer viaje familiar',
+        'image': 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
+        'hasButton': true,
+      },
+      {
+        'year': '2002',
+        'title': 'Nacimiento de su última nieta',
+        'image': 'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
+        'hasButton': false,
+      },
+      {
+        'year': '2016',
+        'title': 'Cumpleaños N°70',
+        'image': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+        'hasButton': false,
+      },
+      {
+        'year': '2018',
+        'title': 'Cumpleaños N°72',
+        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+        'hasButton': false,
+      },
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: timelineEvents.map((event) {
+          return _buildTimelineItem(
+            year: event['year'] as String,
+            title: event['title'] as String,
+            imageUrl: event['image'] as String,
+            hasButton: event['hasButton'] as bool,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem({
+    required String year,
+    required String title,
+    required String imageUrl,
+    required bool hasButton,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline indicator
+          Column(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF6366F1),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                width: 2,
+                height: 120,
+                color: Colors.grey[300],
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  year,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: DecorationImage(
+                          image: NetworkImage(imageUrl),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    if (hasButton) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {},
+                                icon: const Icon(
+                                  Icons.add_circle_outline,
+                                  color: Color(0xFF6366F1),
+                                ),
+                                label: const Text(
+                                  'Ver más',
+                                  style: TextStyle(
+                                    color: Color(0xFF6366F1),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  // Botón de settings
-                  Positioned(
-                    right: 16,
-                    top: safeTop + 12,
-                    child: IconButtonCustom(
-                      icon: Icons.settings_outlined,
-                      onPressed: () {},
-                    ),
-                  ),
-                  // SOLO AVATAR (sin nombre aquí)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundColor: const Color(0xFFE9E8F6),
-                          backgroundImage: _getAvatarImage(widget.avatarUrl),
-                          child: (widget.avatarUrl == null || widget.avatarUrl!.isEmpty)
-                              ? const Icon(Icons.person, size: 44, color: Colors.white)
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ⬇️ Nombre fuera de la portada
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(44), // espacio de seguridad
-              child: const SizedBox(height: 44),
-            ),
-          )
-        ],
-
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            //nombre del memorial
-            Text(
-              widget.name,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-                letterSpacing: .5,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ====== BOTONES PRINCIPALES (estilo mock: borde morado, texto negro) ======
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: navegar a versión completa
-                    },
-                    icon: const Icon(Icons.visibility_outlined),
-                    label: const Text('Ver memorial completo'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87, // texto/ícono negros
-                      side: BorderSide(color: cs.primary, width: 1.6),
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => CollaboratorsScreen(memorialId: widget.memorialId),
-                      ));
-                    },
-                    icon: const Icon(Icons.group_outlined),
-                    label: const Text('Colaboradores'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: cs.primary, width: 1.6),
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
+                    ],
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            if ((widget.description ?? '').isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xEDD99293),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  widget.description!,
-                  textAlign: TextAlign.center,
-                  style: tt.bodyMedium?.copyWith(color: Colors.white),
-                ),
-              ),
-            const SizedBox(height: 12),
-
-            _PillTabs(controller: _tab),
-            const SizedBox(height: 12),
-
-            SizedBox(
-              height: 1200,
-              child: TabBarView(
-                controller: _tab,
-                children: [
-                  _RecentActivityFeed(memorialId: widget.memorialId),
-                  _AddPanel(onCreate: () {}),
-                  _OrganizePanel(onOrganize: () {}),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Botoneras “Actividad reciente / Añadir / Organizar”
-class _PillTabs extends StatelessWidget {
-  final TabController controller;
-  const _PillTabs({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(1),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F6),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: TabBar(
-        controller: controller,
-        //isScrollable: true,
-        tabAlignment: TabAlignment.fill,
-        //labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-
-        indicator: BoxDecoration(
-          color: Color(0xFF6366F1),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [BoxShadow(blurRadius: 6, color: Color(0x22000000))],
-        ),
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.black54,
-        tabs: const [
-          Tab(text: 'Actividad reciente'),
-          Tab(text: 'Añadir'),
-          Tab(text: 'Organizar'),
+          ),
         ],
       ),
     );
   }
-}
 
-
-class _RecentActivityFeed extends StatelessWidget {
-  final String memorialId;
-  const _RecentActivityFeed({required this.memorialId});
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-
-    // MOCK de actividades
-    final items = <_Activity>[
-      _Activity.photos(
-        author: 'Fer (Tú)',
-        dateLabel: 'Viernes, 06 de junio',
-        photos: List.generate(7, (i) => null), // pon URLs reales luego
-      ),
-      _Activity.text(
-        author: 'BRUCE',
-        dateLabel: 'Martes, 03 de junio',
-        text:
-        '“Tejer, ver novelas y bailar vals eran sus hobbies favoritos”.',
-      ),
-      _Activity.coverChange(
-        dateLabel: 'Jueves, 29 de mayo',
-        coverUrl: null,
-      ),
+  // Tab 2: Organizar (Grid de todas las fotos)
+  Widget _buildOrganizeTab() {
+    final images = [
+      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
+      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
+      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
+      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
     ];
 
-    return ListView.separated(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(top: 8),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, i) {
-        final it = items[i];
-        return switch (it.type) {
-          _ActivityType.photos => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HeaderLine(author: it.author!, subtitle: 'Compartió ${it.photos!.length} fotos'),
-              const SizedBox(height: 8),
-              _PhotoGrid(urls: it.photos!),
-              const SizedBox(height: 8),
-              Text(it.dateLabel!, style: tt.bodySmall?.copyWith(color: Colors.black54)),
-            ],
-          ),
-          _ActivityType.text => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HeaderLine(author: it.author!, subtitle: 'Escribió'),
-              const SizedBox(height: 8),
-              Text(
-                it.text!,
-                style: tt.titleMedium?.copyWith(color: Colors.black87),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          // Large featured image
+          Container(
+            width: double.infinity,
+            height: 220,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              image: DecorationImage(
+                image: NetworkImage(images[0]),
+                fit: BoxFit.cover,
               ),
-              const SizedBox(height: 8),
-              Text(it.dateLabel!, style: tt.bodySmall?.copyWith(color: Colors.black54)),
-            ],
-          ),
-          _ActivityType.coverChange => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _HeaderLine(author: 'Tú', subtitle: 'Cambiaste la foto de portada'),
-              const SizedBox(height: 8),
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFEFF6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  // child: Image.network(it.coverUrl!), // cuando tengas URL
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(it.dateLabel!, style: tt.bodySmall?.copyWith(color: Colors.black54)),
-            ],
-          ),
-        };
-      },
-    );
-  }
-}
-
-class _HeaderLine extends StatelessWidget {
-  final String author;
-  final String subtitle;
-  const _HeaderLine({required this.author, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        const CircleAvatar(
-          radius: 20,
-          backgroundImage: NetworkImage(
-            'https://i.pravatar.cc/150?img=5',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: tt.bodyMedium?.copyWith(color: Colors.black87),
-              children: [
-                TextSpan(text: author, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const TextSpan(text: '  '),
-                TextSpan(text: subtitle),
-              ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Grid of smaller images
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: images.length - 1,
+            itemBuilder: (context, index) {
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: NetworkImage(images[index + 1]),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCard(String imageUrl) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
         ),
-      ],
-    );
-  }
-}
-
-/// Grid responsivo tipo collage (3 columnas)
-class _PhotoGrid extends StatelessWidget {
-  final List<String?> urls;
-  const _PhotoGrid({required this.urls});
-
-  @override
-  Widget build(BuildContext context) {
-    final n = urls.length;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemCount: n,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 4,
-          crossAxisSpacing: 4,
-        ),
-        itemBuilder: (_, i) {
-          final url = urls[i];
-          return Container(
-            color: const Color(0xFFF3F2F8),
-            child: url == null
-                ? const Icon(Icons.image, size: 28, color: Colors.black26)
-                : Image.network(url, fit: BoxFit.cover),
-          );
-        },
       ),
     );
   }
-}
-
-class _AddPanel extends StatelessWidget {
-  final VoidCallback onCreate;
-  const _AddPanel({required this.onCreate});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: PrimaryButton(
-        text: 'Añadir recuerdos',
-        icon: Icons.add,
-        onPressed: onCreate,
-      ),
-    );
-  }
-}
-
-class _OrganizePanel extends StatelessWidget {
-  final VoidCallback onOrganize;
-  const _OrganizePanel({required this.onOrganize});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: OutlinedButton.icon(
-        icon: const Icon(Icons.grid_view_outlined),
-        label: const Text('Organizar álbumes y etiquetas'),
-        onPressed: onOrganize,
-      ),
-    );
-  }
-}
-
-enum _ActivityType { photos, text, coverChange }
-
-class _Activity {
-  final _ActivityType type;
-  final String? author;
-  final String? dateLabel;
-  final List<String?>? photos;
-  final String? text;
-  final String? coverUrl;
-
-  _Activity.photos({required this.author, required this.dateLabel, required this.photos})
-      : type = _ActivityType.photos, text = null, coverUrl = null;
-
-  _Activity.text({required this.author, required this.dateLabel, required this.text})
-      : type = _ActivityType.text, photos = null, coverUrl = null;
-
-  _Activity.coverChange({required this.dateLabel, required this.coverUrl})
-      : type = _ActivityType.coverChange, photos = null, author = null, text = null;
 }
