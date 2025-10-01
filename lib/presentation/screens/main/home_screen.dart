@@ -8,6 +8,7 @@ import 'package:flutter_frontend/presentation/screens/main/widgets/date_label_ca
 import 'package:flutter_frontend/presentation/screens/main/widgets/mini_timeline_card.dart';
 import 'package:flutter_frontend/presentation/screens/main/widgets/personal_space_card.dart';
 import 'package:flutter_frontend/presentation/screens/main/widgets/start_card.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/memorial_grid.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
@@ -154,75 +155,43 @@ class _HomeScreenState extends State<HomeScreen> {
             ]);
           } else {
             // TODO: estado con memoriales (carrusel + resto)
-            widgets.add(
+            widgets.addAll([
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  "Mis memoriales",
-                  style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: MemorialesHeader(onSeeAll: () {
+                  // TODO: navegar a la vista completa de memoriales
+                }),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: MemorialGrid(
+                  memorials: memorials,
+                  onTap: _openMemorial,
                 ),
               ),
-            );
-
-          for (final m in memorials) {
-            widgets.add(
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: InkWell(
-              onTap: () => _openMemorial(m),
-              child: CardContainer(
-                child: Row(
-                children: [
-                  //Esto es temporal solo para local
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundImage: m.profilePhotoBase64 != null && m.profilePhotoBase64!.isNotEmpty
-                        ? MemoryImage(base64Decode(m.profilePhotoBase64!))
-                        : (m.profilePhotoUrl != null && m.profilePhotoUrl!.isNotEmpty
-                        ? NetworkImage(m.profilePhotoUrl!)
-                        : const AssetImage("assets/images/default_avatar.png")) as ImageProvider,
-                  ),
-                  const SizedBox(width: 16),
-                Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(m.name,
-                    style: tt.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                    if (m.nickname != null && m.nickname!.isNotEmpty)
-                    Text("“${m.nickname}”",
-                    style: tt.bodySmall
-                        ?.copyWith(color: Colors.black54)),
-                  ],
-                ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.black54),
-            ],
-            ),
-            ),
-            ),
-            ),
-            );
-            }
+              const SizedBox(height: 8),
+            ]);
           }
 
           // Recordatorios
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: MiniTimelineCard(
-              title: 'Un día como hoy',
-              subtitle: 'Empezaste a formar parte de Lirium',
-              onTap: () {},
+          widgets.addAll([
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: MiniTimelineCard(
+                title: 'Un día como hoy',
+                subtitle: 'Empezaste a formar parte de Lirium',
+                onTap: () {},
+              ),
             ),
-          );
-          const SizedBox(height: 16);
-          // Espacio Personal
-          Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: PersonalSpaceCard(onTap: _goToPersonalSpace),
-          );
-          const SizedBox(height: 24);
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: PersonalSpaceCard(onTap: _goToPersonalSpace),
+            ),
+            const SizedBox(height: 24),
+          ]);
 
           return ListView(children: widgets);
         },
