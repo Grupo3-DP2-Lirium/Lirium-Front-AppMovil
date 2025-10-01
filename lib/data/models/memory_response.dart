@@ -3,7 +3,7 @@ class FileResponse {
   final String idFile;
   final String fileName;
   final String originalFileName;
-  final String fileType;
+  final String fileType; // "image" | "video" | "audio" | ...
   final String mimeType;
   final String fileUrl; // Ojo: viene como ruta relativa
   final double fileSize;
@@ -31,6 +31,7 @@ class FileResponse {
     uploadedDate: DateTime.parse(j['uploadedDate']),
   );
 }
+
 
 class MemoryResponse {
   final String idMemory;

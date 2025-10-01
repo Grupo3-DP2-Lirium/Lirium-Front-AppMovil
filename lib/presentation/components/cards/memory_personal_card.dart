@@ -25,7 +25,6 @@ class MemoryCard extends StatelessWidget {
     this.maxDescriptionLength = 120,
   });
 
-  // Constructor factory para crear desde MemoryResponse
   factory MemoryCard.fromMemory({
     required MemoryResponse memory,
     required VoidCallback onTap,
@@ -44,7 +43,7 @@ class MemoryCard extends StatelessWidget {
   }
 
   static List<String> _getMediaTypes(MemoryResponse memory) {
-    List<String> types = [];
+    final types = <String>[];
     if (memory.images.isNotEmpty) types.add('image');
     if (memory.videos.isNotEmpty) types.add('video');
     if (memory.audios.isNotEmpty) types.add('audio');
@@ -67,7 +66,6 @@ class MemoryCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Mostrar iconos según los tipos de media
           for (int i = 0; i < mediaTypes.length; i++) ...[
             if (i > 0) const SizedBox(width: 2),
             Icon(
@@ -103,22 +101,69 @@ class MemoryCard extends StatelessWidget {
     }
   }
 
+  // NUEVO: sección de media debajo de la descripción (estilo Instagram)
+  Widget _buildMediaSection() {
+    // si no hay imagen ni media, no mostramos nada
+    if (thumbnailUrl == null && mediaCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (thumbnailUrl != null) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: AspectRatio(
+              aspectRatio: 1, // cuadrado (puedes cambiar a 4/3 o 16/9)
+              child: Image.network(
+                thumbnailUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.shade100,
+                  alignment: Alignment.center,
+                  child: Icon(Icons.image_not_supported,
+                      color: Colors.grey.shade400, size: 32),
+                ),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Colors.grey.shade100,
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    // Determinar si el texto necesita ser truncado
+    // truncado del texto
     final needsTruncation = subtitle.length > maxDescriptionLength;
     final displayText = needsTruncation
         ? '${subtitle.substring(0, maxDescriptionLength)}...'
         : subtitle;
 
     return Card(
-      elevation: 2,
+      color: Colors.white,
+      elevation: 1,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300, width: 1), // borde
       ),
       child: InkWell(
         onTap: onTap,
@@ -128,7 +173,7 @@ class MemoryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header con título y media indicator
+              // header: título + indicador de media (pequeño)
               Row(
                 children: [
                   Expanded(
@@ -142,16 +187,12 @@ class MemoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (mediaCount > 0) ...[
-                    const SizedBox(width: 8),
-                    _buildMediaIndicator(),
-                  ],
                 ],
               ),
 
               const SizedBox(height: 8),
 
-              // Fecha
+              // fecha
               Text(
                 time,
                 style: textTheme.bodySmall?.copyWith(
@@ -160,128 +201,33 @@ class MemoryCard extends StatelessWidget {
                 ),
               ),
 
+              // descripción (si hay)
               if (subtitle.isNotEmpty) ...[
                 const SizedBox(height: 8),
-
-                // Layout con imagen y texto
-                if (thumbnailUrl != null) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Vista previa de la imagen
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey.shade200,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            thumbnailUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey.shade400,
-                                  size: 32,
-                                ),
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                          : null,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      // Texto de descripción
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              displayText,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade700,
-                                height: 1.4,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (needsTruncation) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Ver más',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: theme.primaryColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                Text(
+                  displayText,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade700,
+                    height: 1.4,
                   ),
-                ] else ...[
-                  // Solo texto sin imagen
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayText,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade700,
-                          height: 1.4,
-                        ),
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (needsTruncation) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Ver más',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ],
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (needsTruncation) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ver más',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: theme.primaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ],
+
+              // NUEVO: media debajo de la descripción
+              _buildMediaSection(),
             ],
           ),
         ),

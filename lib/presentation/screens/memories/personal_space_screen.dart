@@ -10,7 +10,6 @@ import '../../components/cards/memory_personal_card.dart';
 //import '../../utils/file_url_helper.dart'; // Importar el helper
 
 // TODO: trae el JWT real desde donde se guarde (secure storage, provider, etc.), por ahora aquí
-//String get currentJwt => 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzU4ODM1OTQ4LCJleHAiOjE3NTg5MjIzNDh9.VsXUueBl_eJN6oBHXL5i30G_RBDbAPF84kXUH78hhr5A2RKMIruOyNoxt1vscDA3';
 const memorialIdFixed = '0EAE29A7-C601-4BB2-931D-3ADBB3E04E55';
 
 class PersonalSpaceScreen extends StatefulWidget {
