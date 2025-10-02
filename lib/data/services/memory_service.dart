@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../models/memory_response.dart';
+import '../models/memory_create_request.dart';
 
 class MemoryService {
   final http.Client _client;
@@ -58,6 +59,60 @@ class MemoryService {
       throw Exception(
         "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
       );
+    }
+  }
+
+  /// Creates a memory with files using MemoryCreateRequest model
+  Future<MemoryResponse> createMemory({
+    required MemoryCreateRequest request,
+    List<File>? files,
+  }) async {
+    final uri = Uri.parse("${ApiConstants.baseUrl}/memories");
+    final req = http.MultipartRequest('POST', uri);
+
+    // Headers with auth from HttpService
+    req.headers.addAll(_http.authHeaders(includeJson: false));
+    req.headers['Accept'] = 'application/json';
+
+    // Memory data as JSON string
+    req.fields['memory'] = jsonEncode(request.toJson());
+
+    // Attach files if any
+    if (files != null && files.isNotEmpty) {
+      print('DEBUG: Attaching ${files.length} files');
+      for (int i = 0; i < files.length; i++) {
+        final file = files[i];
+        final exists = await file.exists();
+        final size = exists ? await file.length() : 0;
+        final mime = lookupMimeType(file.path) ?? 'application/octet-stream';
+        final parts = mime.split('/');
+        
+        print('DEBUG: File - path: ${file.path}, exists: $exists, size: $size, mime: $mime');
+        
+        final filePart = await http.MultipartFile.fromPath(
+          'files', // Changed back to simple 'files' for @RequestParam
+          file.path,
+          contentType: MediaType(parts.first, parts.last),
+          filename: file.uri.pathSegments.isNotEmpty 
+              ? file.uri.pathSegments.last 
+              : 'upload',
+        );
+        req.files.add(filePart);
+        print('DEBUG: Added file to request: ${filePart.filename}');
+      }
+    } else {
+      print('DEBUG: No files to attach');
+    }
+
+    // Send request
+    final streamedResponse = await req.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final jsonResponse = jsonDecode(response.body);
+      return MemoryResponse.fromJson(jsonResponse);
+    } else {
+      throw Exception('Error creating memory: ${response.statusCode} ${response.body}');
     }
   }
 

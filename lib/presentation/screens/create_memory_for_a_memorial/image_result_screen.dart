@@ -3,14 +3,19 @@ import 'package:flutter/material.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/forms/app_text_field.dart';
 import 'memory_success_screen.dart';
+import '../../../data/services/memory_service.dart';
+import '../../../data/models/memory_create_request.dart';
+import '../../../domain/enums/memory_origin_type.dart';
 
 /// Pantalla que muestra la imagen mejorada con campo de título
 class ImageResultScreen extends StatefulWidget {
   final String imagePath;
+  final String memorialId;
 
   const ImageResultScreen({
     super.key,
     required this.imagePath,
+    required this.memorialId,
   });
 
   @override
@@ -19,6 +24,7 @@ class ImageResultScreen extends StatefulWidget {
 
 class _ImageResultScreenState extends State<ImageResultScreen> {
   final TextEditingController _titleController = TextEditingController();
+  final MemoryService _memoryService = MemoryService();
   bool _isSaving = false;
 
   @override
@@ -36,8 +42,22 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Aquí iría la lógica para guardar la memoria
-      await Future.delayed(const Duration(seconds: 2));
+      final request = MemoryCreateRequest(
+        memorialId: widget.memorialId,
+        type: MemoryOriginType.spontaneous,
+        title: _titleController.text.trim(),
+        photoDate: DateTime.now(),
+      );
+
+      final imageFile = File(widget.imagePath);
+      print('DEBUG: Image file exists: ${await imageFile.exists()}');
+      print('DEBUG: Image file path: ${widget.imagePath}');
+      print('DEBUG: Image file size: ${await imageFile.length()} bytes');
+      
+      await _memoryService.createMemory(
+        request: request,
+        files: [imageFile],
+      );
 
       if (mounted) {
         _showSuccess();
@@ -45,7 +65,7 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
         _navigateToSuccess();
       }
     } catch (e) {
-      _showError('Error al guardar la memoria');
+      _showError('Error al guardar la memoria: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

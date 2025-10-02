@@ -4,7 +4,9 @@ import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memori
 import 'package:image_picker/image_picker.dart';
 
 class UploadPicturesAndVideos extends StatefulWidget {
-  const UploadPicturesAndVideos({super.key});
+  final String memorialId;
+  
+  const UploadPicturesAndVideos({super.key, required this.memorialId});
 
   @override
   State<UploadPicturesAndVideos> createState() =>
@@ -17,7 +19,7 @@ class _UploadPicturesAndVideosState extends State<UploadPicturesAndVideos> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ImprovePicture(source: source),
+        builder: (context) => ImprovePicture(source: source, memorialId: widget.memorialId),
       ),
     );
   }

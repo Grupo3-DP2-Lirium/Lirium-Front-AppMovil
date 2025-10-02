@@ -51,40 +51,49 @@ class MemorialService {
 
   /// Obtener memoriales colaborativos
   Future<List<Memorial>> getCollaborativeMemorials() async {
+    print('DEBUG: getCollaborativeMemorials() called');
     try {
+      print('DEBUG: Making request to collaborative memorials endpoint');
       final response = await _http.get(ApiConstants.collaborativeMemorials);
 
-      print('--- Respuesta de /memorials/collaborative ---');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      print('DEBUG: Collaborative memorials response - Status: ${response.statusCode}');
+      print('DEBUG: Collaborative memorials response - Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data
+        final memorials = data
             .map((json) => MemorialResponseModel.fromJson(json).toEntity())
             .toList();
+        print('DEBUG: Parsed ${memorials.length} collaborative memorials from response');
+        return memorials;
       } else {
         throw Exception('Failed to load collaborative memorials (${response.statusCode})');
       }
     } catch (e) {
+      print('ERROR in getCollaborativeMemorials: $e');
       throw Exception('Error: $e');
     }
   }
 
   /// Listar memoriales
   Future<List<Memorial>> getMemorials() async {
+    print('DEBUG: getMemorials() called');
     final uri = Uri.parse("$baseUrl/memorials/getMemorials");
+    print('DEBUG: Making request to: $uri');
 
     final res = await _client.get(
       uri,
       headers: _http.authHeaders(), // aquí ya incluyes token y JSON
     );
 
+    print('DEBUG: getMemorials response - Status: ${res.statusCode}, Body: ${res.body}');
     if (res.statusCode == 200) {
       final List<dynamic> jsonList = jsonDecode(res.body);
-      return jsonList
+      final memorials = jsonList
           .map((json) => MemorialResponseModel.fromJson(json).toEntity())
           .toList();
+      print('DEBUG: Parsed ${memorials.length} memorials from response');
+      return memorials;
     } else {
       throw Exception(
         "Error listando memorials: ${res.statusCode} ${res.body}",

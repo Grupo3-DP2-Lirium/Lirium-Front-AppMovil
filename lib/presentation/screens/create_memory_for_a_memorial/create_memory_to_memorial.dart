@@ -6,12 +6,30 @@ import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
 
 
-class CreateMemoryToMemorial extends StatelessWidget {
+class CreateMemoryToMemorial extends StatefulWidget {
   const CreateMemoryToMemorial({super.key});
+
+  @override
+  State<CreateMemoryToMemorial> createState() => _CreateMemoryToMemorialState();
+}
+
+class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<MemorialProvider>(context, listen: false);
+      print('DEBUG: Memoriales count - Mis: ${provider.misMemoriales.length}, Colab: ${provider.colaborativos.length}');
+      provider.cargarMisMemoriales(force: true);  // Force reload
+      provider.cargarColaborativos(force: true);  // Force reload
+    });
+  } 
 
   void _createMemorial(BuildContext context){
     Navigator.push(context, MaterialPageRoute(builder: (context) => NewMemorialRelationScreen()));
   }
+
   @override
   Widget build(BuildContext context) {
     final memorialProvider = context.watch<MemorialProvider>();

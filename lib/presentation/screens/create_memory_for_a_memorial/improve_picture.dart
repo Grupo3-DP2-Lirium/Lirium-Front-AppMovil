@@ -7,7 +7,9 @@ import 'image_improvement_screen.dart';
 
 class ImprovePicture extends StatefulWidget {
   final ImageSource source;
-  const ImprovePicture({super.key, required this.source});
+  final String memorialId;
+  
+  const ImprovePicture({super.key, required this.source, required this.memorialId});
 
   @override
   State<ImprovePicture> createState() => _ImprovePictureState();
@@ -44,7 +46,10 @@ class _ImprovePictureState extends State<ImprovePicture> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ImageImprovementScreen(imagePath: _image!.path),
+          builder: (context) => ImageImprovementScreen(
+            imagePath: _image!.path, 
+            memorialId: widget.memorialId
+          ),
         ),
       );
     }
