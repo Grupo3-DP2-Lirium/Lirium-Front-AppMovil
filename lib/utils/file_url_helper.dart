@@ -3,24 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 
 class FileUrlHelper {
-  // Cambia esta URL por tu URL base real del servidor
-  static const String baseUrl = 'http://10.0.2.2:8080/api';
 
-  /// Construye la URL completa del archivo
-  static String getFileUrl(String fileUrl) {
-    if (fileUrl.isEmpty) return '';
+  // Para emulador Android:
+  static const String baseUrl = 'http://10.0.2.2:8080';
 
-    // Si ya es una URL completa, devolverla tal como está
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-      return fileUrl;
+  /// Construye la URL completa para descargar un archivo
+  static String getFileUrl({
+    required String fullPath, // Ruta completa con el archivo
+    required String fileName,
+  }) {
+    // Separar la ruta del archivo
+    String directoryPath = fullPath;
+    if (fullPath.endsWith('\\$fileName')) {
+      directoryPath = fullPath.substring(0, fullPath.length - fileName.length - 1);
+    } else if (fullPath.endsWith('/$fileName')) {
+      directoryPath = fullPath.substring(0, fullPath.length - fileName.length - 1);
     }
 
-    // Si es una ruta relativa, construir la URL completa
-    // Asegurar que baseUrl no termine con '/' y fileUrl no empiece con '/'
-    final cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-    final cleanFileUrl = fileUrl.startsWith('/') ? fileUrl : '/$fileUrl';
+    final encodedPath = Uri.encodeComponent(directoryPath);
+    final encodedName = Uri.encodeComponent(fileName);
 
-    return '$cleanBaseUrl$cleanFileUrl';
+    final url = '$baseUrl/api/files/download?path=$encodedPath&name=$encodedName';
+
+    print('Full Path: $fullPath');
+    print('Directory: $directoryPath');
+    print('FileName: $fileName');
+    print('Generated URL: $url');
+
+    return url;
   }
 
   /// Verifica si un archivo es una imagen basándose en su mimeType
@@ -47,10 +57,13 @@ class FileUrlHelper {
   }
 }
 
-// Extensión para FileResponse para facilitar el acceso a las URLs
+// Extensión para FileResponse
 extension FileResponseExtension on FileResponse {
   /// Obtiene la URL completa del archivo
-  String get fullUrl => FileUrlHelper.getFileUrl(fileUrl);
+  String get fullUrl => FileUrlHelper.getFileUrl(
+    fullPath: fileUrl,  // Cambié 'path' a 'fullPath'
+    fileName: fileName,
+  );
 
   /// Verifica si es una imagen
   bool get isImage => FileUrlHelper.isImage(mimeType);
@@ -65,7 +78,7 @@ extension FileResponseExtension on FileResponse {
   IconData get icon => FileUrlHelper.getFileIcon(mimeType);
 }
 
-// Extensión para MemoryResponse para facilitar el trabajo con archivos
+// Extensión para MemoryResponse
 extension MemoryResponseExtension on MemoryResponse {
   /// Obtiene solo las imágenes
   List<FileResponse> get images => files.where((f) => f.isImage).toList();
