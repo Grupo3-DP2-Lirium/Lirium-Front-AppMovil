@@ -3,6 +3,7 @@ import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_form_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/new_personal_memory_screen.dart';
 //import '../../components/cards/memory_card.dart';
 import '../../components/cards/memory_personal_card.dart';
@@ -64,7 +65,7 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MemoryDetailScreen(
+        builder: (context) => MemoryFormScreen.edit(
           memory: memory,
           jwt: currentJwt,
         ),
@@ -120,7 +121,12 @@ class _PersonalSpaceScreenState extends State<PersonalSpaceScreen> {
                   _HeaderCTA(onNew: () async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const NewPersonalMemoryScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => MemoryFormScreen.create(
+                          jwt: currentJwt,
+                          memorialId: 'tu-memorial-id',
+                        ),
+                      ),
                     );
                     if (mounted) _refresh();
                   }),

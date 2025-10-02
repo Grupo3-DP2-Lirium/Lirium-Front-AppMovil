@@ -1,15 +1,15 @@
 // components/cards/memory_card.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
-import 'package:flutter_frontend/utils/file_url_helper.dart';
+import 'package:flutter_frontend/presentation/components/cards/authenticated_image.dart';
 
 class MemoryCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String time;
-  final int mediaCount; // Cambiado de imageCount a mediaCount para incluir videos/audio
+  final int mediaCount;
   final String? thumbnailUrl;
-  final List<String> mediaTypes; // Para mostrar qué tipos de archivos tiene
+  final List<String> mediaTypes;
   final VoidCallback onTap;
   final int maxDescriptionLength;
 
@@ -36,18 +36,10 @@ class MemoryCard extends StatelessWidget {
       time: _formatDate(memory.photoDate ?? memory.createdDate),
       mediaCount: memory.mediaCount,
       thumbnailUrl: memory.firstImageUrl,
-      mediaTypes: _getMediaTypes(memory),
+      mediaTypes: memory.mediaTypes, // Ahora usa el getter directo
       onTap: onTap,
       maxDescriptionLength: maxDescriptionLength,
     );
-  }
-
-  static List<String> _getMediaTypes(MemoryResponse memory) {
-    final types = <String>[];
-    if (memory.images.isNotEmpty) types.add('image');
-    if (memory.videos.isNotEmpty) types.add('video');
-    if (memory.audios.isNotEmpty) types.add('audio');
-    return types;
   }
 
   static String _formatDate(DateTime date) {
@@ -60,8 +52,16 @@ class MemoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -101,9 +101,8 @@ class MemoryCard extends StatelessWidget {
     }
   }
 
-  // NUEVO: sección de media debajo de la descripción (estilo Instagram)
+  // Aquí usa AuthenticatedImage en lugar de Image.network
   Widget _buildMediaSection() {
-    // si no hay imagen ni media, no mostramos nada
     if (thumbnailUrl == null && mediaCount == 0) {
       return const SizedBox.shrink();
     }
@@ -117,27 +116,9 @@ class MemoryCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: AspectRatio(
               aspectRatio: 1, // cuadrado (puedes cambiar a 4/3 o 16/9)
-              child: Image.network(
-                thumbnailUrl!,
+              child: AuthenticatedImage(
+                imageUrl: thumbnailUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey.shade100,
-                  alignment: Alignment.center,
-                  child: Icon(Icons.image_not_supported,
-                      color: Colors.grey.shade400, size: 32),
-                ),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.grey.shade100,
-                    alignment: Alignment.center,
-                    child: const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -151,7 +132,6 @@ class MemoryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    // truncado del texto
     final needsTruncation = subtitle.length > maxDescriptionLength;
     final displayText = needsTruncation
         ? '${subtitle.substring(0, maxDescriptionLength)}...'
@@ -163,7 +143,7 @@ class MemoryCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300, width: 1), // borde
+        side: BorderSide(color: Colors.grey.shade300, width: 1),
       ),
       child: InkWell(
         onTap: onTap,
@@ -173,7 +153,7 @@ class MemoryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // header: título + indicador de media (pequeño)
+              // header: título
               Row(
                 children: [
                   Expanded(
@@ -187,6 +167,11 @@ class MemoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  // ✅ Opcional: Puedes agregar el indicador aquí
+                  if (mediaCount > 0) ...[
+                    const SizedBox(width: 8),
+                    _buildMediaIndicator(),
+                  ],
                 ],
               ),
 
@@ -226,7 +211,7 @@ class MemoryCard extends StatelessWidget {
                 ],
               ],
 
-              // NUEVO: media debajo de la descripción
+              // Media debajo de la descripción
               _buildMediaSection(),
             ],
           ),
