@@ -30,26 +30,40 @@ class MemorialProvider extends ChangeNotifier {
   bool get loadedColab => _loadedColab;
 
   Future<void> cargarMisMemoriales({bool force = false}) async {
-    if (_cargandoMis || (_loadedMis && !force)) return;
+    print('DEBUG: cargarMisMemoriales called - force: $force, _cargandoMis: $_cargandoMis, _loadedMis: $_loadedMis');
+    if (_cargandoMis || (_loadedMis && !force)) {
+      print('DEBUG: cargarMisMemoriales skipped - already loading or loaded');
+      return;
+    }
+    print('DEBUG: Starting to load mis memoriales...');
     _cargandoMis = true; _errorMis = null; notifyListeners();
     try {
       _misMemoriales = await _service.getMemorials();
       _loadedMis = true;
+      print('DEBUG: Successfully loaded ${_misMemoriales.length} mis memoriales');
     } catch (e) {
       _errorMis = e.toString();
+      print('ERROR loading mis memoriales: $e');
     } finally {
       _cargandoMis = false; notifyListeners();
     }
   }
 
   Future<void> cargarColaborativos({bool force = false}) async {
-    if (_cargandoColab || (_loadedColab && !force)) return;
+    print('DEBUG: cargarColaborativos called - force: $force, _cargandoColab: $_cargandoColab, _loadedColab: $_loadedColab');
+    if (_cargandoColab || (_loadedColab && !force)) {
+      print('DEBUG: cargarColaborativos skipped - already loading or loaded');
+      return;
+    }
+    print('DEBUG: Starting to load colaborativos...');
     _cargandoColab = true; _errorColab = null; notifyListeners();
     try {
       _colaborativos = await _service.getCollaborativeMemorials();
       _loadedColab = true;
+      print('DEBUG: Successfully loaded ${_colaborativos.length} colaborativos');
     } catch (e) {
       _errorColab = e.toString();
+      print('ERROR loading colaborativos: $e');
     } finally {
       _cargandoColab = false; notifyListeners();
     }

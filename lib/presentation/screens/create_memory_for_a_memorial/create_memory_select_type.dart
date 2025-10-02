@@ -39,7 +39,7 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UploadPicturesAndVideos(),
+                      builder: (context) => UploadPicturesAndVideos(memorialId: widget.memorialId),
                     ),
                   ),
                 ),

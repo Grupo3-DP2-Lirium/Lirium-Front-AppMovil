@@ -6,10 +6,12 @@ import 'image_result_screen.dart';
 /// Pantalla que muestra la animación de mejora de imagen
 class ImageImprovementScreen extends StatefulWidget {
   final String imagePath;
+  final String memorialId;
 
   const ImageImprovementScreen({
     super.key,
     required this.imagePath,
+    required this.memorialId,
   });
 
   @override
@@ -53,7 +55,10 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => ImageResultScreen(imagePath: widget.imagePath),
+        builder: (context) => ImageResultScreen(
+          imagePath: widget.imagePath,
+          memorialId: widget.memorialId
+        ),
       ),
     );
   }

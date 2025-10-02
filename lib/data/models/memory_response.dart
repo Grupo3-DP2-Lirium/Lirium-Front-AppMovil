@@ -1,11 +1,13 @@
-// models/memory_response.dart
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_frontend/utils/file_url_helper.dart';
+
 class FileResponse {
   final String idFile;
   final String fileName;
   final String originalFileName;
-  final String fileType;
+  final String fileType; // "image" | "video" | "audio" | ...
   final String mimeType;
-  final String fileUrl; // Ojo: viene como ruta relativa
+  final String fileUrl; // Ruta relativa desde el backend
   final double fileSize;
   final DateTime uploadedDate;
 
@@ -30,7 +32,28 @@ class FileResponse {
     fileSize: (j['fileSize'] as num).toDouble(),
     uploadedDate: DateTime.parse(j['uploadedDate']),
   );
+
+  //Obtiene la URL completa para descargar el archivo
+  String get downloadUrl {
+    return FileUrlHelper.getFileUrl(
+      fullPath: fileUrl,
+      fileName: fileName,
+    );
+  }
+
+  // Verifica si es una imagen
+  bool get isImage => FileUrlHelper.isImage(mimeType);
+
+  // Verifica si es un video
+  bool get isVideo => FileUrlHelper.isVideo(mimeType);
+
+  // Verifica si es audio
+  bool get isAudio => FileUrlHelper.isAudio(mimeType);
+
+  // btiene el icono apropiado
+  IconData get icon => FileUrlHelper.getFileIcon(mimeType);
 }
+
 
 class MemoryResponse {
   final String idMemory;
@@ -77,7 +100,38 @@ class MemoryResponse {
     totalUsedSpace: j['totalUsedSpace'] == null ? null : (j['totalUsedSpace'] as num).toDouble(),
     createdDate: DateTime.parse(j['createdDate']),
   );
+
+  List<FileResponse> get images =>
+      files.where((f) => f.isImage).toList();
+
+  List<FileResponse> get videos =>
+      files.where((f) => f.isVideo).toList();
+
+  List<FileResponse> get audios =>
+      files.where((f) => f.isAudio).toList();
+
+  // Obtiene la primera imagen (para thumbnail)
+  FileResponse? get firstImage {
+    final imgs = images;
+    return imgs.isNotEmpty ? imgs.first : null;
+  }
+
+  // URL de la primera imagen (para usar en MemoryCard)
+  String? get firstImageUrl => firstImage?.downloadUrl;
+
+  // Cuenta total de archivos multimedia
+  int get mediaCount => files.length;
+
+  // Lista de tipos de media que tiene (para el indicador)
+  List<String> get mediaTypes {
+    final types = <String>[];
+    if (images.isNotEmpty) types.add('image');
+    if (videos.isNotEmpty) types.add('video');
+    if (audios.isNotEmpty) types.add('audio');
+    return types;
+  }
 }
+
 
 // Un contenedor de paginación simple (solo lo que necesitamos)
 class PageMemoryResponse {
