@@ -5,10 +5,12 @@ import 'answer_question_screen.dart';
 
 class SelectQuestions extends StatefulWidget {
   final QuestionCategory category;
+  final String memorialId;
   
   const SelectQuestions({
     super.key,
     required this.category,
+    required this.memorialId,
   });
 
   @override
@@ -61,6 +63,7 @@ class _SelectQuestionsState extends State<SelectQuestions> {
                           builder: (_) => AnswerQuestionScreen(
                             categoryName: widget.category.name,
                             question: question,
+                            memorialId: widget.memorialId,
                           ),
                         ),
                       );

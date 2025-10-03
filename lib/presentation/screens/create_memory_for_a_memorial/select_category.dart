@@ -4,7 +4,9 @@ import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memori
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_questions.dart';
 
 class SelectCategory extends StatefulWidget {
-  const SelectCategory({super.key});
+  final String memorialId;
+  
+  const SelectCategory({super.key, required this.memorialId});
 
   @override
   State<SelectCategory> createState() => _SelectCategoryState();
@@ -20,7 +22,10 @@ class _SelectCategoryState extends State<SelectCategory> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => SelectQuestions(category: category),
+          builder: (context) => SelectQuestions(
+            category: category,
+            memorialId: widget.memorialId,
+          ),
         ),
       );
     });
