@@ -77,7 +77,7 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SelectCategory(),
+                      builder: (context) => SelectCategory(memorialId: widget.memorialId),
                     ),
                   ),
                 ),
