@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_category.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
+import 'write_letter_screen.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
   final String memorialId; // Necesitas este ID para asociar los recuerdos al memorial
@@ -51,7 +52,9 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CreateMemorySelectType(memorialId: widget.memorialId),
+                      builder: (context) => WriteLetterScreen(
+                        memorialId: widget.memorialId,
+                      ),
                     ),
                   ),
                 ),
