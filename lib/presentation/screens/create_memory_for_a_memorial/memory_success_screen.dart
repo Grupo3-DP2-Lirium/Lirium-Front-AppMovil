@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
-import '../main/home_screen.dart';
+import '../main/main_navigation_screen.dart';
 import 'create_memory_select_type.dart';
 
 /// Pantalla de confirmación cuando una memoria es guardada exitosamente
@@ -85,7 +85,7 @@ class MemorySuccessScreen extends StatelessWidget {
 
   void _goToHome(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       (route) => false,
     );
   }
