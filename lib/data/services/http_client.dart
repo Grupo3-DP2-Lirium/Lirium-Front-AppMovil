@@ -55,8 +55,12 @@ class AuthInterceptor extends Interceptor {
     if (token != null && token.isNotEmpty) {
       // Agregar automáticamente a TODAS las peticiones
       options.headers['Authorization'] = 'Bearer $token';
+      print('🔐 Token agregado a petición: ${token.substring(0, 20)}...');
+    } else {
+      print('⚠️ No hay token disponible para la petición');
     }
 
+    print('📍 Petición: ${options.method} ${options.uri}');
     super.onRequest(options, handler);
   }
 
