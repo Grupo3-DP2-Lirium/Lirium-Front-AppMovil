@@ -25,7 +25,7 @@ class MemorialCard extends StatelessWidget {
                     ? MemoryImage(base64Decode(memorial.profilePhotoBase64!))
                     : (memorial.profilePhotoUrl != null && memorial.profilePhotoUrl!.isNotEmpty
                     ? NetworkImage(memorial.profilePhotoUrl!)
-                    : const AssetImage("assets/images/default_avatar.png")) as ImageProvider,
+                    : const AssetImage('assets/images/CreaPerfil.png')) as ImageProvider,
               ),
               const SizedBox(width: 16),
               Expanded(

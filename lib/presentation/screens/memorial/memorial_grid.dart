@@ -57,7 +57,7 @@ class MemorialGrid extends StatelessWidget {
     if (m.profilePhotoUrl != null && m.profilePhotoUrl!.isNotEmpty) {
       return NetworkImage(m.profilePhotoUrl!);
     }
-    return const AssetImage("assets/images/default_avatar.png");
+    return const AssetImage('assets/images/CreaPerfil.png');
   }
 
   @override

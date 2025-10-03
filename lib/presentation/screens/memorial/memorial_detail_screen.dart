@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/components/buttons/icon_button_custom.dart';
-import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import '../../../data/services/memory_service.dart';
+import '../../../data/models/memory_response.dart';
 
 
 class MemorialDetailScreen extends StatefulWidget {
@@ -29,11 +29,21 @@ class MemorialDetailScreen extends StatefulWidget {
 class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  final MemoryService _memoriesService = MemoryService();
+  
+  // Estado para las memorias
+  List<MemoryResponse> memories = [];
+  bool isLoadingMemories = true;
+  String? errorMessage;
+  int currentPage = 0;
+  final int pageSize = 10;
+  bool hasMoreMemories = true;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _loadMemories();
   }
 
   @override
@@ -50,7 +60,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     } else if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
       return NetworkImage(widget.avatarUrl!);
     } else {
-      return const AssetImage("assets/images/default_avatar.png");
+      // Usar un Container con ícono por defecto
+      return const AssetImage('assets/images/CreaPerfil.png'); // Usar uno de los assets existentes
     }
   }
 
@@ -68,6 +79,37 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     }
 
     return NetworkImage(widget.coverUrl!);
+  }
+
+  /// Carga las memorias del memorial desde el backend
+  Future<void> _loadMemories() async {
+    try {
+      setState(() {
+        isLoadingMemories = true;
+        errorMessage = null;
+      });
+
+      final response = await _memoriesService.listMemories(
+        memorialId: widget.memorialId,
+        page: currentPage,
+        size: pageSize,
+      );
+      
+      setState(() {
+        if (currentPage == 0) {
+          memories = response.content;
+        } else {
+          memories.addAll(response.content);
+        }
+        hasMoreMemories = (response.number + 1) < response.totalPages;
+        isLoadingMemories = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error al cargar las memorias: $e';
+        isLoadingMemories = false;
+      });
+    }
   }
 
   @override
@@ -332,90 +374,239 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   Widget _buildActivityTab() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          // Activity Section
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.person, color: Colors.grey),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height - 300, // Dar altura específica
+        child: Column(
+          children: [
+          if (isLoadingMemories)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+            )
+          else if (errorMessage != null)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'Fer (Tú)',
+                      errorMessage!,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                        fontSize: 16,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        currentPage = 0;
+                        _loadMemories();
+                      },
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (memories.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.photo_library_outlined,
+                      size: 48,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'Compartió 7 fotos',
+                      'No hay memorias para mostrar',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontSize: 16,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: memories.length,
+                itemBuilder: (context, index) {
+                  final memory = memories[index];
+                  return _buildMemoryPost(memory);
+                },
+              ),
+            ),
+        ],
+        ),
+      ),
+    );
+  }
 
-          // Photo Grid
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 0.85,
-            children: [
-              _buildPhotoCard(
-                'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-              ),
-              Column(
-                children: [
-                  Expanded(
-                    child: _buildPhotoCard(
-                      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-                    ),
+  /// Construye un post de memoria estilo Instagram
+  Widget _buildMemoryPost(MemoryResponse memory) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header del post con información del usuario
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: _buildPhotoCard(
-                      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-                    ),
+                  child: const Icon(Icons.person, color: Colors.grey, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        memory.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _formatDate(memory.createdDate),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              _buildPhotoCard(
-                'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-              ),
-              _buildPhotoCard(
-                'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-              ),
-              _buildPhotoCard(
-                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-              ),
-              _buildPhotoCard(
-                'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-              ),
-            ],
+                ),
+                Icon(
+                  Icons.more_vert,
+                  color: Colors.grey[600],
+                ),
+              ],
+            ),
           ),
+          
+          // Contenido de la memoria
+          if (memory.files.isNotEmpty && memory.files.first.isImage)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              child: AspectRatio(
+                aspectRatio: 1.0,
+                child: Image.network(
+                  memory.files.first.downloadUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.image_not_supported, size: 48),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          
+          // Botones de interacción
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.favorite_border, color: Colors.grey[700]),
+                const SizedBox(width: 16),
+                Icon(Icons.chat_bubble_outline, color: Colors.grey[700]),
+                const SizedBox(width: 16),
+                Icon(Icons.share_outlined, color: Colors.grey[700]),
+                const Spacer(),
+                if (memory.location != null)
+                  Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 16, color: Colors.grey[600]),
+                      Text(
+                        memory.location!,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          
+          // Descripción
+          if (memory.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                memory.description,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          
+          // Tags
+          if (memory.tags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 4,
+                children: memory.tags.map((tag) => Text(
+                  '#$tag',
+                  style: TextStyle(
+                    color: Colors.blue[600],
+                    fontSize: 12,
+                  ),
+                )).toList(),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  /// Formatea la fecha para mostrar en el post
+  String _formatDate(DateTime date) {
+    try {
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inDays > 0) {
+        return '${difference.inDays}d';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}h';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m';
+      } else {
+        return 'Ahora';
+      }
+    } catch (e) {
+      return 'Fecha no disponible';
+    }
   }
 
   // Tab 1: Añadir (Timeline)
@@ -641,15 +832,5 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
-  Widget _buildPhotoCard(String imageUrl) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: DecorationImage(
-          image: NetworkImage(imageUrl),
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
+
 }

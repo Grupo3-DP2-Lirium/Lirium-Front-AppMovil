@@ -27,7 +27,7 @@ class ProfileCard extends StatelessWidget {
     } else if (profilePhotoUrl != null && profilePhotoUrl!.isNotEmpty) {
       return NetworkImage(profilePhotoUrl!);
     } else {
-      return const AssetImage("assets/images/default_avatar.png");
+      return const AssetImage('assets/images/CreaPerfil.png');
     }
   }
 
