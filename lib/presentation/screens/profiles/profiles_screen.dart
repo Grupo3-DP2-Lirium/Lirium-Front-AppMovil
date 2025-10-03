@@ -62,7 +62,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         controller: _tabController,
         children: [
           _buildMisMemoriales(provider),
-          _buildCollaborationTab()
+          _buildCollaborationTab(provider)
         ],
       ),
 
@@ -128,23 +128,44 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     );
   }
 
-  Widget _buildCollaborationTab() {
-    return ListView(
+  Widget _buildCollaborationTab(MemorialProvider provider) {
+    if (provider.cargandoColab) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (provider.errorColab != null) {
+      return Center(child: Text("Error: ${provider.errorColab}"));
+    }
+    if (provider.colaborativos.isEmpty) {
+      return const Center(child: Text("No tienes colaboraciones aún"));
+    }
+
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: [
-        ProfileCard(
-          name: 'Lupita Montoya',
-          description:
-              'Lourdes fue el lazo de nuestras memorias más felices. Con su dulzura, transformó cada momento en algo especial.',
-          onTap: () {},
-        ),
-        const SizedBox(height: 16),
-        ProfileCard(
-          name: 'Lila De la Cruz',
-          description: '',
-          onTap: () {},
-        ),
-      ],
+      itemCount: provider.colaborativos.length,
+      itemBuilder: (context, index) {
+        final m = provider.colaborativos[index];
+        return ProfileCard(
+          name: m.name,
+          description: m.description,
+          profilePhotoBase64: m.profilePhotoBase64,
+          profilePhotoUrl: m.profilePhotoUrl,
+          isShared: m.isCollaborative,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MemorialDetailScreen(
+                  memorialId: m.idMemorial,
+                  name: m.name,
+                  description: m.description,
+                  coverUrl: null,
+                  avatarUrl: m.profilePhotoBase64,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

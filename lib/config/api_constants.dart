@@ -20,6 +20,8 @@ class ApiConstants {
   static String get memorials => '$baseUrl/memorials';
   static String get collaborativeMemorials =>
       '$baseUrl/memorials/collaborative';
+  static String get getCollaborativeMemorials =>
+      '$baseUrl/memorials/getCollaborativeMemorials';
   static String get predefinedQuestions =>
       '$baseUrl/memorials/predefined-questions';
 
