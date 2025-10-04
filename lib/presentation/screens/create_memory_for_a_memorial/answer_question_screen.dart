@@ -4,8 +4,11 @@ import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_create_request.dart';
 import '../../../domain/enums/memory_origin_type.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Pantalla para responder una pregunta seleccionada.
 /// Soporta tres modos: grabar audio, grabar video y escribir texto (placeholder para grabaciones).
@@ -36,16 +39,26 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   bool _isRecording = false;
   File? _recordedFile;
   XFile? _videoFile;
+  
+  // Audio recording variables
+  FlutterSoundRecorder? _audioRecorder;
+  bool _isRecorderInitialized = false;
+  String? _audioPath;
+  Duration _recordingDuration = Duration.zero;
+  Timer? _recordingTimer;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(() => setState(() {}));
+    _initializeRecorder();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _audioRecorder?.closeRecorder();
+    _recordingTimer?.cancel();
     super.dispose();
   }
 
@@ -143,6 +156,118 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
     });
   }
 
+  // Audio recording methods
+  Future<void> _initializeRecorder() async {
+    try {
+      _audioRecorder = FlutterSoundRecorder();
+      await _audioRecorder!.openRecorder();
+      _isRecorderInitialized = true;
+    } catch (e) {
+      _isRecorderInitialized = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to initialize audio recorder')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _checkPermissions() async {
+    return await Permission.microphone.isGranted || 
+           await Permission.microphone.request().isGranted;
+  }
+
+  Future<void> _startRecording() async {
+    if (!_isRecorderInitialized) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio recorder not initialized')),
+        );
+      }
+      return;
+    }
+
+    if (!await _checkPermissions()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission required')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final directory = await getTemporaryDirectory();
+      _audioPath = '${directory.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
+      
+      await _audioRecorder!.startRecorder(
+        toFile: _audioPath!,
+        codec: Codec.aacADTS,
+      );
+
+      setState(() => _isRecording = true);
+      _startTimer();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to start recording')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_isRecording || _audioRecorder == null) return;
+
+    try {
+      await _audioRecorder!.stopRecorder();
+      _stopTimer();
+      
+      if (_audioPath != null && mounted) {
+        setState(() {
+          _isRecording = false;
+          _recordedFile = File(_audioPath!);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRecording = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to stop recording')),
+        );
+      }
+    }
+  }
+
+  void _deleteRecording() {
+    _recordedFile?.delete();
+    setState(() {
+      _recordedFile = null;
+      _audioPath = null;
+      _recordingDuration = Duration.zero;
+    });
+  }
+
+  void _startTimer() {
+    _recordingDuration = Duration.zero;
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _recordingDuration = Duration(seconds: timer.tick);
+      });
+    });
+  }
+
+  void _stopTimer() {
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+  }
+
+  String _formatDuration(Duration duration) {
+    String minutes = duration.inMinutes.toString().padLeft(2, '0');
+    String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   Color get _primary => const Color(0xFF6366F1);
 
   Widget _buildModeSelector({required String label, required IconData icon, required AnswerMode mode}) {
@@ -210,30 +335,15 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
       return _buildVideoContent();
     }
     
-    // Placeholder para audio
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.mic, size: 80, color: _primary),
-          const SizedBox(height: 16),
-          const Text(
-            'Grabación de audio (pendiente de implementar)',
-            style: TextStyle(color: Colors.black54),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 18),
-          OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Simulando guardado de audio')),
-              );
-              _saveMemory();
-            },
-            icon: const Icon(Icons.save_outlined),
-            label: const Text('Guardar'),
-          )
-        ],
+    if (_mode == AnswerMode.audio) {
+      return _buildAudioContent();
+    }
+    
+    return const Center(
+      child: Text(
+        'Selecciona un modo para responder',
+        style: TextStyle(color: Colors.black54),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -359,6 +469,150 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                       )
                     : const Icon(Icons.videocam),
                 label: Text(_isRecording ? 'Abriendo cámara...' : 'Grabar Video'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioContent() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Main icon with animation
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: _isRecording ? Colors.red.withOpacity(0.1) : _primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.mic,
+              size: 60,
+              color: _isRecording ? Colors.red : _primary,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          if (_recordedFile != null) ...[
+            // Audio recorded - show controls
+            Text(
+              'Audio grabado',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Duración: ${_formatDuration(_recordingDuration)}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 32),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Delete button
+                OutlinedButton.icon(
+                  onPressed: _deleteRecording,
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                ),
+                // Save button
+                ElevatedButton.icon(
+                  onPressed: _saving ? null : _saveMemory,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_saving ? 'Guardando...' : 'Guardar'),
+                ),
+              ],
+            ),
+          ] else if (_isRecording) ...[
+            // Currently recording
+            Text(
+              'Grabando...',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatDuration(_recordingDuration),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _stopRecording,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.stop),
+                label: const Text('Detener Grabación'),
+              ),
+            ),
+          ] else ...[
+            // Initial state - ready to record
+            const Text(
+              'Toca para grabar tu mensaje de audio',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black54,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _startRecording,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.mic),
+                label: const Text('Iniciar Grabación'),
               ),
             ),
           ],

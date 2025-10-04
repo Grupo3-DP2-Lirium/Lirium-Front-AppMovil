@@ -33,8 +33,13 @@ class FileResponse {
     uploadedDate: DateTime.parse(j['uploadedDate']),
   );
 
-  //Obtiene la URL completa para descargar el archivo
+  // Returns the complete URL for file download
   String get downloadUrl {
+    // If already a complete URL (Azure Blob Storage), use it directly
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      return fileUrl;
+    }
+    // Otherwise, use helper for local backend paths
     return FileUrlHelper.getFileUrl(
       fullPath: fileUrl,
       fileName: fileName,
