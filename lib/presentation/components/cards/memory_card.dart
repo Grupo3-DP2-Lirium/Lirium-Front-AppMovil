@@ -1,19 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
 
 class MemoryCard extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final String? time;
-  final int? imageCount;
+  final Memory memory;
   final VoidCallback? onTap;
   final bool isGridView;
 
   const MemoryCard({
     super.key,
-    required this.title,
-    this.subtitle,
-    this.time,
-    this.imageCount,
+    required this.memory,
     this.onTap,
     this.isGridView = false,
   });
@@ -23,9 +19,7 @@ class MemoryCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: isGridView
-            ? EdgeInsets.zero
-            : const EdgeInsets.only(bottom: 16),
+        margin: isGridView ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -44,6 +38,47 @@ class MemoryCard extends StatelessWidget {
     );
   }
 
+  /// Muestra la imagen del primer archivo si existe
+  Widget _buildImagePreview() {
+    final firstImage = memory.images.isNotEmpty ? memory.images.first : null;
+
+    if (firstImage == null) {
+      // No hay imagen → placeholder
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.photo_library, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              "Sin imagen",
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Si tiene URL
+    if (firstImage.url.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          firstImage.url,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+        ),
+      );
+    }
+
+    // Fallback
+    return const Center(
+      child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+    );
+  }
+
   Widget _buildGridContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,26 +89,12 @@ class MemoryCard extends StatelessWidget {
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.photo_library, size: 40, color: Colors.grey),
-                  if (imageCount != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '$imageCount fotos',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            child: _buildImagePreview(),
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          title,
+          memory.title,
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -82,9 +103,12 @@ class MemoryCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        if (time != null) ...[
+        if (memory.photoDate != null) ...[
           const SizedBox(height: 4),
-          Text(time!, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text(
+            _formatDate(memory.photoDate!),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
         ],
       ],
     );
@@ -98,7 +122,7 @@ class MemoryCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                title,
+                memory.title,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -106,21 +130,21 @@ class MemoryCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (time != null)
+            if (memory.photoDate != null)
               Text(
-                time!,
+                _formatDate(memory.photoDate!),
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
           ],
         ),
-        if (subtitle != null) ...[
+        if (memory.description.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            subtitle!,
+            memory.description,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],
-        if (imageCount != null) ...[
+        if (memory.images.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
             height: 120,
@@ -128,22 +152,15 @@ class MemoryCard extends StatelessWidget {
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.photo_library, size: 40, color: Colors.grey),
-                  const SizedBox(height: 8),
-                  Text(
-                    '$imageCount fotos',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
+            clipBehavior: Clip.hardEdge,
+            child: _buildImagePreview(),
           ),
         ],
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day}/${date.month}/${date.year}";
   }
 }

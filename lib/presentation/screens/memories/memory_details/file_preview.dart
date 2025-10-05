@@ -122,14 +122,24 @@ class _FilePreviewState extends State<FilePreview> {
     );
   }
 
-  Widget _buildImage(String data) {
-    if (data.startsWith("http")) return Image.network(data, fit: BoxFit.cover);
-    if (data.startsWith("/")) return Image.file(File(data), fit: BoxFit.cover);
-    try {
-      return Image.memory(base64Decode(data), fit: BoxFit.cover);
-    } catch (e) {
-      return const Center(child: Text("Error al cargar imagen"));
+  Widget _buildImage(String url) {
+    if (url.isEmpty) {
+      return const Center(child: Text("Sin imagen"));
     }
+
+    // Si es una ruta local del dispositivo, usa Image.file
+    if (url.startsWith("/") || url.startsWith("file://")) {
+      return Image.file(File(url), fit: BoxFit.cover);
+    }
+
+    // Si es una URL remota, usa Image.network
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return const Center(child: Text("Error al cargar imagen"));
+      },
+    );
   }
 
   // ------------------------ VIDEO ------------------------

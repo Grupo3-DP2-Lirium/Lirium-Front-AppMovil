@@ -1,13 +1,12 @@
-// screens/memories/memory_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_created_screen.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../domain/entities/memory.dart';
 import '../../components/buttons/switch_button.dart';
+import 'dart:io' as io;
 
 class MemoryDetailScreen extends StatefulWidget {
   final Memory memory;
@@ -26,20 +25,25 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
-  File? _tempFile;
-
   bool _addTags = false;
   bool _isLoading = false;
 
+  late Memory _originalMemory;
+  late Memory _editableMemory;
 
-  late Memory _memory;
+  List<File> _existingFiles = [];
+  List<io.File> _newFiles = [];
 
   @override
   void initState() {
     super.initState();
-    _memory = widget.memory;
-    _titleController = TextEditingController(text: _memory.title);
-    _descriptionController = TextEditingController(text: _memory.description);
+    _originalMemory = widget.memory;
+    _editableMemory = _originalMemory.copyWith();
+
+    _existingFiles = List.from(_editableMemory.files);
+
+    _titleController = TextEditingController(text: _editableMemory.title);
+    _descriptionController = TextEditingController(text: _editableMemory.description);
   }
 
 
@@ -51,60 +55,56 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Services
+
   Future<void> _saveChanges() async {
     if (_isLoading) return;
-
     setState(() => _isLoading = true);
 
     try {
-      // Construir el JSON que espera el backend
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
         "addTags": _addTags,
       };
 
-      // Llamar al servicio de actualización con archivo si existe
+      // Solo subimos los archivos nuevos (los locales)
+      final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+
       final updated = await _service.updateMemory(
         memoryId: widget.memory.id,
         memoryJson: memoryJson,
-        // files: _tempFile != null ? [_tempFile!] : null,
+        files: filesToUpload,
+      );
+
+      // Actualizamos el modelo local
+      final updatedMemory = _editableMemory.copyWith(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        files: [
+          ..._existingFiles,
+          ..._newFiles.map((f) => File(
+            id: '', // tu backend lo generará al guardar
+            url: f.path, // o podrías usar una URL temporal si quieres previsualizar
+            name: f.path.split('/').last,
+            type: 'local',
+            mimeType: '',
+            size: 0,
+            uploadedDate: DateTime.now(),
+            originalName: f.path.split('/').last,
+          )),
+        ],
       );
 
       if (mounted) {
-        // Redirigir al grid de memorias y eliminar pantallas anteriores
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => MemoryCreatedScreen(memory: _memory,)),
+          MaterialPageRoute(
+            builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
+          ),
               (route) => false,
         );
-
-        // Si quieres, también puedes actualizar memoria local aquí
-        /*
-      setState(() {
-        widget.memory = widget.memory.copyWith(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          files: _tempFile != null
-              ? [
-                  File(
-                    id: widget.memory.files.isNotEmpty
-                        ? widget.memory.files.first.id
-                        : '',
-                    url: _tempFile!.path,
-                    name: _tempFile!.name,
-                    type: _tempFile!.type,
-                    mimeType: _tempFile!.mimeType,
-                    size: _tempFile!.size,
-                    uploadedDate: _tempFile!.uploadedDate,
-                    originalName: _tempFile!.originalName,
-                  )
-                ]
-              : widget.memory.files,
-        );
-      });
-      */
       }
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -217,12 +217,23 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                   titleController: _titleController,
                   descriptionController: _descriptionController,
                   screenHeight: screenHeight,
-                  currentFile: _tempFile,
-                  onFileChanged: (newFile) {
-                    if (newFile != null) {
-                      setState(() {
-                        _tempFile = newFile;
-                      });
+                  onFileChanged: (action, [index, file]) async {
+                    if (file != null) {
+                      final localPath = file.url;
+                      if (localPath != null && localPath.isNotEmpty) {
+                        final ioFile = io.File(localPath);
+                        setState(() {
+                          if (action == "add") {
+                            _newFiles.add(ioFile);
+                          } else if (action == "update" && index != null) {
+                            if (index < _newFiles.length) {
+                              _newFiles[index] = ioFile;
+                            } else {
+                              _newFiles.add(ioFile);
+                            }
+                          }
+                        });
+                      }
                     }
                   },
                 ),

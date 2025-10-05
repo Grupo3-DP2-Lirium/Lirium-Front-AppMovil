@@ -100,15 +100,12 @@ class TimelineScreen extends StatelessWidget {
             ),
           ),
         ),
-        ...memories.map(
-          (memory) => MemoryCard(
-            title: memory['title'],
-            subtitle: memory['description'],
-            time: memory['time'],
-            imageCount: memory['images'],
+        /*...memories.map(
+              (memory) => MemoryCard(
+            memory: ,
             onTap: () {},
           ),
-        ),
+        ).toList(),*/
         const SizedBox(height: 20),
       ],
     );

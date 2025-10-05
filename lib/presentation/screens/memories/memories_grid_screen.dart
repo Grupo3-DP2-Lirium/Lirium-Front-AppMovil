@@ -244,15 +244,14 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
       itemBuilder: (context, index) {
         final memory = memories[index];
         return MemoryCard(
-          title: memory.title,
-          time: 'Hace ${index + 1} días',
+          memory: memory,
           isGridView: true,
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => MemoryDetailScreen(
-                    memory: memory
+                  memory: memory,
                 ),
               ),
             );
@@ -269,10 +268,18 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
       itemBuilder: (context, index) {
         final memory = memories[index];
         return MemoryCard(
-          title: memory.title,
-          subtitle: memory.description,
-          time: 'Hace ${index + 1} días',
-          onTap: () {},
+          memory: memory,
+          isGridView: true,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MemoryDetailScreen(
+                  memory: memory,
+                ),
+              ),
+            );
+          },
         );
       },
     );

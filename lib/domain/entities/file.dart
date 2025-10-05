@@ -7,7 +7,7 @@ class File{
   final String url;
   final double size;
   final DateTime uploadedDate;
-  final String? contentBase64;
+
 
   File({
     required this.id,
@@ -18,7 +18,6 @@ class File{
     required this.url,
     required this.size,
     required this.uploadedDate,
-    this.contentBase64,
   });
 
   bool get isImage => mimeType.startsWith("image/");
