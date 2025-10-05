@@ -167,30 +167,37 @@ class MemoryService {
   Future<Map<String, dynamic>> updateMemory({
     required String memoryId,
     required Map<String, dynamic> memoryJson,
-    List<File>? files, // dart:io File
+    List<File>? files, // archivos nuevos
+    List<Map<String, String>>? filesToDelete, // [{"id": "...", "path": "..."}]
   }) async {
     final uri = Uri.parse("${ApiConstants.baseUrl}/memories/$memoryId");
     final req = http.MultipartRequest('PUT', uri);
 
-    // Headers (Authorization + Accept JSON) desde HttpService
+    // Headers (Authorization + Accept JSON)
     req.headers.addAll(_http.authHeaders());
 
     // Campo 'memory' como string JSON
     req.fields['memory'] = jsonEncode(memoryJson);
 
-    // Adjuntar archivos (si hay)
+    // Adjuntar archivos nuevos (si hay)
     if (files != null && files.isNotEmpty) {
       for (final f in files) {
         final mime = lookupMimeType(f.path) ?? 'application/octet-stream';
         final parts = mime.split('/');
         final filePart = await http.MultipartFile.fromPath(
-          'files', // debe coincidir con el @RequestPart("files") en backend
+          'files', // coincide con @RequestPart("files") en backend
           f.path,
           contentType: MediaType(parts.first, parts.last),
           filename: f.uri.pathSegments.isNotEmpty ? f.uri.pathSegments.last : 'upload',
         );
         req.files.add(filePart);
       }
+    }
+
+    // Agregar archivos a eliminar (id + path)
+    if (filesToDelete != null && filesToDelete.isNotEmpty) {
+      print('Files to delete: $filesToDelete');
+      req.fields['filesToDelete'] = jsonEncode(filesToDelete);
     }
 
     // Enviar
@@ -205,4 +212,5 @@ class MemoryService {
       );
     }
   }
+
 }

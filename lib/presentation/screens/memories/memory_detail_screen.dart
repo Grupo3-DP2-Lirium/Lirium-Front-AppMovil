@@ -33,6 +33,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   List<File> _existingFiles = [];
   List<io.File> _newFiles = [];
+  List<File> _deletedFiles = [];
 
   @override
   void initState() {
@@ -43,7 +44,6 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
   }
-
 
   @override
   void dispose() {
@@ -64,25 +64,33 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         "addTags": _addTags,
       };
 
-      // Solo subimos los archivos nuevos (los locales)
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+      final filesToDelete = _deletedFiles
+          .map((f) => {"id": f.id, "path": f.url})
+          .toList();
 
-      // Servicio para actualizar la memoria
+      print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
+      print('Files to delete: $filesToDelete');
+
+      // Llamada al servicio
       await _service.updateMemory(
         memoryId: widget.memory.id,
         memoryJson: memoryJson,
         files: filesToUpload,
+        filesToDelete: filesToDelete,
       );
 
-      // Actualizamos el modelo local
+      // Actualizamos modelo local
       final updatedMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         files: [
-          ..._existingFiles,
+          // Archivos que quedan
+          ..._editableMemory.files.where((f) => !_newFiles.any((nf) => nf.path == f.url)),
+          // Archivos nuevos
           ..._newFiles.map((f) => File(
-            id: '', // tu backend lo generará al guardar
-            url: f.path, // o podrías usar una URL temporal si quieres previsualizar
+            id: '', // backend asignará
+            url: f.path,
             name: f.path.split('/').last,
             type: 'local',
             mimeType: '',
@@ -102,7 +110,6 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
               (route) => false,
         );
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,8 +225,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                         final ioFile = io.File(localPath);
                         setState(() {
                           if (action == "add") {
+                            // Nuevo archivo agregado
                             _newFiles.add(ioFile);
                           } else if (action == "update" && index != null) {
+                            // Archivo existente reemplazado → agregarlo a eliminados
+                            final replacedFile = _editableMemory.files[index];
+                            if (_existingFiles.contains(replacedFile)) {
+                              _deletedFiles.add(replacedFile);
+                            }
+                            // Actualizar el archivo nuevo en la lista
                             if (index < _newFiles.length) {
                               _newFiles[index] = ioFile;
                             } else {
