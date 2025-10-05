@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
@@ -21,12 +20,17 @@ class FilePreview extends StatefulWidget {
   State<FilePreview> createState() => _FilePreviewState();
 }
 
-class _FilePreviewState extends State<FilePreview> {
+class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   VideoPlayerController? _videoController;
   AudioPlayer? _audioPlayer;
-
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+
+  // Nueva variable para manejar ruta local
+  String? _localVideoPath;
 
   @override
   void initState() {
@@ -38,76 +42,108 @@ class _FilePreviewState extends State<FilePreview> {
   void didUpdateWidget(covariant FilePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Actualizar video si cambia la url
-    if (widget.type == "video" && widget.url != oldWidget.url) {
-      _videoController?.dispose();
-      if (widget.url.isNotEmpty) {
-        _videoController = VideoPlayerController.file(File(widget.url))
-          ..initialize().then((_) => setState(() {}));
-      }
-    }
-
-    // Actualizar audio si cambia la url
-    if (widget.type == "audio" && widget.url != oldWidget.url) {
-      _audioPlayer?.dispose();
-      if (widget.url.isNotEmpty) {
-        _audioPlayer = AudioPlayer();
-        _audioPlayer!.setUrl(widget.url);
-        _audioPlayer!.durationStream.listen((d) {
-          if (d != null) setState(() => _duration = d);
-        });
-        _audioPlayer!.positionStream.listen((p) {
-          setState(() => _position = p);
-        });
-        _audioPlayer!.playerStateStream.listen((state) {
-          if (state.processingState == ProcessingState.completed) {
-            setState(() => _position = Duration.zero);
-            _audioPlayer!.seek(Duration.zero);
-            _audioPlayer!.pause();
-          }
-        });
-      }
+    if (widget.type != oldWidget.type) {
+      _disposeMedia();
+      _initializeMedia();
+    } else if (widget.type == "video" && widget.url != oldWidget.url) {
+      _disposeVideo();
+      _initializeVideo(widget.url);
     }
   }
 
+
   void _initializeMedia() {
-    if (widget.type == "video" && widget.url.isNotEmpty) {
-      _videoController = VideoPlayerController.file(File(widget.url))
-        ..initialize().then((_) => setState(() {}));
+    if (widget.url.isEmpty) return;
+
+    switch (widget.type) {
+      case "video":
+        _initializeVideo(widget.url);
+        break;
+      case "audio":
+        _initializeAudio(widget.url);
+        break;
+    }
+  }
+
+  Future<void> _initializeVideo(String path) async {
+    _disposeVideo();
+
+    // Si es URL remota
+    if (path.startsWith("http")) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(path));
+      _localVideoPath = null;
+    } else {
+      // Video local
+      final file = File(path);
+      bool exists = await file.exists();
+      if (!exists) {
+        print("⚠️ Archivo local no existe: $path");
+        return;
+      }
+      _videoController = VideoPlayerController.file(file);
+      _localVideoPath = path;
     }
 
-    if (widget.type == "audio" && widget.url.isNotEmpty) {
-      _audioPlayer = AudioPlayer();
-      _audioPlayer!.setUrl(widget.url);
-      _audioPlayer!.durationStream.listen((d) {
-        if (d != null) setState(() => _duration = d);
-      });
-      _audioPlayer!.positionStream.listen((p) {
-        setState(() => _position = p);
-      });
-      _audioPlayer!.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          setState(() => _position = Duration.zero);
-          _audioPlayer!.seek(Duration.zero);
-          _audioPlayer!.pause();
-        }
-      });
+    await _videoController!.initialize();
+    setState(() {});
+  }
+
+  void _initializeAudio(String path) {
+    _audioPlayer?.dispose();
+    _audioPlayer = AudioPlayer();
+
+    if (path.startsWith("http")) {
+      _audioPlayer!.setUrl(path);
+    } else {
+      _audioPlayer!.setFilePath(path);
     }
+
+    _audioPlayer!.durationStream.listen((d) {
+      if (d != null) setState(() => _duration = d);
+    });
+    _audioPlayer!.positionStream.listen((p) => setState(() => _position = p));
+    _audioPlayer!.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        _audioPlayer!.seek(Duration.zero);
+        _audioPlayer!.pause();
+        setState(() => _position = Duration.zero);
+      }
+    });
+  }
+
+  void _disposeVideo() {
+    _videoController?.dispose();
+    _videoController = null;
+    _localVideoPath = null;
+  }
+
+  void _disposeMedia() {
+    _disposeVideo();
+    _audioPlayer?.dispose();
+    _audioPlayer = null;
+    _position = Duration.zero;
+    _duration = Duration.zero;
   }
 
   @override
   void dispose() {
-    _videoController?.dispose();
-    _audioPlayer?.dispose();
+    _disposeMedia();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.type == "image") return _buildImageWidget();
-    if (widget.type == "video") return _buildVideoWidget();
-    if (widget.type == "audio") return _buildAudioWidget();
-    return const Text("Sin vista previa");
+    super.build(context);
+    switch (widget.type) {
+      case "image":
+        return _buildImageWidget();
+      case "video":
+        return _buildVideoWidget();
+      case "audio":
+        return _buildAudioWidget();
+      default:
+        return const Text("Sin vista previa");
+    }
   }
 
   // ------------------------ IMAGEN ------------------------
@@ -123,16 +159,12 @@ class _FilePreviewState extends State<FilePreview> {
   }
 
   Widget _buildImage(String url) {
-    if (url.isEmpty) {
-      return const Center(child: Text("Sin imagen"));
-    }
+    if (url.isEmpty) return const Center(child: Text("Sin imagen"));
 
-    // Si es una ruta local del dispositivo, usa Image.file
     if (url.startsWith("/") || url.startsWith("file://")) {
       return Image.file(File(url), fit: BoxFit.cover);
     }
 
-    // Si es una URL remota, usa Image.network
     return Image.network(
       url,
       fit: BoxFit.cover,
@@ -144,9 +176,8 @@ class _FilePreviewState extends State<FilePreview> {
 
   // ------------------------ VIDEO ------------------------
   Widget _buildVideoWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Sin vista previa de video", showEdit: true);
     if (_videoController == null || !_videoController!.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildPlaceholder("Sin vista previa de video", showEdit: true);
     }
 
     return AspectRatio(
@@ -173,7 +204,8 @@ class _FilePreviewState extends State<FilePreview> {
               },
             ),
           ),
-          if (widget.onEdit != null) Positioned(top: 8, right: 8, child: _buildEditButton()),
+          if (widget.onEdit != null)
+            Positioned(top: 8, right: 8, child: _buildEditButton()),
         ],
       ),
     );

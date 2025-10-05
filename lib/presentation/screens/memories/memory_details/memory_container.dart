@@ -40,7 +40,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
   Widget build(BuildContext context) {
     final memory = widget.memory;
 
-    // Caso: pregunta y respuesta
+    // Caso: carta
     if (_localFiles.isEmpty) {
       return _buildQA();
     }
@@ -91,7 +91,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
 
   // ------------------- Vista previa -------------------
   Widget _buildPreview(String type, String url, double height, BuildContext context) {
-    final multiple = _localFiles.length > 1 && _localFiles.first.type == "image";
+    final multiple = _localFiles.length > 1; // ⚡ todos los archivos, no solo imágenes
 
     return Container(
       height: height,
@@ -134,6 +134,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
         ),
       )
           : FilePreview(
+        key: ValueKey(url + DateTime.now().toString()), // ⚡ para forzar reconstrucción
         type: type,
         url: url,
         onEdit: () => _editFile(context, type),
@@ -210,9 +211,17 @@ class _MemoryContainerState extends State<MemoryContainer> {
     final picked = await _pickFile(type, context);
     if (picked == null) return;
 
+    // ⚡ Espera a que el archivo exista
+    final file = File(picked.path);
+    final exists = await file.exists();
+    if (!exists) {
+      print("Archivo todavía no existe: ${picked.path}");
+      return;
+    }
+
     final newFile = domain.File(
       id: "",
-      url: picked.path, // temporal local (ImagePreview lo soporta)
+      url: picked.path,
       name: picked.name,
       type: type,
       mimeType: _guessMimeType(picked.path),
@@ -221,17 +230,11 @@ class _MemoryContainerState extends State<MemoryContainer> {
       originalName: picked.name,
     );
 
-    // ⚡ Actualizamos la lista local y llamamos a onFileChanged
+    // --- Todo listo, ahora actualizamos el estado de forma síncrona ---
     setState(() {
-      if (index != null) {
-        if (index < _localFiles.length) {
-          _localFiles[index] = newFile;
-          widget.onFileChanged?.call("update", index, newFile);
-        } else {
-          // Si por alguna razón el índice es inválido, agregamos
-          _localFiles.add(newFile);
-          widget.onFileChanged?.call("add", null, newFile);
-        }
+      if (index != null && index < _localFiles.length) {
+        _localFiles[index] = newFile;
+        widget.onFileChanged?.call("update", index, newFile);
       } else {
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
