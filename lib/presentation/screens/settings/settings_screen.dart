@@ -1,8 +1,76 @@
 import 'package:flutter/material.dart';
 import '../../components/components.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/auth_storage.dart';
+import '../auth/login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final AuthService _authService = AuthService();
+  final AuthStorage _authStorage = AuthStorage();
+  bool _isLoggingOut = false;
+
+  Future<void> _logout() async {
+    // Mostrar dialogo de confirmación
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _isLoggingOut = true;
+      });
+
+      try {
+        // Cerrar sesión usando AuthService
+        await _authService.logout();
+        
+        // También limpiar AuthStorage por seguridad
+        await _authStorage.clear();
+
+        if (mounted) {
+          // Navegar al LoginScreen y limpiar toda la pila de navegación
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoggingOut = false;
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al cerrar sesión: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,12 +202,19 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Logout button
-          SecondaryButton(
-            text: 'Cerrar sesión',
-            textColor: Colors.red,
-            isOutlined: true,
-            onPressed: () {},
-          ),
+          _isLoggingOut
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(color: Colors.red),
+                  ),
+                )
+              : SecondaryButton(
+                  text: 'Cerrar sesión',
+                  textColor: Colors.red,
+                  isOutlined: true,
+                  onPressed: _logout,
+                ),
           const SizedBox(height: 24),
         ],
       ),
