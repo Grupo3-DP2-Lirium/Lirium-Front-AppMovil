@@ -65,34 +65,7 @@ class FileUrlHelper {
   }
 }
 
-// Extensión para FileResponse
-extension FileResponseExtension on FileResponse {
-  /// Obtiene la URL completa del archivo (usa la misma lógica que downloadUrl)
-  String get fullUrl {
-    // Si fileUrl ya es una URL completa de Azure, usarla directamente
-    if (fileUrl.startsWith('https://') || fileUrl.startsWith('http://')) {
-      return fileUrl;
-    }
-    
-    // Si no, usar el helper para construir URL local
-    return FileUrlHelper.getFileUrl(
-      fullPath: fileUrl,
-      fileName: fileName,
-    );
-  }
 
-  /// Verifica si es una imagen
-  bool get isImage => FileUrlHelper.isImage(mimeType);
-
-  /// Verifica si es un video
-  bool get isVideo => FileUrlHelper.isVideo(mimeType);
-
-  /// Verifica si es audio
-  bool get isAudio => FileUrlHelper.isAudio(mimeType);
-
-  /// Obtiene el icono apropiado
-  IconData get icon => FileUrlHelper.getFileIcon(mimeType);
-}
 
 // Extensión para MemoryResponse
 extension MemoryResponseExtension on MemoryResponse {
@@ -115,7 +88,7 @@ extension MemoryResponseExtension on MemoryResponse {
   }
 
   /// URL de la primera imagen (para thumbnail)
-  String? get firstImageUrl => firstImage?.fullUrl;
+  String? get firstImageUrl => firstImage?.downloadUrl;
 
   /// Cuenta total de archivos multimedia
   int get mediaCount => images.length + videos.length + audios.length;
