@@ -25,7 +25,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
-  //bool _addTags = false;
+  bool _addTags = false;
   bool _isLoading = false;
 
   late Memory _originalMemory;
@@ -58,6 +58,22 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final memoryJson = {
+        "title": _titleController.text.trim(),
+        "description": _descriptionController.text.trim(),
+        "addTags": _addTags,
+      };
+
+      // Solo subimos los archivos nuevos (los locales)
+      final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+
+      // Servicio para actualizar la memoria
+      await _service.updateMemory(
+        memoryId: widget.memory.id,
+        memoryJson: memoryJson,
+        files: filesToUpload,
+      );
+
       // Actualizamos el modelo local
       final updatedMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
@@ -77,12 +93,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         ],
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
-        ),
-      );
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
+          ),
+              (route) => false,
+        );
+      }
 
     } catch (e) {
       if (mounted) {
