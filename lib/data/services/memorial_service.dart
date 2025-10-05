@@ -54,7 +54,7 @@ class MemorialService {
     print('DEBUG: getCollaborativeMemorials() called');
     try {
       print('DEBUG: Making request to collaborative memorials endpoint');
-      final response = await _http.get(ApiConstants.collaborativeMemorials);
+      final response = await _http.get(ApiConstants.getCollaborativeMemorials);
 
       print('DEBUG: Collaborative memorials response - Status: ${response.statusCode}');
       print('DEBUG: Collaborative memorials response - Body: ${response.body}');

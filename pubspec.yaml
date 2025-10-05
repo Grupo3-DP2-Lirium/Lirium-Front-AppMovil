@@ -46,11 +46,18 @@ dependencies:
   # Nuevas dependencias para la integración con Spring Boot
   provider: ^6.1.1
   shared_preferences: ^2.2.2
+  # Audio recording
+  flutter_sound: ^9.2.13
+  # Para visualizar videos y audios
+  video_player: ^2.9.2
+  just_audio: ^0.9.42
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.4.1
+
+
 
 dev_dependencies:
   flutter_test:

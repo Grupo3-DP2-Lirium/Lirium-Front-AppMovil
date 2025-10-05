@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_frontend/config/api_constants.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
@@ -141,4 +142,67 @@ class MemoryService {
     }
   }
 
+  /// List Memories from log user
+  Future<List<Memory>> listMemoriesByAuthor() async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/my-memories');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false), // Authorization + Accept
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final listJson = jsonDecode(res.body) as List<dynamic>;
+      // Mapear MemoryResponse a Memory
+      return listJson
+          .map((e) => MemoryResponse.fromJson(e).toEntity())
+          .toList();
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMemory({
+    required String memoryId,
+    required Map<String, dynamic> memoryJson,
+    List<File>? files, // dart:io File
+  }) async {
+    final uri = Uri.parse("${ApiConstants.baseUrl}/memories/$memoryId");
+    final req = http.MultipartRequest('PUT', uri);
+
+    // Headers (Authorization + Accept JSON) desde HttpService
+    req.headers.addAll(_http.authHeaders());
+
+    // Campo 'memory' como string JSON
+    req.fields['memory'] = jsonEncode(memoryJson);
+
+    // Adjuntar archivos (si hay)
+    if (files != null && files.isNotEmpty) {
+      for (final f in files) {
+        final mime = lookupMimeType(f.path) ?? 'application/octet-stream';
+        final parts = mime.split('/');
+        final filePart = await http.MultipartFile.fromPath(
+          'files', // debe coincidir con el @RequestPart("files") en backend
+          f.path,
+          contentType: MediaType(parts.first, parts.last),
+          filename: f.uri.pathSegments.isNotEmpty ? f.uri.pathSegments.last : 'upload',
+        );
+        req.files.add(filePart);
+      }
+    }
+
+    // Enviar
+    final streamed = await req.send();
+    final resp = await http.Response.fromStream(streamed);
+
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(
+        "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
+      );
+    }
+  }
 }

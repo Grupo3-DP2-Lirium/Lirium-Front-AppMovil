@@ -1,64 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_frontend/utils/file_url_helper.dart';
-
-class FileResponse {
-  final String idFile;
-  final String fileName;
-  final String originalFileName;
-  final String fileType; // "image" | "video" | "audio" | ...
-  final String mimeType;
-  final String fileUrl; // Ruta relativa desde el backend
-  final double fileSize;
-  final DateTime uploadedDate;
-
-  FileResponse({
-    required this.idFile,
-    required this.fileName,
-    required this.originalFileName,
-    required this.fileType,
-    required this.mimeType,
-    required this.fileUrl,
-    required this.fileSize,
-    required this.uploadedDate,
-  });
-
-  factory FileResponse.fromJson(Map<String, dynamic> j) => FileResponse(
-    idFile: j['idFile'],
-    fileName: j['fileName'],
-    originalFileName: j['originalFileName'],
-    fileType: j['fileType'],
-    mimeType: j['mimeType'],
-    fileUrl: j['fileUrl'],
-    fileSize: (j['fileSize'] as num).toDouble(),
-    uploadedDate: DateTime.parse(j['uploadedDate']),
-  );
-
-  //Obtiene la URL completa para descargar el archivo
-  String get downloadUrl {
-    // Si fileUrl ya es una URL completa de Azure, usarla directamente
-    if (fileUrl.startsWith('https://') || fileUrl.startsWith('http://')) {
-      return fileUrl;
-    }
-    
-    // Si no, usar el helper para construir URL local
-    return FileUrlHelper.getFileUrl(
-      fullPath: fileUrl,
-      fileName: fileName,
-    );
-  }
-
-  // Verifica si es una imagen
-  bool get isImage => FileUrlHelper.isImage(mimeType);
-
-  // Verifica si es un video
-  bool get isVideo => FileUrlHelper.isVideo(mimeType);
-
-  // Verifica si es audio
-  bool get isAudio => FileUrlHelper.isAudio(mimeType);
-
-  // btiene el icono apropiado
-  IconData get icon => FileUrlHelper.getFileIcon(mimeType);
-}
+import 'package:flutter_frontend/data/models/file_response.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
 
 
 class MemoryResponse {
@@ -136,8 +77,25 @@ class MemoryResponse {
     if (audios.isNotEmpty) types.add('audio');
     return types;
   }
-}
 
+  /// Convierte la respuesta del backend a la entidad `Memory`
+  Memory toEntity() {
+    return Memory(
+      id: idMemory,
+      type: type,
+      title: title,
+      description: description,
+      photoDate: photoDate,
+      location: location,
+      visible: visible,
+      tags: tags,
+      associatedQuestion: associatedQuestion,
+      files: files.map((f) => f.toEntity()).toList(),
+      totalUsedSpace: totalUsedSpace,
+      createdDate: createdDate,
+    );
+  }
+}
 
 // Un contenedor de paginación simple (solo lo que necesitamos)
 class PageMemoryResponse {
