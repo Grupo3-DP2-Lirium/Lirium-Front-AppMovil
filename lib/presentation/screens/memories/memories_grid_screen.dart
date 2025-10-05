@@ -20,7 +20,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   final _service = MemoryService();
   late Future<List<Memory>> _future;
 
-  // Fake memories como fallback
+  // Fake memories
   final List<Memory> fakeMemories = [
     // Pregunta & Respuesta
     Memory(
@@ -120,7 +120,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   @override
   void initState() {
     super.initState();
-    // Inicializamos el future con la llamada real
+    // Inicializamos el future
     _future = _service.listMemoriesByAuthor();
   }
 

@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/file_preview.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
+
 
 class MemoryContainer extends StatefulWidget {
   final Memory memory;
@@ -29,23 +33,44 @@ class MemoryContainer extends StatefulWidget {
 
 class _MemoryContainerState extends State<MemoryContainer> {
   late List<domain.File> _localFiles; // copia editable
+  final picker = ImagePicker();
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+
+  Future<void> _initRecorder() async {
+    await _recorder.openRecorder();
+  }
+
+  Future<bool> _checkMicrophonePermission() async {
+    var status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      status = await Permission.microphone.request();
+    }
+    return status.isGranted;
+  }
 
   @override
   void initState() {
     super.initState();
     _localFiles = List.from(widget.memory.files);
+    _initRecorder();
+  }
+
+
+  @override
+  void dispose() {
+    _recorder.closeRecorder();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final memory = widget.memory;
 
     // Caso: carta
     if (_localFiles.isEmpty) {
       return _buildQA();
     }
 
-    // Caso: archivo multimedia
+    // Caso: + archivo multimedia (videos/imagenes)
     if (_localFiles.isNotEmpty &&
         ["image", "video", "audio"].contains(_localFiles.first.type)) {
       final file = _localFiles.first;
@@ -73,12 +98,25 @@ class _MemoryContainerState extends State<MemoryContainer> {
   Widget _buildQA() => SingleChildScrollView(
     child: Column(
       children: [
+        if (widget.memory.associatedQuestion != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: AppTextField(
+              controller: TextEditingController(text: widget.memory.associatedQuestion),
+              enabled: false,
+              hintText: "Escribe la pregunta"
+            ),
+          ),
+
+        // Título editable
         AppTextField(
           hintText: "Escribe la pregunta",
           controller: widget.titleController,
           validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
         ),
         const SizedBox(height: 16),
+
+        // Descripción editable
         AppTextField(
           hintText: "Escribe la respuesta",
           controller: widget.descriptionController,
@@ -134,7 +172,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
         ),
       )
           : FilePreview(
-        key: ValueKey(url + DateTime.now().toString()), // ⚡ para forzar reconstrucción
+        key: ValueKey(url), // forzar reconstrucción
         type: type,
         url: url,
         onEdit: () => _editFile(context, type),
@@ -189,12 +227,25 @@ class _MemoryContainerState extends State<MemoryContainer> {
     padding: const EdgeInsets.all(16),
     child: Column(
       children: [
-        AppTextField(
-          hintText: "Escribe un título",
-          controller: widget.titleController,
-          validator: (v) => (v == null || v.isEmpty) ? "El título es obligatorio" : null,
-        ),
-        const SizedBox(height: 16),
+        if (widget.memory.associatedQuestion != null &&
+            widget.memory.associatedQuestion!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: AppTextField(
+              controller: TextEditingController(text: widget.memory.associatedQuestion),
+              enabled: false,
+              hintText: 'Pregunta Default',
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: AppTextField(
+              hintText: "Escribe un título",
+              controller: widget.titleController,
+              validator: (v) => (v == null || v.isEmpty) ? "El título es obligatorio" : null,
+            ),
+          ),
         AppTextField(
           hintText: "Escribe una descripción",
           maxLines: 10,
@@ -211,11 +262,10 @@ class _MemoryContainerState extends State<MemoryContainer> {
     final picked = await _pickFile(type, context);
     if (picked == null) return;
 
-    // ⚡ Espera a que el archivo exista
     final file = File(picked.path);
     final exists = await file.exists();
     if (!exists) {
-      print("Archivo todavía no existe: ${picked.path}");
+      //print("Archivo todavía no existe: ${picked.path}");
       return;
     }
 
@@ -230,21 +280,182 @@ class _MemoryContainerState extends State<MemoryContainer> {
       originalName: picked.name,
     );
 
-    // --- Todo listo, ahora actualizamos el estado de forma síncrona ---
     setState(() {
       if (index != null && index < _localFiles.length) {
+        // Actualizar archivo existente
         _localFiles[index] = newFile;
         widget.onFileChanged?.call("update", index, newFile);
+      } else if (type == "audio") {
+        // Si ya hay un audio, reemplazarlo
+        final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+        if (existingIndex != -1) {
+          _localFiles[existingIndex] = newFile;
+          widget.onFileChanged?.call("update", existingIndex, newFile);
+        } else {
+          // No hay audio previo, agregar
+          _localFiles.add(newFile);
+          widget.onFileChanged?.call("add", null, newFile);
+        }
       } else {
+        // Otros tipos (imagen/video) se agregan
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
       }
     });
+
   }
 
-  // ------------------- Selector de imagen/video -------------------
+  // ------------------- Selector de imagen/video/audio -------------------
   Future<XFile?> _pickFile(String type, BuildContext context) async {
     final picker = ImagePicker();
+
+    if (type == "audio") {
+      final hasPermission = await _checkMicrophonePermission();
+      if (!hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Permiso de micrófono denegado")),
+        );
+        return null;
+      }
+      XFile? recordedFile;
+      bool isRecording = false;
+      bool isPlaying = false;
+      Duration recordingDuration = Duration.zero;
+      Timer? _timer;
+      final FlutterSoundPlayer player = FlutterSoundPlayer();
+      await player.openPlayer();
+
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => SafeArea(
+          child: StatefulBuilder(
+            builder: (context, setModalState) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isRecording ? "Grabando..." : "Listo para grabar",
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Fila horizontal: Grabar | Reproducir (oculto si graba) | Tiempo
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Botón Grabar
+                      ElevatedButton.icon(
+                        icon: Icon(isRecording ? Icons.stop : Icons.mic),
+                        label: Text(isRecording ? "Detener" : "Grabar"),
+                        onPressed: () async {
+                          final tempDir = Directory.systemTemp;
+                          final filePath =
+                              '${tempDir.path}/recorded_${DateTime.now().millisecondsSinceEpoch}.aac';
+
+                          if (!isRecording) {
+                            recordedFile = XFile(filePath);
+                            recordingDuration = Duration.zero;
+
+                            await _recorder.startRecorder(
+                              toFile: filePath,
+                              codec: Codec.aacADTS,
+                            );
+
+                            _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+                              setModalState(() {
+                                recordingDuration += const Duration(seconds: 1);
+                              });
+                            });
+
+                            setModalState(() => isRecording = true);
+                          } else {
+                            await _recorder.stopRecorder();
+                            _timer?.cancel();
+                            _timer = null;
+                            setModalState(() => isRecording = false);
+                          }
+                        },
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      // Botón Reproducir (solo si hay audio y no se está grabando)
+                      if (recordedFile != null && !isRecording)
+                        ElevatedButton.icon(
+                          icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
+                          label: Text(isPlaying ? "Detener" : "Reproducir"),
+                          onPressed: () async {
+                            if (!isPlaying) {
+                              await player.startPlayer(
+                                fromURI: recordedFile!.path,
+                                codec: Codec.aacADTS,
+                                whenFinished: () {
+                                  setModalState(() => isPlaying = false);
+                                },
+                              );
+                              setModalState(() => isPlaying = true);
+                            } else {
+                              await player.stopPlayer();
+                              setModalState(() => isPlaying = false);
+                            }
+                          },
+                        ),
+
+                      const SizedBox(width: 16),
+
+                      // Tiempo
+                      Text(
+                        "${recordingDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:"
+                            "${recordingDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}",
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Línea divisoria
+                  Divider(
+                    thickness: 1.5,
+                    color: Colors.grey[400],
+                    indent: 20,
+                    endIndent: 20,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Botones Usar audio / Desechar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.check),
+                        label: const Text("Usar audio"),
+                        onPressed: () => Navigator.pop(context, recordedFile),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.delete),
+                        label: const Text("Desechar"),
+                        onPressed: () {
+                          recordedFile = null;
+                          Navigator.pop(context, null);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await player.closePlayer();
+      return recordedFile;
+    }
+      // --- Video / Imagen ---
     return showModalBottomSheet<XFile?>(
       context: context,
       builder: (context) => SafeArea(

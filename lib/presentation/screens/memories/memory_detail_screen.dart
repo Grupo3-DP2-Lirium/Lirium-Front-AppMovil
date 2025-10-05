@@ -25,7 +25,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
-  bool _addTags = false;
+  //bool _addTags = false;
   bool _isLoading = false;
 
   late Memory _originalMemory;
@@ -39,9 +39,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     super.initState();
     _originalMemory = widget.memory;
     _editableMemory = _originalMemory.copyWith();
-
     _existingFiles = List.from(_editableMemory.files);
-
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
   }
@@ -55,27 +53,11 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Services
-
   Future<void> _saveChanges() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
-      final memoryJson = {
-        "title": _titleController.text.trim(),
-        "description": _descriptionController.text.trim(),
-        "addTags": _addTags,
-      };
-
-      // Solo subimos los archivos nuevos (los locales)
-      final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
-
-      final updated = await _service.updateMemory(
-        memoryId: widget.memory.id,
-        memoryJson: memoryJson,
-        files: filesToUpload,
-      );
-
       // Actualizamos el modelo local
       final updatedMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
@@ -95,15 +77,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         ],
       );
 
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
-          ),
-              (route) => false,
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
+        ),
+      );
 
     } catch (e) {
       if (mounted) {
@@ -144,11 +123,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Implementar el método deleteMemory en tu MemoryService
-      // await _service.deleteMemory(
-      //   token: widget.jwt,
-      //   memoryId: widget.memory.idMemory,
-      // );
+      // Implementar el metodo de deleteMemory
 
       if (mounted) {
         Navigator.pop(context, true); // Indica que se eliminó la memoria
@@ -254,8 +229,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Switch con líneas arriba y abajo
-                  Container(
+                  // Switch IA tags
+                  /*Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: BooleanSelectorSwitch(
                       value: _addTags,
@@ -268,7 +243,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                       subtitle: 'Para poder clasificar mejor tu recuerdo',
                       withBackground: false,
                     ),
-                  ),
+                  ),*/
 
                   const SizedBox(height: 12), // espacio entre switch y botones
 
