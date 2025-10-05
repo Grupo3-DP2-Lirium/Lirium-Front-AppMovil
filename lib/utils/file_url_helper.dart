@@ -9,9 +9,16 @@ class FileUrlHelper {
 
   /// Construye la URL completa para descargar un archivo
   static String getFileUrl({
-    required String fullPath, // Ruta completa con el archivo
+    required String fullPath, // Ruta completa con el archivo o URL de Azure
     required String fileName,
   }) {
+    // Si ya es una URL completa de Azure o cualquier servicio en la nube, devolverla directamente
+    if (fullPath.startsWith('https://') || fullPath.startsWith('http://')) {
+      print('Using direct URL: $fullPath');
+      return fullPath;
+    }
+
+    // Si no, construir URL local para desarrollo
     // Separar la ruta del archivo
     String directoryPath = fullPath;
     if (fullPath.endsWith('\\$fileName')) {
@@ -28,7 +35,7 @@ class FileUrlHelper {
     print('Full Path: $fullPath');
     print('Directory: $directoryPath');
     print('FileName: $fileName');
-    print('Generated URL: $url');
+    print('Generated local URL: $url');
 
     return url;
   }
@@ -59,11 +66,19 @@ class FileUrlHelper {
 
 // Extensión para FileResponse
 extension FileResponseExtension on FileResponse {
-  /// Obtiene la URL completa del archivo
-  String get fullUrl => FileUrlHelper.getFileUrl(
-    fullPath: fileUrl,  // Cambié 'path' a 'fullPath'
-    fileName: fileName,
-  );
+  /// Obtiene la URL completa del archivo (usa la misma lógica que downloadUrl)
+  String get fullUrl {
+    // Si fileUrl ya es una URL completa de Azure, usarla directamente
+    if (fileUrl.startsWith('https://') || fileUrl.startsWith('http://')) {
+      return fileUrl;
+    }
+    
+    // Si no, usar el helper para construir URL local
+    return FileUrlHelper.getFileUrl(
+      fullPath: fileUrl,
+      fileName: fileName,
+    );
+  }
 
   /// Verifica si es una imagen
   bool get isImage => FileUrlHelper.isImage(mimeType);

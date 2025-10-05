@@ -35,6 +35,12 @@ class FileResponse {
 
   //Obtiene la URL completa para descargar el archivo
   String get downloadUrl {
+    // Si fileUrl ya es una URL completa de Azure, usarla directamente
+    if (fileUrl.startsWith('https://') || fileUrl.startsWith('http://')) {
+      return fileUrl;
+    }
+    
+    // Si no, usar el helper para construir URL local
     return FileUrlHelper.getFileUrl(
       fullPath: fileUrl,
       fileName: fileName,
