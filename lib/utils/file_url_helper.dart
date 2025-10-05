@@ -1,5 +1,6 @@
 // utils/file_url_helper.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 
 class FileUrlHelper {

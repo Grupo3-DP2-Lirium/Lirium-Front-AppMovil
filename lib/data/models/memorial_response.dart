@@ -14,7 +14,7 @@ class MemorialResponseModel {
   final String userId;
   final DateTime createdDate;
   final DateTime updatedDate;
-  final FileResponseModel? profilePhoto;
+  final FileResponse? profilePhoto;
 
   MemorialResponseModel({
     required this.idMemorial,
@@ -49,7 +49,7 @@ class MemorialResponseModel {
           ? DateTime.parse(json['updatedDate'])
           : DateTime.now(),
       profilePhoto: json['profilePhoto'] != null
-          ? FileResponseModel.fromJson(json['profilePhoto'])
+          ? FileResponse.fromJson(json['profilePhoto'])
           : null,
     );
   }
@@ -66,8 +66,7 @@ class MemorialResponseModel {
       isCollaborative: isCollaborative,
       isJournal: isJournal,
       createdDate: createdDate,
-      profilePhotoUrl: profilePhoto?.fileUrl,
-      profilePhotoBase64: profilePhoto?.fileContentBase64,
+      profilePhotoUrl: profilePhoto?.fileUrl
     );
   }
 

@@ -1,17 +1,20 @@
 // screens/memories/memory_detail_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
-import 'package:flutter_frontend/utils/file_url_helper.dart';
+import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_created_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../domain/entities/memory.dart';
+import '../../components/buttons/switch_button.dart';
 
 class MemoryDetailScreen extends StatefulWidget {
-  final MemoryResponse memory;
-  final String jwt;
+  final Memory memory;
 
   const MemoryDetailScreen({
     super.key,
     required this.memory,
-    required this.jwt,
   });
 
   @override
@@ -22,15 +25,23 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   final _service = MemoryService();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  bool _isEditing = false;
+
+  File? _tempFile;
+
+  bool _addTags = false;
   bool _isLoading = false;
+
+
+  late Memory _memory;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.memory.title);
-    _descriptionController = TextEditingController(text: widget.memory.description);
+    _memory = widget.memory;
+    _titleController = TextEditingController(text: _memory.title);
+    _descriptionController = TextEditingController(text: _memory.description);
   }
+
 
   @override
   void dispose() {
@@ -39,37 +50,60 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     super.dispose();
   }
 
-  String _formatDate(DateTime date) {
-    const meses = [
-      '', 'enero','febrero','marzo','abril','mayo','junio',
-      'julio','agosto','septiembre','octubre','noviembre','diciembre'
-    ];
-    return '${date.day} de ${meses[date.month]} de ${date.year}';
-  }
-
+  // Services
   Future<void> _saveChanges() async {
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Implementar el método updateMemory en tu MemoryService
-      // await _service.updateMemory(
-      //   token: widget.jwt,
-      //   memoryId: widget.memory.idMemory,
-      //   title: _titleController.text.trim(),
-      //   description: _descriptionController.text.trim(),
-      // );
+      // Construir el JSON que espera el backend
+      final memoryJson = {
+        "title": _titleController.text.trim(),
+        "description": _descriptionController.text.trim(),
+        "addTags": _addTags,
+      };
 
-      setState(() => _isEditing = false);
+      // Llamar al servicio de actualización con archivo si existe
+      final updated = await _service.updateMemory(
+        memoryId: widget.memory.id,
+        memoryJson: memoryJson,
+        // files: _tempFile != null ? [_tempFile!] : null,
+      );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Memoria actualizada correctamente'),
-            backgroundColor: Colors.green,
-          ),
+        // Redirigir al grid de memorias y eliminar pantallas anteriores
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => MemoryCreatedScreen(memory: _memory,)),
+              (route) => false,
         );
+
+        // Si quieres, también puedes actualizar memoria local aquí
+        /*
+      setState(() {
+        widget.memory = widget.memory.copyWith(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          files: _tempFile != null
+              ? [
+                  File(
+                    id: widget.memory.files.isNotEmpty
+                        ? widget.memory.files.first.id
+                        : '',
+                    url: _tempFile!.path,
+                    name: _tempFile!.name,
+                    type: _tempFile!.type,
+                    mimeType: _tempFile!.mimeType,
+                    size: _tempFile!.size,
+                    uploadedDate: _tempFile!.uploadedDate,
+                    originalName: _tempFile!.originalName,
+                  )
+                ]
+              : widget.memory.files,
+        );
+      });
+      */
       }
     } catch (e) {
       if (mounted) {
@@ -133,246 +167,123 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     }
   }
 
-  Widget _buildMediaGrid() {
-    final mediaFiles = widget.memory.files;
-
-    if (mediaFiles.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          'Archivos (${mediaFiles.length})',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 1.2,
-          ),
-          itemCount: mediaFiles.length,
-          itemBuilder: (context, index) {
-            final file = mediaFiles[index];
-
-            return Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey.shade200,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: file.isImage
-                    ? _buildImageWidget(file)
-                    : _buildNonImageWidget(file),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImageWidget(FileResponse file) {
-    return Image.network(
-      file.fullUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.image_not_supported,
-            color: Colors.grey.shade400,
-            size: 40,
-          ),
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNonImageWidget(FileResponse file) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            file.icon,
-            size: 40,
-            color: Colors.grey.shade600,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            file.originalFileName,
-            style: const TextStyle(fontSize: 12),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    final memory = widget.memory;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+      ),
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.04,
+          vertical: screenHeight * 0.02,
         ),
-        actions: [
-          if (!_isEditing) ...[
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'delete') _deleteMemory();
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Eliminar', style: TextStyle(color: Colors.red)),
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Título + botón eliminar (adaptable)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: AppTitle(title: "Vista previa"),
+                  ),
+                ),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: PrimaryButton(
+                    onPressed: _deleteMemory,
+                    icon: Icons.delete,
+                    text: "Eliminar",
+                    isFullWidth: false,
                   ),
                 ),
               ],
             ),
-          ] else ...[
-            TextButton(
-              onPressed: () {
-                setState(() => _isEditing = false);
-                _titleController.text = widget.memory.title;
-                _descriptionController.text = widget.memory.description;
-              },
-              child: const Text('Cancelar'),
+
+            SizedBox(height: screenHeight * 0.02),
+            Expanded(
+              child: SingleChildScrollView(
+                child: MemoryContainer(
+                  memory: memory,
+                  titleController: _titleController,
+                  descriptionController: _descriptionController,
+                  screenHeight: screenHeight,
+                  currentFile: _tempFile,
+                  onFileChanged: (newFile) {
+                    if (newFile != null) {
+                      setState(() {
+                        _tempFile = newFile;
+                      });
+                    }
+                  },
+                ),
+              ),
             ),
-            TextButton(
-              onPressed: _isLoading ? null : _saveChanges,
-              child: _isLoading
-                  ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-                  : const Text('Guardar'),
-            ),
-          ],
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Fecha de creación
+
+            SizedBox(height: screenHeight * 0.02),
+
+            // Footer fijo abajo con switch encima
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _formatDate(widget.memory.photoDate ?? widget.memory.createdDate),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w500,
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AppColors.inactive, width: 1), // línea arriba del footer
                 ),
+                color: Colors.white,
               ),
-            ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Switch con líneas arriba y abajo
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: BooleanSelectorSwitch(
+                      value: _addTags,
+                      onChanged: (val) {
+                        setState(() {
+                          _addTags = val;
+                        });
+                      },
+                      label: 'Agregar etiquetas de IA',
+                      subtitle: 'Para poder clasificar mejor tu recuerdo',
+                      withBackground: false,
+                    ),
+                  ),
 
-            const SizedBox(height: 16),
+                  const SizedBox(height: 12), // espacio entre switch y botones
 
-            // Título
-            if (_isEditing) ...[
-              TextField(
-                controller: _titleController,
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Título de la memoria...',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
+                  // Botones del footer
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          text: "Cancelar",
+                          isOutlined: true,
+                          textColor: AppColors.primary,
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.04),
+                      Expanded(
+                        child: PrimaryButton(
+                          text: "Guardar",
+                          onPressed: _saveChanges,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ] else ...[
-              Text(
-                widget.memory.title.isEmpty ? 'Sin título' : widget.memory.title,
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: widget.memory.title.isEmpty ? Colors.grey : Colors.black87,
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 16),
-
-            // Descripción
-            if (_isEditing) ...[
-              TextField(
-                controller: _descriptionController,
-                style: textTheme.bodyLarge?.copyWith(height: 1.5),
-                decoration: const InputDecoration(
-                  hintText: 'Escribe tu reflexión aquí...',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: null,
-                minLines: 8,
-              ),
-            ] else ...[
-              Text(
-                widget.memory.description.isEmpty
-                    ? 'Sin descripción'
-                    : widget.memory.description,
-                style: textTheme.bodyLarge?.copyWith(
-                  height: 1.5,
-                  color: widget.memory.description.isEmpty ? Colors.grey : Colors.black87,
-                ),
-              ),
-            ],
-
-            // Imágenes
-            _buildMediaGrid(),
-
-            const SizedBox(height: 24),
+            )
           ],
         ),
       ),
