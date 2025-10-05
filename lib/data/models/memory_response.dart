@@ -1,6 +1,7 @@
 import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 
+
 class MemoryResponse {
   final String idMemory;
   final String type;
@@ -77,6 +78,7 @@ class MemoryResponse {
     return types;
   }
 
+  /// Convierte la respuesta del backend a la entidad `Memory`
   Memory toEntity() {
     return Memory(
       id: idMemory,

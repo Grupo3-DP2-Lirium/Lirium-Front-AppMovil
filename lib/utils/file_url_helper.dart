@@ -10,9 +10,16 @@ class FileUrlHelper {
 
   /// Construye la URL completa para descargar un archivo
   static String getFileUrl({
-    required String fullPath, // Ruta completa con el archivo
+    required String fullPath, // Ruta completa con el archivo o URL de Azure
     required String fileName,
   }) {
+    // Si ya es una URL completa de Azure o cualquier servicio en la nube, devolverla directamente
+    if (fullPath.startsWith('https://') || fullPath.startsWith('http://')) {
+      print('Using direct URL: $fullPath');
+      return fullPath;
+    }
+
+    // Si no, construir URL local para desarrollo
     // Separar la ruta del archivo
     String directoryPath = fullPath;
     if (fullPath.endsWith('\\$fileName')) {
@@ -29,7 +36,7 @@ class FileUrlHelper {
     print('Full Path: $fullPath');
     print('Directory: $directoryPath');
     print('FileName: $fileName');
-    print('Generated URL: $url');
+    print('Generated local URL: $url');
 
     return url;
   }
@@ -58,26 +65,7 @@ class FileUrlHelper {
   }
 }
 
-// Extensión para FileResponse
-extension FileResponseExtension on FileResponse {
-  /// Obtiene la URL completa del archivo
-  String get fullUrl => FileUrlHelper.getFileUrl(
-    fullPath: fileUrl,  // Cambié 'path' a 'fullPath'
-    fileName: fileName,
-  );
 
-  /// Verifica si es una imagen
-  bool get isImage => FileUrlHelper.isImage(mimeType);
-
-  /// Verifica si es un video
-  bool get isVideo => FileUrlHelper.isVideo(mimeType);
-
-  /// Verifica si es audio
-  bool get isAudio => FileUrlHelper.isAudio(mimeType);
-
-  /// Obtiene el icono apropiado
-  IconData get icon => FileUrlHelper.getFileIcon(mimeType);
-}
 
 // Extensión para MemoryResponse
 extension MemoryResponseExtension on MemoryResponse {
@@ -100,7 +88,7 @@ extension MemoryResponseExtension on MemoryResponse {
   }
 
   /// URL de la primera imagen (para thumbnail)
-  String? get firstImageUrl => firstImage?.fullUrl;
+  String? get firstImageUrl => firstImage?.downloadUrl;
 
   /// Cuenta total de archivos multimedia
   int get mediaCount => images.length + videos.length + audios.length;

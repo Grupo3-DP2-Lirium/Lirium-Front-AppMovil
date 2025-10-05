@@ -64,7 +64,7 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
 
             // Segunda fila
             Text(
-              "¿Qué vas a hacer hoy?",
+              "¿No sabes cómo comenzar?",
               style: Theme.of(context).textTheme.headlineLarge,
               textAlign: TextAlign.center,
             ),
