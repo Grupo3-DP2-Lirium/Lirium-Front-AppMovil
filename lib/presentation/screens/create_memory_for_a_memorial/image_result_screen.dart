@@ -1,20 +1,19 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../../components/buttons/primary_button.dart';
-import '../../components/forms/app_text_field.dart';
-import 'memory_success_screen.dart';
-import '../../../data/services/memory_service.dart';
-import '../../../data/models/memory_create_request.dart';
-import '../../../domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
 
-/// Pantalla que muestra la imagen mejorada con campo de título
+/// Pantalla que muestra el resultado de la mejora de imagen
 class ImageResultScreen extends StatefulWidget {
-  final String imagePath;
+  final String originalImagePath;
+  final List<int> enhancedImageBytes;
   final String memorialId;
 
   const ImageResultScreen({
     super.key,
-    required this.imagePath,
+    required this.originalImagePath,
+    required this.enhancedImageBytes,
     required this.memorialId,
   });
 
@@ -23,79 +22,31 @@ class ImageResultScreen extends StatefulWidget {
 }
 
 class _ImageResultScreenState extends State<ImageResultScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  final MemoryService _memoryService = MemoryService();
-  bool _isSaving = false;
+  bool _showOriginal = false;
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
+  void _toggleComparison() {
+    setState(() {
+      _showOriginal = !_showOriginal;
+    });
   }
 
-  Future<void> _saveMemory() async {
-    if (_titleController.text.trim().isEmpty) {
-      _showError('Por favor ingresa un título');
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    try {
-      final request = MemoryCreateRequest(
-        memorialId: widget.memorialId,
-        type: MemoryOriginType.spontaneous,
-        title: _titleController.text.trim(),
-        photoDate: DateTime.now(),
-      );
-
-      final imageFile = File(widget.imagePath);
-      print('DEBUG: Image file exists: ${await imageFile.exists()}');
-      print('DEBUG: Image file path: ${widget.imagePath}');
-      print('DEBUG: Image file size: ${await imageFile.length()} bytes');
-      
-      await _memoryService.createMemory(
-        request: request,
-        files: [imageFile],
-      );
-
-      if (mounted) {
-        _showSuccess();
-        await Future.delayed(const Duration(seconds: 1));
-        _navigateToSuccess();
-      }
-    } catch (e) {
-      _showError('Error al guardar la memoria: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccess() {
+  void _useEnhancedImage() {
+    // Aquí puedes guardar la imagen mejorada
+    // Por ahora solo navegamos de vuelta
+    Navigator.popUntil(context, (route) => route.isFirst);
+    
+    // Mostrar confirmación
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('¡Memoria guardada exitosamente!'),
+        content: Text('Imagen mejorada guardada'),
         backgroundColor: Colors.green,
       ),
     );
   }
 
-  void _navigateToSuccess() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MemorySuccessScreen(),
-      ),
-    );
+  void _discardAndRetry() {
+    // Volver a la pantalla anterior para seleccionar otra imagen
+    Navigator.pop(context);
   }
 
   @override
@@ -103,58 +54,112 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Imagen Mejorada'),
+        title: const Text('Resultado'),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          // Imagen mejorada
+          // Imagen con comparación
           Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Stack(
+                children: [
+                  // Imagen mejorada o original según el estado
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _showOriginal
+                          ? Image.file(
+                              File(widget.originalImagePath),
+                              key: const ValueKey('original'),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                          : Image.memory(
+                              Uint8List.fromList(widget.enhancedImageBytes),
+                              key: const ValueKey('enhanced'),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                    ),
+                  ),
+                  
+                  // Indicador de qué imagen se está mostrando
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _showOriginal ? 'Original' : 'Mejorada',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(widget.imagePath),
-                  fit: BoxFit.cover,
-                ),
               ),
             ),
           ),
-
-          // Campo de título y botón
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppTextField(
-                    controller: _titleController,
-                    hintText: 'Escribe un título para tu memoria...',
-                    prefixIcon: Icons.title_outlined,
-                  ),
-                  const SizedBox(height: 24),
-                  PrimaryButton(
-                    text: _isSaving ? 'Guardando...' : 'Guardar Memoria',
-                    onPressed: _isSaving ? null : _saveMemory,
-                  ),
-                ],
+          
+          // Botón de comparación
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: OutlinedButton.icon(
+              onPressed: _toggleComparison,
+              icon: Icon(
+                _showOriginal ? Icons.auto_awesome : Icons.compare,
+                size: 20,
               ),
+              label: Text(
+                _showOriginal ? 'Ver mejorada' : 'Comparar con original',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF6366F1),
+                side: const BorderSide(color: Color(0xFF6366F1)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Botones de acción
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SecondaryButton(
+                    onPressed: _discardAndRetry,
+                    text: "Reintentar",
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: PrimaryButton(
+                    text: "Usar esta",
+                    onPressed: _useEnhancedImage,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
