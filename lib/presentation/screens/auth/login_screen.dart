@@ -25,6 +25,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadLastEmail();
+  }
+
+  Future<void> _loadLastEmail() async {
+    final lastEmail = await storage.getLastEmail();
+    if (lastEmail != null && lastEmail.isNotEmpty) {
+      setState(() {
+        _emailController.text = lastEmail;
+      });
+    }
+  }
+
   // Función para hacer login con el backend
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -60,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         httpService.setToken(access);                 // usa el token en el HttpService
         await storage.save(access: access, refresh: refresh); // persiste seguro
+        await storage.saveLastEmail(_emailController.text); // guarda el correo
 
         _showMessage('¡Login exitoso!');
 
@@ -225,3 +241,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 }
+
+// En AuthStorage, agrega los métodos para guardar y obtener el correo
+// Ejemplo:
+// Future<void> saveLastEmail(String email) async {
+//   final prefs = await SharedPreferences.getInstance();
+//   await prefs.setString('last_email', email);
+// }
+// Future<String?> getLastEmail() async {
+//   final prefs = await SharedPreferences.getInstance();
+//   return prefs.getString('last_email');
+// }
