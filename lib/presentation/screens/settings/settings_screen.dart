@@ -42,16 +42,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       try {
-        // Cerrar sesión usando AuthService
+        // 1) Obtener el correo del usuario autenticado desde el token
+        final user = await _authService.getCurrentUser();
+        String? currentEmail;
+        if (user != null) {
+          // Intentar con claves comunes del payload
+          currentEmail = (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])?.toString();
+        }
+        // Si no se pudo leer del token, usar el último guardado como fallback
+        currentEmail ??= await _authStorage.getLastEmail();
+
+        // 2) Cerrar sesión en backend/servicios
         await _authService.logout();
-        
-        // También limpiar AuthStorage por seguridad
+
+        // 3) Limpiar tokens/refresh (se borrará last_email también)
         await _authStorage.clear();
+
+        // 4) Guardar el correo como último email DESPUÉS de cerrar sesión y limpiar
+        if (currentEmail != null && currentEmail.isNotEmpty) {
+          await _authStorage.saveLastEmail(currentEmail);
+        }
 
         if (mounted) {
           // Navegar al LoginScreen y limpiar toda la pila de navegación
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            MaterialPageRoute(builder: (context) => LoginScreen(initialEmail: currentEmail)),
             (route) => false,
           );
         }

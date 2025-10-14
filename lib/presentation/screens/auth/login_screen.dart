@@ -10,7 +10,9 @@ import 'register_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.initialEmail});
+
+  final String? initialEmail;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -24,6 +26,26 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _emailController.text = widget.initialEmail!;
+    } else {
+      _loadLastEmail();
+    }
+  }
+
+  Future<void> _loadLastEmail() async {
+    final lastEmail = await storage.getLastEmail();
+    if (!mounted) return;
+    if (lastEmail != null && lastEmail.isNotEmpty) {
+      setState(() {
+        _emailController.text = lastEmail;
+      });
+    }
+  }
 
   // Función para hacer login con el backend
   Future<void> _login() async {
@@ -60,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         httpService.setToken(access);                 // usa el token en el HttpService
         await storage.save(access: access, refresh: refresh); // persiste seguro
+        await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
 
         _showMessage('¡Login exitoso!');
 
@@ -141,6 +164,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: Icons.email_outlined,
+                onChanged: (value) {
+                  // Guardar el último correo en tiempo real
+                  storage.saveLastEmail(value);
+                },
               ),
               const SizedBox(height: 16),
               // Password field
