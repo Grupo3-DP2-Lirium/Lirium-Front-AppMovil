@@ -16,6 +16,8 @@ class MemoryContainer extends StatefulWidget {
   final TextEditingController titleController;
   final TextEditingController descriptionController;
   final double screenHeight;
+  final bool edit;
+  final List<domain.File>? existingFiles;
   final void Function(String action, [int? index, domain.File? file])? onFileChanged;
 
   const MemoryContainer({
@@ -24,7 +26,9 @@ class MemoryContainer extends StatefulWidget {
     required this.titleController,
     required this.descriptionController,
     required this.screenHeight,
+    this.edit = false,
     this.onFileChanged,
+    this.existingFiles,
   });
 
   @override
@@ -35,6 +39,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
   late List<domain.File> _localFiles; // copia editable
   final picker = ImagePicker();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  int _currentFileIndex = 0;
 
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
@@ -51,10 +56,21 @@ class _MemoryContainerState extends State<MemoryContainer> {
   @override
   void initState() {
     super.initState();
-    _localFiles = List.from(widget.memory.files);
+    _localFiles = List.from(widget.existingFiles ?? []);
     _initRecorder();
   }
 
+  // Detectar cambios en existingFiles
+  @override
+  void didUpdateWidget(covariant MemoryContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.existingFiles != widget.existingFiles) {
+      setState(() {
+        _localFiles = List.from(widget.existingFiles ?? []);
+        _currentFileIndex = 0;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -91,7 +107,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
       );
     }
 
-    return const Text("⚠️ Tipo de memoria no soportado");
+    return const Text("Tipo de memoria no soportado");
   }
 
   // ------------------- Pregunta / Respuesta -------------------
@@ -104,7 +120,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
             child: AppTextField(
               controller: TextEditingController(text: widget.memory.associatedQuestion),
               enabled: false,
-              hintText: "Escribe la pregunta"
+              hintText: "Escribe la pregunta",
             ),
           ),
 
@@ -112,6 +128,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
         AppTextField(
           hintText: "Escribe la pregunta",
           controller: widget.titleController,
+          enabled: widget.edit,
           validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
         ),
         const SizedBox(height: 16),
@@ -120,64 +137,164 @@ class _MemoryContainerState extends State<MemoryContainer> {
         AppTextField(
           hintText: "Escribe la respuesta",
           controller: widget.descriptionController,
-          maxLines: 3,
+          enabled: widget.edit,
+          maxLines: 20,
           validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
         ),
       ],
     ),
   );
 
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text("Añadir imagen"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addFile(context, "image");
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam),
+                title: const Text("Añadir video"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addFile(context, "video");
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // ------------------- Vista previa -------------------
   Widget _buildPreview(String type, String url, double height, BuildContext context) {
-    final multiple = _localFiles.length > 1; // ⚡ todos los archivos, no solo imágenes
+    final multiple = _localFiles.length > 1;
 
     return Container(
       height: height,
       width: double.infinity,
       alignment: Alignment.center,
-      child: multiple
-          ? ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: PageView.builder(
-          itemCount: _localFiles.length,
-          itemBuilder: (context, index) {
-            final file = _localFiles[index];
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                FilePreview(
-                  key: ValueKey(file.url),
-                  type: file.type,
-                  url: file.url,
-                  onEdit: () => _editFile(context, file.type, index: index),
-                ),
-                Positioned(
-                  bottom: 8,
-                  right: 8,
+      child: _localFiles.isEmpty
+          ? Center(
+        child: OutlinedButton.icon(
+          onPressed: () => _showAddOptions(context),
+          icon: const Icon(Icons.add, color: Colors.black87),
+          label: const Text(
+            "Añadir imágenes o videos",
+            style: TextStyle(color: Colors.black87),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.grey),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      )
+          : Stack(
+        fit: StackFit.expand,
+        children: [
+          // Carrusel de archivos
+          PageView.builder(
+            itemCount: _localFiles.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentFileIndex = index; // variable que controla el archivo actual
+              });
+            },
+            itemBuilder: (context, index) {
+              final file = _localFiles[index];
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: FilePreview(
+                      key: ValueKey(file.url),
+                      type: file.type,
+                      url: file.url,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          if (widget.edit)
+            // Botón eliminar (top-right)
+            for (int i = 0; i < _localFiles.length; i++)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => _deleteFile(i),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black54,
-                      borderRadius: BorderRadius.circular(12),
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      "${index + 1}/${_localFiles.length}",
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+
+            // Contador (bottom-right)
+            if (multiple)
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "${_currentFileIndex + 1}/${_localFiles.length}",
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ),
+
+          if (widget.edit)
+          // Botón flotante centrado abajo (igual que antes)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddOptions(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Añadir imágenes o videos"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.85),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
-      )
-          : FilePreview(
-        key: ValueKey(url), // forzar reconstrucción
-        type: type,
-        url: url,
-        onEdit: () => _editFile(context, type),
-      ),
-    );
+      );
   }
 
   // ------------------- Metadata -------------------
@@ -243,6 +360,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
             child: AppTextField(
               hintText: "Escribe un título",
               controller: widget.titleController,
+              enabled: widget.edit,
               validator: (v) => (v == null || v.isEmpty) ? "El título es obligatorio" : null,
             ),
           ),
@@ -250,12 +368,61 @@ class _MemoryContainerState extends State<MemoryContainer> {
           hintText: "Escribe una descripción",
           maxLines: 10,
           controller: widget.descriptionController,
+          enabled: widget.edit,
           validator: (v) =>
           (v == null || v.isEmpty) ? "La descripción es obligatoria" : null,
         ),
       ],
     ),
   );
+
+  // ------------------- Eliminar archivo -------------------
+  Future<void> _deleteFile(int index) async {
+    if (index < 0 || index >= _localFiles.length) return;
+
+    final removedFile = _localFiles[index];
+
+    setState(() {
+      _localFiles.removeAt(index);
+      widget.onFileChanged?.call("delete", index, removedFile);
+    });
+  }
+
+  // ------------------- Agregar archivo -------------------
+  Future<void> _addFile(BuildContext context, String type) async {
+    final picked = await _pickFile(type, context);
+    if (picked == null) return;
+
+    final file = File(picked.path);
+    if (!await file.exists()) return;
+
+    final newFile = domain.File(
+      id: "",
+      url: picked.path,
+      name: picked.name,
+      type: type,
+      mimeType: _guessMimeType(picked.path),
+      size: (await picked.length()).toDouble(),
+      uploadedDate: DateTime.now(),
+      originalName: picked.name,
+    );
+
+    setState(() {
+      // Si es audio y ya existe uno, reemplázalo
+      if (type == "audio") {
+        final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+        if (existingIndex != -1) {
+          _localFiles[existingIndex] = newFile;
+          widget.onFileChanged?.call("update", existingIndex, newFile);
+          return;
+        }
+      }
+
+      // Si no, agregarlo normalmente
+      _localFiles.add(newFile);
+      widget.onFileChanged?.call("add", null, newFile);
+    });
+  }
 
   // ------------------- Editar archivo -------------------
   Future<void> _editFile(BuildContext context, String type, {int? index}) async {

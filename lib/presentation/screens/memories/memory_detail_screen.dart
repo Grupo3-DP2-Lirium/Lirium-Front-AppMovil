@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_created_screen.dart';
 import '../../../domain/entities/memory.dart';
-import '../../components/buttons/switch_button.dart';
 import 'dart:io' as io;
 
+// Modes: view, edit or create
+enum MemoryMode { view, edit}
+
 class MemoryDetailScreen extends StatefulWidget {
-  final Memory memory;
+  final Memory? memory;
+  final MemoryMode mode;
 
   const MemoryDetailScreen({
     super.key,
     required this.memory,
+    this.mode = MemoryMode.view, // Default mode is view
   });
 
   @override
@@ -25,21 +30,70 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
-  bool _addTags = false;
   bool _isLoading = false;
-
   late Memory _originalMemory;
   late Memory _editableMemory;
 
   List<File> _existingFiles = [];
-  List<io.File> _newFiles = [];
-  List<File> _deletedFiles = [];
+  final List<io.File> _newFiles = [];
+  final List<File> _deletedFiles = [];
+
+  final bool _addTags = false;
+
+  late MemoryMode _mode;
+  void _switchToEditMode() {
+    setState(() {
+      _mode = MemoryMode.edit;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _mode = MemoryMode.view;
+
+      // Restaurar memoria editable al original
+      _editableMemory = _originalMemory.copyWith();
+
+      // Restaurar los archivos existentes al MemoryContainer
+      _existingFiles = List.from(_originalMemory.files);
+
+      // Limpiar archivos nuevos y eliminados
+      _newFiles.clear();
+      _deletedFiles.clear();
+
+      // Restaurar controladores de texto
+      _titleController.text = _originalMemory.title ?? "";
+      _descriptionController.text = _originalMemory.description ?? "";
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _originalMemory = widget.memory;
-    _editableMemory = _originalMemory.copyWith();
+    _mode = widget.mode;
+    if (widget.memory != null) {
+      // Edit / view existing memory
+      _originalMemory = widget.memory!;
+      _editableMemory = _originalMemory.copyWith();
+    } else {
+      // Create new memory
+      _originalMemory = Memory(
+        id: "",
+        type: "default",
+        title: "",
+        description: "",
+        photoDate: null,
+        location: null,
+        visible: true,
+        tags: [],
+        associatedQuestion: null,
+        files: [],
+        totalUsedSpace: 0,
+        createdDate: DateTime.now(),
+      );
+      _editableMemory = _originalMemory.copyWith();
+    }
+
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
@@ -53,6 +107,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Services
+  // Save changes (Edit mode)
   Future<void> _saveChanges() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
@@ -72,33 +127,16 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
       print('Files to delete: $filesToDelete');
 
-      // Llamada al servicio
       await _service.updateMemory(
-        memoryId: widget.memory.id,
+        memoryId: widget.memory!.id,
         memoryJson: memoryJson,
         files: filesToUpload,
         filesToDelete: filesToDelete,
       );
 
-      // Actualizamos modelo local
       final updatedMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
-        files: [
-          // Archivos que quedan
-          ..._editableMemory.files.where((f) => !_newFiles.any((nf) => nf.path == f.url)),
-          // Archivos nuevos
-          ..._newFiles.map((f) => File(
-            id: '', // backend asignará
-            url: f.path,
-            name: f.path.split('/').last,
-            type: 'local',
-            mimeType: '',
-            size: 0,
-            uploadedDate: DateTime.now(),
-            originalName: f.path.split('/').last,
-          )),
-        ],
       );
 
       if (mounted) {
@@ -114,7 +152,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al actualizar: $e'),
+            content: Text('Error updating memory: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -124,6 +162,44 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     }
   }
 
+  // Create a new memory (Create mode)
+  /*Future<void> _createMemory() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    try {
+      /*final memoryJson = {
+        "title": _titleController.text.trim(),
+        "description": _descriptionController.text.trim(),
+        "addTags": _addTags,
+      };*/
+
+      //final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+
+      // IMPLEMENTAR
+      /*await _service.createMemory(
+        memoryJson: memoryJson,
+        files: filesToUpload,
+      );*/
+
+      if (mounted) {
+        Navigator.pop(context, true); // Go back to list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating memory: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }*/
+
+  // Delete memory (View mode)
   Future<void> _deleteMemory() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -170,16 +246,17 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final memory = widget.memory;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    final bool isEditMode = _mode == MemoryMode.edit;
+
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-      ),
       backgroundColor: Colors.white,
+      appBar: CustomMemoryAppBar(
+        title: isEditMode ? "Vista Previa" : "Recuerdo",
+        onBack: () => Navigator.pop(context),
+      ),
       body: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: screenWidth * 0.04,
@@ -188,121 +265,135 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Título + botón eliminar (adaptable)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: AppTitle(title: "Vista previa"),
-                  ),
+            if (!isEditMode)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Yo",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          "${_editableMemory.createdDate.day.toString().padLeft(2, '0')}/${_editableMemory.createdDate.month.toString().padLeft(2, '0')}/${_editableMemory.createdDate.year}",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        if (value == "edit") {
+                          _switchToEditMode();
+                        } else if (value == "delete") {
+                          _deleteMemory();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: "edit",
+                          child: Row(
+                            children: const [
+                              Icon(Icons.edit, color: Colors.black),
+                              SizedBox(width: 8),
+                              Text("Editar", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: "delete",
+                          child: Row(
+                            children: const [
+                              Icon(Icons.delete, color: Colors.black),
+                              SizedBox(width: 8),
+                              Text("Eliminar", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: PrimaryButton(
-                    onPressed: _deleteMemory,
-                    icon: Icons.delete,
-                    text: "Eliminar",
-                    isFullWidth: false,
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: screenHeight * 0.02),
+              ),
+            // Contenido de una Memoria
             Expanded(
               child: SingleChildScrollView(
                 child: MemoryContainer(
-                  memory: memory,
+                  edit: isEditMode,
+                  existingFiles: _existingFiles,
+                  memory: _editableMemory,
                   titleController: _titleController,
                   descriptionController: _descriptionController,
                   screenHeight: screenHeight,
-                  onFileChanged: (action, [index, file]) async {
-                    if (file != null) {
-                      final localPath = file.url;
-                      if (localPath != null && localPath.isNotEmpty) {
-                        final ioFile = io.File(localPath);
-                        setState(() {
-                          if (action == "add") {
-                            // Nuevo archivo agregado
-                            _newFiles.add(ioFile);
-                          } else if (action == "update" && index != null) {
-                            // Archivo existente reemplazado → agregarlo a eliminados
-                            final replacedFile = _editableMemory.files[index];
-                            if (_existingFiles.contains(replacedFile)) {
-                              _deletedFiles.add(replacedFile);
-                            }
-                            // Actualizar el archivo nuevo en la lista
-                            if (index < _newFiles.length) {
-                              _newFiles[index] = ioFile;
-                            } else {
-                              _newFiles.add(ioFile);
-                            }
-                          }
-                        });
+                  onFileChanged: (action, [index, file]) {
+                    if (action == "add" && file != null) {
+                      setState(() => _newFiles.add(io.File(file.url)));
+                    } else if (action == "update" && index != null && file != null) {
+                      final ioFile = io.File(file.url);
+                      if (index < _newFiles.length) {
+                        setState(() => _newFiles[index] = ioFile);
+                      } else {
+                        setState(() => _newFiles.add(ioFile));
                       }
+                    } else if (action == "delete" && index != null) {
+                      final deletedFile = _existingFiles[index];
+                      setState(() {
+                        _deletedFiles.add(deletedFile);
+                        _existingFiles.removeAt(index);
+                      });
                     }
                   },
                 ),
               ),
             ),
 
-            SizedBox(height: screenHeight * 0.02),
-
-            // Footer fijo abajo con switch encima
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.inactive, width: 1), // línea arriba del footer
-                ),
-                color: Colors.white,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Switch IA tags
-                  /*Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: BooleanSelectorSwitch(
-                      value: _addTags,
-                      onChanged: (val) {
-                        setState(() {
-                          _addTags = val;
-                        });
-                      },
-                      label: 'Agregar etiquetas de IA',
-                      subtitle: 'Para poder clasificar mejor tu recuerdo',
-                      withBackground: false,
-                    ),
-                  ),*/
-
-                  const SizedBox(height: 12), // espacio entre switch y botones
-
-                  // Botones del footer
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SecondaryButton(
-                          text: "Cancelar",
-                          isOutlined: true,
-                          textColor: AppColors.primary,
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ),
-                      SizedBox(width: screenWidth * 0.04),
-                      Expanded(
-                        child: PrimaryButton(
-                          text: "Guardar",
-                          onPressed: _saveChanges,
-                        ),
-                      ),
-                    ],
+            // Botones en modo edición
+            if (isEditMode)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.inactive, width: 1),
                   ),
-                ],
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            text: "Cancelar",
+                            isOutlined: true,
+                            textColor: AppColors.primary,
+                            onPressed: _cancelEdit,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.04),
+                        Expanded(
+                          child: PrimaryButton(
+                            text: "Guardar",
+                            onPressed: _saveChanges,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            )
           ],
         ),
       ),
