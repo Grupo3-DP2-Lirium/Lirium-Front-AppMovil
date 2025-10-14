@@ -346,11 +346,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                       } else {
                         setState(() => _newFiles.add(ioFile));
                       }
-                    } else if (action == "delete" && index != null) {
-                      final deletedFile = _existingFiles[index];
+                    } else if (action == "delete" && index != null && file != null) {
+                      final isExisting = file.id.isNotEmpty;
                       setState(() {
-                        _deletedFiles.add(deletedFile);
-                        _existingFiles.removeAt(index);
+                        if (isExisting) {
+                          _deletedFiles.add(file);
+                          _existingFiles.removeWhere((f) => f.id == file.id);
+                        } else {
+                          _newFiles.removeWhere((f) => f.path == file.url);
+                        }
                       });
                     }
                   },

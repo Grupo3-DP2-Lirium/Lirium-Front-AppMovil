@@ -234,23 +234,21 @@ class _MemoryContainerState extends State<MemoryContainer> {
           ),
 
           if (widget.edit)
-            // Botón eliminar (top-right)
-            for (int i = 0; i < _localFiles.length; i++)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () => _deleteFile(i),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => _deleteFile(_currentFileIndex),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
                   ),
+                  padding: const EdgeInsets.all(6),
+                  child: const Icon(Icons.close, color: Colors.white, size: 18),
                 ),
               ),
+            ),
 
             // Contador (bottom-right)
             if (multiple)
