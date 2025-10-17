@@ -2,9 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/visualize_memories_screen.dart';
+import 'package:flutter_frontend/data/models/memorial_response.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
 
+// Modos de organización de galería (HU19)
+enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
@@ -39,6 +44,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   final int pageSize = 10;
   bool hasMoreMemories = true;
 
+  // Organización de galería (HU19)
+  OrganizationMode _organizationMode = OrganizationMode.formato;
+
   @override
   void initState() {
     super.initState();
@@ -56,12 +64,25 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   ImageProvider _getAvatarImage() {
     if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return MemoryImage(base64Decode(widget.avatarUrl!));
-    } else if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return NetworkImage(widget.avatarUrl!);
+      // Verificar si es una imagen en base64
+      if (widget.avatarUrl!.startsWith('data:image') || widget.avatarUrl!.length > 500) {
+        try {
+          // Si empieza con data:image, extraer solo la parte base64
+          final base64String = widget.avatarUrl!.contains(',') 
+              ? widget.avatarUrl!.split(',').last 
+              : widget.avatarUrl!;
+          return MemoryImage(base64Decode(base64String));
+        } catch (e) {
+          print('Error decoding base64 image: $e');
+          return const AssetImage('assets/images/CreaPerfil.png');
+        }
+      } else {
+        // Es una URL normal
+        return NetworkImage(widget.avatarUrl!);
+      }
     } else {
-      // Usar un Container con ícono por defecto
-      return const AssetImage('assets/images/CreaPerfil.png'); // Usar uno de los assets existentes
+      // Usar imagen por defecto
+      return const AssetImage('assets/images/CreaPerfil.png');
     }
   }
 
@@ -225,7 +246,42 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navegar a la pantalla de visualizar recuerdos
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VisualizeMemoriesScreen(
+                                      memorial: MemorialResponseModel(
+                                        idMemorial: widget.memorialId,
+                                        name: widget.name,
+                                        nickname: '',
+                                        description: widget.description ?? '',
+                                        gender: '',
+                                        relation: '',
+                                        birthDate: '',
+                                        isCollaborative: true,
+                                        isJournal: false,
+                                        userId: '',
+                                        createdDate: DateTime.now(),
+                                        updatedDate: DateTime.now(),
+                                        profilePhoto: widget.avatarUrl != null 
+                                            ? FileResponse(
+                                                idFile: '',
+                                                fileName: 'profile.jpg',
+                                                originalFileName: 'profile.jpg',
+                                                fileType: 'image',
+                                                mimeType: 'image/jpeg',
+                                                fileUrl: widget.avatarUrl!,
+                                                fileSize: 0.0,
+                                                uploadedDate: DateTime.now(),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
@@ -772,64 +828,156 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
-  // Tab 2: Organizar (Grid de todas las fotos)
+  // Tab 2: Organizar (HU19)
   Widget _buildOrganizeTab() {
-    final images = [
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-    ];
-
+    // Selector de modo de organización
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Large featured image
-          Container(
-            width: double.infinity,
-            height: 220,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(images[0]),
-                fit: BoxFit.cover,
-              ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildOrgChip('Formato', OrganizationMode.formato),
+                const SizedBox(width: 8),
+                _buildOrgChip('Línea de tiempo', OrganizationMode.lineaDeTiempo),
+                const SizedBox(width: 8),
+                _buildOrgChip('Temáticas', OrganizationMode.tematicas),
+                const SizedBox(width: 8),
+                _buildOrgChip('Momentos', OrganizationMode.momentos),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-
-          // Grid of smaller images
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
-            ),
-            itemCount: images.length - 1,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(images[index + 1]),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
-            },
-          ),
+          if (isLoadingMemories)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          else if (errorMessage != null)
+            Text(errorMessage!, style: TextStyle(color: Colors.red[600]))
+          else if (memories.isEmpty)
+            const Text('No hay memorias para organizar')
+          else
+            Expanded(child: _buildOrganizedList())
         ],
       ),
     );
+  }
+
+  Widget _buildOrgChip(String label, OrganizationMode mode) {
+    final selected = _organizationMode == mode;
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      onSelected: (_) => setState(() => _organizationMode = mode),
+    );
+  }
+
+  Widget _buildOrganizedList() {
+    // Construir estructura según modo
+    final Map<String, List<MemoryResponse>> groups = _groupMemories();
+    final groupKeys = groups.keys.toList();
+
+    return ListView.builder(
+      itemCount: groupKeys.length,
+      itemBuilder: (context, index) {
+        final key = groupKeys[index];
+        final items = groups[key] ?? const [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                key,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final m = items[i];
+                final url = m.firstImageUrl ?? 'https://via.placeholder.com/300x300.png?text=Memoria';
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(url, fit: BoxFit.cover),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, List<MemoryResponse>> _groupMemories() {
+    switch (_organizationMode) {
+      case OrganizationMode.formato:
+        return _groupBy(memories, (m) => _formatFromMemory(m));
+      case OrganizationMode.lineaDeTiempo:
+        // Agrupar por año-mes
+        return _groupBy(memories, (m) {
+          final d = m.photoDate ?? m.createdDate;
+          return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+        }, sortByKey: true, keyComparator: (a, b) => b.compareTo(a));
+      case OrganizationMode.tematicas:
+        // Para cada etiqueta crear grupos; si no hay, va a 'Sin etiqueta'
+        final Map<String, List<MemoryResponse>> g = {};
+        for (final m in memories) {
+          final tags = m.tags.isEmpty ? ['Sin etiqueta'] : m.tags;
+          for (final t in tags) {
+            g.putIfAbsent(t, () => []).add(m);
+          }
+        }
+        return g;
+      case OrganizationMode.momentos:
+        return _groupBy(memories, (m) => m.associatedQuestion ?? (m.tags.isNotEmpty ? m.tags.first : 'General'));
+    }
+  }
+
+  String _formatFromMemory(MemoryResponse m) {
+    // Usar field type cuando esté disponible, si no, derivar del media
+    final t = m.type.toLowerCase();
+    if (t.isNotEmpty) return t;
+    final types = m.mediaTypes;
+    if (types.length == 1) {
+      switch (types.first) {
+        case 'image':
+          return 'foto';
+        case 'video':
+          return 'video';
+        case 'audio':
+          return 'audio';
+      }
+    }
+    return types.isEmpty ? 'texto' : 'mixto';
+  }
+
+  Map<String, List<MemoryResponse>> _groupBy<T>(
+    List<MemoryResponse> list,
+    String Function(MemoryResponse) keySelector, {
+    bool sortByKey = false,
+    int Function(String a, String b)? keyComparator,
+  }) {
+    final Map<String, List<MemoryResponse>> map = {};
+    for (final item in list) {
+      final k = keySelector(item);
+      map.putIfAbsent(k, () => []).add(item);
+    }
+    if (sortByKey) {
+      final entries = map.entries.toList()
+        ..sort((a, b) => (keyComparator ?? (String a, String b) => a.compareTo(b))(a.key, b.key));
+      return {for (final e in entries) e.key: e.value};
+    }
+    return map;
   }
 
 

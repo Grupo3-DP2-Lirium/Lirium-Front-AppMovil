@@ -55,33 +55,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // 2) Cerrar sesión en backend/servicios
         await _authService.logout();
 
-        // 3) Limpiar tokens/refresh (se borrará last_email también)
+        // 3) Limpiar tokens/refresh (NO se borrará last_email)
         await _authStorage.clear();
 
-        // 4) Guardar el correo como último email DESPUÉS de cerrar sesión y limpiar
+        // 4) Guardar el correo como último email DESPUÉS de limpiar
         if (currentEmail != null && currentEmail.isNotEmpty) {
           await _authStorage.saveLastEmail(currentEmail);
         }
 
-        if (mounted) {
-          // Navegar al LoginScreen y limpiar toda la pila de navegación
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => LoginScreen(initialEmail: currentEmail)),
-            (route) => false,
-          );
-        }
+        // 5) Navegar al login y pasar el correo guardado
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(initialEmail: currentEmail),
+          ),
+          (route) => false,
+        );
       } catch (e) {
+        // Manejo de error
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cerrar sesión: $e')),
+        );
+      } finally {
         if (mounted) {
           setState(() {
             _isLoggingOut = false;
           });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al cerrar sesión: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     }

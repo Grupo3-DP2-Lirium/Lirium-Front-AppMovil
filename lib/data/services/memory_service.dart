@@ -8,6 +8,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../models/memory_response.dart';
 import '../models/memory_create_request.dart';
+import '../models/memories_organized_response.dart';
+import '../models/memories_by_type_response.dart';
 
 class MemoryService {
   final http.Client _client;
@@ -210,6 +212,125 @@ class MemoryService {
       throw Exception(
         "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
       );
+    }
+  }
+
+  // Nuevos métodos para visualizar recuerdos organizados
+
+  Future<MemoriesOrganizedResponse> getMemoriesOrganized({
+    required String memorialId,
+    String filterType = 'all',
+    String sortBy = 'date',
+    String sortOrder = 'desc',
+    int page = 0,
+    int size = 20,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories/memorial/$memorialId/organized'
+      '?filterType=$filterType&sortBy=$sortBy&sortOrder=$sortOrder&page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final map = json.decode(res.body) as Map<String, dynamic>;
+      return MemoriesOrganizedResponse.fromJson(map);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<MemoriesByTypeResponse> getMemoriesByType({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-type');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final map = json.decode(res.body) as Map<String, dynamic>;
+      return MemoriesByTypeResponse.fromJson(map);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByTimeline({
+    required String memorialId,
+    String? year,
+    String? month,
+  }) async {
+    String url = '${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-timeline';
+    
+    List<String> queryParams = [];
+    if (year != null) queryParams.add('year=$year');
+    if (month != null) queryParams.add('month=$month');
+    
+    if (queryParams.isNotEmpty) {
+      url += '?${queryParams.join('&')}';
+    }
+
+    final uri = Uri.parse(url);
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByThemes({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-themes');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByMoments({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-moments');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
     }
   }
 
