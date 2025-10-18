@@ -1,4 +1,6 @@
-class File{
+import 'package:flutter/widgets.dart';
+
+class File {
   final String id;
   final String name;
   final String originalName;
@@ -7,7 +9,7 @@ class File{
   final String url;
   final double size;
   final DateTime uploadedDate;
-
+  final Key key;
 
   File({
     required this.id,
@@ -18,7 +20,7 @@ class File{
     required this.url,
     required this.size,
     required this.uploadedDate,
-  });
+  }) : key = UniqueKey();
 
   bool get isImage => mimeType.startsWith("image/");
 }

@@ -38,33 +38,35 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   final List<io.File> _newFiles = [];
   final List<File> _deletedFiles = [];
 
-  final bool _addTags = false;
-
   late MemoryMode _mode;
+
+  // al inicio del State:
+  final GlobalKey _memoryContainerKey = GlobalKey();
+
   void _switchToEditMode() {
-    setState(() {
-      _mode = MemoryMode.edit;
-    });
+    // 1) Notificamos al contenedor que entre en modo edición (no recrearlo)
+    (_memoryContainerKey.currentState as dynamic)?.setEditMode(true);
+
+    // 2) Seguimos usando setState para que la appBar y los botones aparezcan
+    setState(() => _mode = MemoryMode.edit);
   }
 
   void _cancelEdit() {
-    setState(() {
-      _mode = MemoryMode.view;
+    // 1) Notificamos al contenedor que salga del modo edición
+    final containerState = _memoryContainerKey.currentState as dynamic;
+    containerState?.setEditMode(false);
+    containerState?.restoreOriginalFiles(_originalMemory.files);
 
-      // Restaurar memoria editable al original
-      _editableMemory = _originalMemory.copyWith();
+    // 2) Restauramos los datos localmente (sin tocar la referenica del widget en sí)
+    _editableMemory = _originalMemory.copyWith();
+    _existingFiles = List.from(_originalMemory.files);
+    _newFiles.clear();
+    _deletedFiles.clear();
+    _titleController.text = _originalMemory.title;
+    _descriptionController.text = _originalMemory.description;
 
-      // Restaurar los archivos existentes al MemoryContainer
-      _existingFiles = List.from(_originalMemory.files);
-
-      // Limpiar archivos nuevos y eliminados
-      _newFiles.clear();
-      _deletedFiles.clear();
-
-      // Restaurar controladores de texto
-      _titleController.text = _originalMemory.title ?? "";
-      _descriptionController.text = _originalMemory.description ?? "";
-    });
+    // 3) Actualizamos UI (appbar / botones)
+    setState(() => _mode = MemoryMode.view);
   }
 
   @override
@@ -116,7 +118,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
-        "addTags": _addTags,
+        "addTags": false,
       };
 
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
@@ -124,8 +126,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           .map((f) => {"id": f.id, "path": f.url})
           .toList();
 
-      print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
-      print('Files to delete: $filesToDelete');
+      //print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
+      //print('Files to delete: $filesToDelete');
 
       await _service.updateMemory(
         memoryId: widget.memory!.id,
@@ -330,6 +332,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
             Expanded(
               child: SingleChildScrollView(
                 child: MemoryContainer(
+                  key: _memoryContainerKey,
                   edit: isEditMode,
                   existingFiles: _existingFiles,
                   memory: _editableMemory,
@@ -338,25 +341,24 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
                     if (action == "add" && file != null) {
-                      setState(() => _newFiles.add(io.File(file.url)));
+                      _newFiles.add(io.File(file.url));
                     } else if (action == "update" && index != null && file != null) {
                       final ioFile = io.File(file.url);
                       if (index < _newFiles.length) {
-                        setState(() => _newFiles[index] = ioFile);
+                        _newFiles[index] = ioFile;
                       } else {
-                        setState(() => _newFiles.add(ioFile));
+                        _newFiles.add(ioFile);
                       }
                     } else if (action == "delete" && index != null && file != null) {
                       final isExisting = file.id.isNotEmpty;
-                      setState(() {
-                        if (isExisting) {
-                          _deletedFiles.add(file);
-                          _existingFiles.removeWhere((f) => f.id == file.id);
-                        } else {
-                          _newFiles.removeWhere((f) => f.path == file.url);
-                        }
-                      });
+                      if (isExisting) {
+                        _deletedFiles.add(file);
+                        _existingFiles.removeWhere((f) => f.id == file.id);
+                      } else {
+                        _newFiles.removeWhere((f) => f.path == file.url);
+                      }
                     }
+                    // ❌ No llames a setState aquí
                   },
                 ),
               ),

@@ -8,8 +8,9 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import 'package:video_player/video_player.dart';
 
 class MemoryContainer extends StatefulWidget {
   final Memory memory;
@@ -35,11 +36,38 @@ class MemoryContainer extends StatefulWidget {
   State<MemoryContainer> createState() => _MemoryContainerState();
 }
 
-class _MemoryContainerState extends State<MemoryContainer> {
+class _MemoryContainerState extends State<MemoryContainer>
+    with AutomaticKeepAliveClientMixin {
+
   late List<domain.File> _localFiles; // copia editable
   final picker = ImagePicker();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   int _currentFileIndex = 0;
+
+  Map<Key, VideoPlayerController> _videoControllers = {};
+
+  // estado interno de edición (inicializa desde widget.edit en initState)
+  bool _isEditing = false;
+
+  // Método público que permite al padre cambiar el modo sin recrear el widget
+  void setEditMode(bool value) {
+    if (!mounted) return;
+    setState(() {
+      _isEditing = value;
+    });
+  }
+
+  // 🔄 Restaura los archivos originales y texto
+  void restoreOriginalFiles(List<domain.File> originalFiles) {
+    if (!mounted) return;
+    setState(() {
+      _localFiles = List.from(originalFiles);
+      _currentFileIndex = 0;
+    });
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
@@ -57,6 +85,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
   void initState() {
     super.initState();
     _localFiles = List.from(widget.existingFiles ?? []);
+    _isEditing = widget.edit;
     _initRecorder();
   }
 
@@ -64,10 +93,20 @@ class _MemoryContainerState extends State<MemoryContainer> {
   @override
   void didUpdateWidget(covariant MemoryContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.existingFiles != widget.existingFiles) {
+
+    final oldUrls = (oldWidget.existingFiles ?? []).map((f) => f.url).toList();
+    final newUrls = (widget.existingFiles ?? []).map((f) => f.url).toList();
+
+    // Solo actualizar si cambió el contenido del padre (agregó/reemplazó archivos)
+    if (oldUrls.join(',') != newUrls.join(',')) {
+      // Evitamos resetear _currentFileIndex si ya teníamos archivos
       setState(() {
         _localFiles = List.from(widget.existingFiles ?? []);
-        _currentFileIndex = 0;
+
+        // Mantener el índice actual dentro del rango
+        if (_currentFileIndex >= _localFiles.length) {
+          _currentFileIndex = _localFiles.isEmpty ? 0 : _localFiles.length - 1;
+        }
       });
     }
   }
@@ -80,6 +119,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
 
     // Caso: carta
     if (_localFiles.isEmpty) {
@@ -128,7 +168,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
         AppTextField(
           hintText: "Escribe la pregunta",
           controller: widget.titleController,
-          enabled: widget.edit,
+          enabled: _isEditing,
           validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
         ),
         const SizedBox(height: 16),
@@ -137,7 +177,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
         AppTextField(
           hintText: "Escribe la respuesta",
           controller: widget.descriptionController,
-          enabled: widget.edit,
+          enabled: _isEditing,
           maxLines: 20,
           validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
         ),
@@ -208,32 +248,43 @@ class _MemoryContainerState extends State<MemoryContainer> {
         fit: StackFit.expand,
         children: [
           // Carrusel de archivos
-          PageView.builder(
-            itemCount: _localFiles.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentFileIndex = index; // variable que controla el archivo actual
-              });
-            },
-            itemBuilder: (context, index) {
-              final file = _localFiles[index];
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: FilePreview(
-                      key: ValueKey(file.url),
-                      type: file.type,
-                      url: file.url,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+      PageView.builder(
+      controller: PageController(initialPage: _currentFileIndex),
+      itemCount: _localFiles.length,
+      onPageChanged: (index) {
+        setState(() {
+          _currentFileIndex = index;
+        });
+      },
+      itemBuilder: (context, index) {
+        final file = _localFiles[index];
 
-          if (widget.edit)
+        // Si el archivo es un video y no se ha creado un controlador, crearlo
+        if (file.type == 'video' && !_videoControllers.containsKey(file.key)) {
+          _videoControllers[file.key] = VideoPlayerController.network(file.url)
+            ..initialize().then((_) {
+              setState(() {}); // Actualizar el estado después de inicializar el controlador
+            });
+        }
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: FilePreview(
+                key: PageStorageKey(file.key),
+                videoController: _videoControllers[file.key],
+                type: file.type,
+                url: file.url,
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+
+    if (_isEditing)
             Positioned(
               top: 8,
               right: 8,
@@ -268,7 +319,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
                 ),
               ),
 
-          if (widget.edit)
+          if (_isEditing)
           // Botón flotante centrado abajo (igual que antes)
             Positioned(
               bottom: 12,
@@ -358,7 +409,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
             child: AppTextField(
               hintText: "Escribe un título",
               controller: widget.titleController,
-              enabled: widget.edit,
+              enabled: _isEditing,
               validator: (v) => (v == null || v.isEmpty) ? "El título es obligatorio" : null,
             ),
           ),
@@ -366,7 +417,7 @@ class _MemoryContainerState extends State<MemoryContainer> {
           hintText: "Escribe una descripción",
           maxLines: 10,
           controller: widget.descriptionController,
-          enabled: widget.edit,
+          enabled: _isEditing,
           validator: (v) =>
           (v == null || v.isEmpty) ? "La descripción es obligatoria" : null,
         ),
@@ -375,16 +426,29 @@ class _MemoryContainerState extends State<MemoryContainer> {
   );
 
   // ------------------- Eliminar archivo -------------------
-  Future<void> _deleteFile(int index) async {
-    if (index < 0 || index >= _localFiles.length) return;
 
-    final removedFile = _localFiles[index];
+
+  void _deleteFile(int index) {
+    final file = _localFiles[index];
+
+    // Si el archivo es un video, destruir su controlador
+    if (file.type == 'video') {
+      _videoControllers[file.key]?.dispose(); // Eliminar el controlador de video
+      _videoControllers.remove(file.key); // Eliminarlo del mapa
+    }
 
     setState(() {
+      // Eliminar el archivo de la lista
       _localFiles.removeAt(index);
-      widget.onFileChanged?.call("delete", index, removedFile);
+
+      // Si hemos eliminado el archivo actual, ajustar el índice
+      if (_currentFileIndex >= _localFiles.length) {
+        _currentFileIndex = _localFiles.isEmpty ? 0 : _localFiles.length - 1;
+      }
     });
+    widget.onFileChanged?.call("delete", index, file);
   }
+
 
   // ------------------- Agregar archivo -------------------
   Future<void> _addFile(BuildContext context, String type) async {
@@ -660,4 +724,5 @@ class _MemoryContainerState extends State<MemoryContainer> {
     if (path.endsWith(".mp3")) return "audio/mpeg";
     return "application/octet-stream";
   }
+
 }

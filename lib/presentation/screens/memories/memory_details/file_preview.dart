@@ -8,12 +8,16 @@ class FilePreview extends StatefulWidget {
   final String type; // "image" | "video" | "audio"
   final String url;
   final VoidCallback? onEdit;
+  final VideoPlayerController? videoController;
+  final Function(VideoPlayerController)? onVideoControllerInit;
 
   const FilePreview({
     super.key,
     required this.type,
     required this.url,
     this.onEdit,
+    this.videoController, // 💡 este sí
+    this.onVideoControllerInit, // 💡 este también
   });
 
   @override
@@ -42,15 +46,12 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   void didUpdateWidget(covariant FilePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.type != oldWidget.type) {
+    // Solo reinicializar si realmente cambió el tipo o la url
+    if (widget.type != oldWidget.type || widget.url != oldWidget.url) {
       _disposeMedia();
       _initializeMedia();
-    } else if (widget.type == "video" && widget.url != oldWidget.url) {
-      _disposeVideo();
-      _initializeVideo(widget.url);
     }
   }
-
 
   void _initializeMedia() {
     if (widget.url.isEmpty) return;
@@ -66,25 +67,39 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   }
 
   Future<void> _initializeVideo(String path) async {
-    _disposeVideo();
-
-    // Si es URL remota
-    if (path.startsWith("http")) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(path));
-      _localVideoPath = null;
-    } else {
-      // Video local
-      final file = File(path);
-      bool exists = await file.exists();
-      if (!exists) {
-        print("⚠️ Archivo local no existe: $path");
-        return;
+    // ✅ Si ya hay un controlador externo, úsalo
+    if (widget.videoController != null) {
+      _videoController = widget.videoController!;
+      if (!_videoController!.value.isInitialized) {
+        await _videoController!.initialize();
       }
-      _videoController = VideoPlayerController.file(file);
-      _localVideoPath = path;
+    } else {
+      // ✅ Caso contrario, creamos uno nuevo
+      if (path.startsWith("http")) {
+        _videoController = VideoPlayerController.networkUrl(Uri.parse(path));
+      } else {
+        final file = File(path);
+        bool exists = await file.exists();
+        if (!exists) {
+          print("⚠️ Archivo local no existe: $path");
+          return;
+        }
+        _videoController = VideoPlayerController.file(file);
+      }
+
+      await _videoController!.initialize();
+      widget.onVideoControllerInit?.call(_videoController!); // 💡 notificamos al padre
     }
 
-    await _videoController!.initialize();
+    // 🔁 Listener para reiniciar cuando termina
+    _videoController!.addListener(() {
+      if (_videoController!.value.position >= _videoController!.value.duration) {
+        _videoController!.seekTo(Duration.zero);
+        _videoController!.pause();
+        setState(() {}); // para refrescar el ícono
+      }
+    });
+
     setState(() {});
   }
 
@@ -112,7 +127,9 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   }
 
   void _disposeVideo() {
-    _videoController?.dispose();
+    if (widget.videoController == null) {
+      _videoController?.dispose(); // solo si es interno
+    }
     _videoController = null;
     _localVideoPath = null;
   }
@@ -186,23 +203,37 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
         alignment: Alignment.bottomCenter,
         children: [
           VideoPlayer(_videoController!),
-          VideoProgressIndicator(_videoController!, allowScrubbing: true),
+          ValueListenableBuilder(
+            valueListenable: _videoController!,
+            builder: (context, VideoPlayerValue value, child) {
+              return VideoProgressIndicator(
+                _videoController!,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: AppColors.primary,
+                  bufferedColor: Colors.grey,
+                  backgroundColor: Colors.black26,
+                ),
+              );
+            },
+          ),
           Align(
             alignment: Alignment.center,
-            child: IconButton(
-              icon: Icon(
-                _videoController!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
-                size: 64,
-                color: Colors.white,
+            child:
+              IconButton(
+                icon: Icon(
+                  _videoController!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  size: 64,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _videoController!.value.isPlaying
+                        ? _videoController!.pause()
+                        : _videoController!.play();
+                  });
+                },
               ),
-              onPressed: () {
-                setState(() {
-                  _videoController!.value.isPlaying
-                      ? _videoController!.pause()
-                      : _videoController!.play();
-                });
-              },
-            ),
           ),
           if (widget.onEdit != null)
             Positioned(top: 8, right: 8, child: _buildEditButton()),
