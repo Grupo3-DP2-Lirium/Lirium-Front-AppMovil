@@ -59,33 +59,36 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
         bottom: BorderSide(color: AppColors.inactive, width: 1),
       ),
       children: [
-        // -------------------- Fila Mes + Año --------------------
-        Row(
-          children: [
-            Expanded(
-              child: AppDropdownField(
-                header: 'Mes',
-                controller: widget.mesController,
-                options: ["Enero", "Febrero", "Marzo", "Abril"],
+        // Fila Mes + Año
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: AppDropdownField(
+                  header: 'Mes',
+                  controller: widget.mesController,
+                  options: ["Enero", "Febrero", "Marzo", "Abril"],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: AppDropdownField(
-                header: 'Año',
-                controller: widget.ahoController,
-                options: ["2000", "2001", "2002", "2003"],
+              const SizedBox(width: 16),
+              Expanded(
+                child: AppDropdownField(
+                  header: 'Año',
+                  controller: widget.ahoController,
+                  options: ["2000", "2001", "2002", "2003"],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
 
-        const SizedBox(height: 12),
-
-        // -------------------- Ubicación --------------------
-        GestureDetector(
-          onTap: () async {
-            LatLng initialLatLng = LatLng(-12.0464, -77.0428); // default Lima
+        // Ubicación
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: GestureDetector(
+            onTap: () async {
+              LatLng initialLatLng = LatLng(-12.0464, -77.0428); // default Lima
 
             if (widget.locationController.text.isNotEmpty) {
               // ⚡ Hacer geocoding de la ciudad guardada
@@ -140,7 +143,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
               ),
             ),
           ),
-        )
+          ),
+        ),
       ],
     );
   }
@@ -366,8 +370,18 @@ class _MapSelectScreenState extends State<_MapSelectScreen> {
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
             final address = data['address'] ?? {};
-            // Busca ciudad o pueblo
-            cityName = address['city'] ?? address['town'] ?? address['village'] ?? '';
+            // Lista de posibles keys
+            final keys = ['city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state'];
+            for (var key in keys) {
+              if (address.containsKey(key)) {
+                cityName = address[key];
+                break;
+              }
+            }
+            // Si nada se encontró, usar coordenadas
+            if (cityName.isEmpty) {
+              cityName = '${_picked.latitude.toStringAsFixed(4)}, ${_picked.longitude.toStringAsFixed(4)}';
+            }
           }
           Navigator.pop(context, cityName);
         },

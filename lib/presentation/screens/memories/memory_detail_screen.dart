@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_created_screen.dart';
@@ -125,28 +126,36 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   // Services
 
-  // Save changes when editing a memory
   Future<void> _saveChanges() async {
-    // Prevent multiple saves while loading
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // 1) Mostrar pop-up de loading
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
     try {
-      // Prepare the data to be saved (title, description, etc.)
+      // 2) Preparar JSON para enviar al backend
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
-        "addTags": false, // Need to eliminate in Back
+        "addTags": false,
       };
 
-      // Files to upload (if any)
+      // 3) Archivos a subir
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
-      // Files to delete (if any)
+
+      // 4) Archivos a eliminar
       final filesToDelete = _deletedFiles
           .map((f) => {"id": f.id, "path": f.url})
           .toList();
 
-      // Call service to update memory
+      // 5) Llamar al servicio para actualizar memoria
       await _service.updateMemory(
         memoryId: widget.memory!.id,
         memoryJson: memoryJson,
@@ -154,27 +163,80 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         filesToDelete: filesToDelete,
       );
 
-      // Update local memory object after successful save
-      final updatedMemory = _editableMemory.copyWith(
+      // 6) Actualizar _editableMemory y _originalMemory
+      _editableMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
       );
 
-      // Navigate to the updated memory screen
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
-          ),
-              (route) => false,
+      // Convertir archivos nuevos a File completos
+      final newFilesAsMemoryFiles = _newFiles.map((f) {
+        final ext = f.path.split('.').last.toLowerCase();
+        String type;
+        String mimeType;
+        if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
+          type = 'image';
+          mimeType = 'image/$ext';
+        } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
+          type = 'video';
+          mimeType = 'video/$ext';
+        } else {
+          type = 'file';
+          mimeType = 'application/octet-stream';
+        }
+        return File(
+          id: "",
+          name: f.path.split('/').last,
+          originalName: f.path.split('/').last,
+          type: type,
+          mimeType: mimeType,
+          size: 0,
+          url: f.path,
+          uploadedDate: DateTime.now(),
         );
-      }
+      }).toList();
+
+      // Filtrar los archivos existentes que NO se eliminaron
+      final remainingExistingFiles = _existingFiles.where((f) =>
+      !_deletedFiles.any((del) => del.id == f.id)
+      ).toList();
+
+      // Actualizar el memory original combinando los archivos restantes + nuevos
+      _originalMemory = _originalMemory.copyWith(
+        title: _editableMemory.title,
+        description: _editableMemory.description,
+        files: [...remainingExistingFiles, ...newFilesAsMemoryFiles],
+      );
+
+      // Limpiar listas temporales de edición
+      _existingFiles = List.from(_originalMemory.files);
+      _newFiles.clear();
+      _deletedFiles.clear();
+
+      // 7) Cerrar loading
+      Navigator.pop(context);
+
+      // 8) Mostrar pop-up de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Tu recuerdo ha sido actualizado",
+        message: "Gracias por compartir un momento más de tu historia",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              (_memoryContainerKey.currentState as dynamic)?.setEditMode(false);
+              Navigator.pop(context, _originalMemory); // Devuelve el memory actualizado
+            },
+          ),
+        ],
+      );
     } catch (e) {
+      Navigator.pop(context); // cerrar loading si hay error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating memory: $e'),
+            content: Text('Error al guardar: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -223,47 +285,43 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
-    final confirmed = await showDialog<bool>(
+    await appPopupButtonDefault(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar memoria'),
-        content: const Text('¿Estás seguro de que quieres eliminar esta memoria? Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+      title: '¿Eliminar este Recuerdo?',
+      message: 'Esta acción no se puede deshacer',
+      buttons: [
+        AppPopupButton(
+          text: 'Cancelar',
+          onPressed: () {
+            // No hace nada, solo cierra el popup
+          },
+        ),
+        AppPopupButton(
+          text: 'Eliminar',
+          onPressed: () async {
+            setState(() => _isLoading = true);
+            try {
+              // Implementar el metodo de deleteMemory
+
+              if (mounted) {
+                Navigator.pop(context, true); // Indica que se eliminó la memoria
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al eliminar: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            } finally {
+              if (mounted) setState(() => _isLoading = false);
+            }
+          },
+        ),
+      ],
     );
-
-    if (confirmed != true) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // Implementar el metodo de deleteMemory
-
-      if (mounted) {
-        Navigator.pop(context, true); // Indica que se eliminó la memoria
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 
   @override

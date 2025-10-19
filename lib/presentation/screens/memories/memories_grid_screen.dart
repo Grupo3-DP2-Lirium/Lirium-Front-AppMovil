@@ -134,15 +134,21 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         return MemoryCard(
           memory: memory,
           isGridView: true,
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            // Ir a la pantalla de detalle y esperar a que devuelva el memory actualizado
+            final updatedMemory = await Navigator.push<Memory>(
               context,
               MaterialPageRoute(
-                builder: (_) => MemoryDetailScreen(
-                  memory: memory,
-                ),
+                builder: (_) => MemoryDetailScreen(memory: memory),
               ),
             );
+
+            // Si hay memory actualizado, reemplaza el antiguo en la lista
+            if (updatedMemory != null) {
+              setState(() {
+                memories[index] = updatedMemory;
+              });
+            }
           },
         );
       },
