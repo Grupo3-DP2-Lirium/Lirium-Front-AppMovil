@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_created_screen.dart';
 import '../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
-// Modes: view, edit or create
-enum MemoryMode { view, edit}
+// Modes: view or edit
+enum MemoryMode {view, edit}
 
 class MemoryDetailScreen extends StatefulWidget {
-  final Memory? memory;
-  final MemoryMode mode;
+  final Memory? memory; // Memory data (can be null for new memory)
+  final MemoryMode mode; // Current screen mode (view or edit)
 
+  // Constructor: accepts memory and mode
   const MemoryDetailScreen({
     super.key,
     required this.memory,
@@ -27,44 +29,55 @@ class MemoryDetailScreen extends StatefulWidget {
 
 class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   final _service = MemoryService();
+
+  // Controllers for editing metadatos
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
+  late TextEditingController _mesController;
+  late TextEditingController _ahoController;
+  late TextEditingController _locationController;
 
+  // State flags and data
   bool _isLoading = false;
-  late Memory _originalMemory;
-  late Memory _editableMemory;
+  late Memory _originalMemory; // Original memory object (for reset)
+  late Memory _editableMemory; // Editable copy of the memory
 
+  // Lists for managing files (existing, new, and deleted)
   List<File> _existingFiles = [];
   final List<io.File> _newFiles = [];
   final List<File> _deletedFiles = [];
 
-  final bool _addTags = false;
-
+  // Current memory mode (view or edit)
   late MemoryMode _mode;
+
+  // Key for accessing the memory container state
+  final GlobalKey _memoryContainerKey = GlobalKey();
+
+  // Switch to edit mode
   void _switchToEditMode() {
-    setState(() {
-      _mode = MemoryMode.edit;
-    });
+    // 1) Notify the container to enter edit mode (without recreating it)
+    (_memoryContainerKey.currentState as dynamic)?.setEditMode(true);
+    // 2) Update UI (AppBar & buttons)
+    setState(() => _mode = MemoryMode.edit);
   }
 
+  // Cancel the edit mode and restore the original data
   void _cancelEdit() {
-    setState(() {
-      _mode = MemoryMode.view;
+    // 1) Notify the container to exit edit mode
+    final containerState = _memoryContainerKey.currentState as dynamic;
+    containerState?.setEditMode(false);
+    containerState?.restoreOriginalFiles(_originalMemory.files);
 
-      // Restaurar memoria editable al original
-      _editableMemory = _originalMemory.copyWith();
+    // 2) Restore editable data to its original state
+    _editableMemory = _originalMemory.copyWith();
+    _existingFiles = List.from(_originalMemory.files);
+    _newFiles.clear();
+    _deletedFiles.clear();
+    _titleController.text = _originalMemory.title;
+    _descriptionController.text = _originalMemory.description;
 
-      // Restaurar los archivos existentes al MemoryContainer
-      _existingFiles = List.from(_originalMemory.files);
-
-      // Limpiar archivos nuevos y eliminados
-      _newFiles.clear();
-      _deletedFiles.clear();
-
-      // Restaurar controladores de texto
-      _titleController.text = _originalMemory.title ?? "";
-      _descriptionController.text = _originalMemory.description ?? "";
-    });
+    // 3) Update UI to view mode (AppBar & buttons)
+    setState(() => _mode = MemoryMode.view);
   }
 
   @override
@@ -72,11 +85,11 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     super.initState();
     _mode = widget.mode;
     if (widget.memory != null) {
-      // Edit / view existing memory
+      // Edit existing memory (if provided)
       _originalMemory = widget.memory!;
       _editableMemory = _originalMemory.copyWith();
     } else {
-      // Create new memory
+      // Initialize for creating new memory
       _originalMemory = Memory(
         id: "",
         type: "default",
@@ -94,39 +107,55 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _editableMemory = _originalMemory.copyWith();
     }
 
+    // Initialize lists with current memory data
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
+    _mesController = TextEditingController(text: "");
+    _ahoController = TextEditingController(text: "");
+    _locationController = TextEditingController(text: _editableMemory.location ?? "");
   }
 
   @override
   void dispose() {
+    // Dispose of controllers to prevent memory leaks
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
   // Services
-  // Save changes (Edit mode)
+
   Future<void> _saveChanges() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // 1) Mostrar pop-up de loading
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
     try {
+      // 2) Preparar JSON para enviar al backend
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
-        "addTags": _addTags,
+        "addTags": false,
       };
 
+      // 3) Archivos a subir
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+
+      // 4) Archivos a eliminar
       final filesToDelete = _deletedFiles
           .map((f) => {"id": f.id, "path": f.url})
           .toList();
 
-      print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
-      print('Files to delete: $filesToDelete');
-
+      // 5) Llamar al servicio para actualizar memoria
       await _service.updateMemory(
         memoryId: widget.memory!.id,
         memoryJson: memoryJson,
@@ -134,25 +163,80 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         filesToDelete: filesToDelete,
       );
 
-      final updatedMemory = _editableMemory.copyWith(
+      // 6) Actualizar _editableMemory y _originalMemory
+      _editableMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
       );
 
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MemoryCreatedScreen(memory: updatedMemory),
-          ),
-              (route) => false,
+      // Convertir archivos nuevos a File completos
+      final newFilesAsMemoryFiles = _newFiles.map((f) {
+        final ext = f.path.split('.').last.toLowerCase();
+        String type;
+        String mimeType;
+        if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
+          type = 'image';
+          mimeType = 'image/$ext';
+        } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
+          type = 'video';
+          mimeType = 'video/$ext';
+        } else {
+          type = 'file';
+          mimeType = 'application/octet-stream';
+        }
+        return File(
+          id: "",
+          name: f.path.split('/').last,
+          originalName: f.path.split('/').last,
+          type: type,
+          mimeType: mimeType,
+          size: 0,
+          url: f.path,
+          uploadedDate: DateTime.now(),
         );
-      }
+      }).toList();
+
+      // Filtrar los archivos existentes que NO se eliminaron
+      final remainingExistingFiles = _existingFiles.where((f) =>
+      !_deletedFiles.any((del) => del.id == f.id)
+      ).toList();
+
+      // Actualizar el memory original combinando los archivos restantes + nuevos
+      _originalMemory = _originalMemory.copyWith(
+        title: _editableMemory.title,
+        description: _editableMemory.description,
+        files: [...remainingExistingFiles, ...newFilesAsMemoryFiles],
+      );
+
+      // Limpiar listas temporales de edición
+      _existingFiles = List.from(_originalMemory.files);
+      _newFiles.clear();
+      _deletedFiles.clear();
+
+      // 7) Cerrar loading
+      Navigator.pop(context);
+
+      // 8) Mostrar pop-up de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Tu recuerdo ha sido actualizado",
+        message: "Gracias por compartir un momento más de tu historia",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              (_memoryContainerKey.currentState as dynamic)?.setEditMode(false);
+              Navigator.pop(context, _originalMemory); // Devuelve el memory actualizado
+            },
+          ),
+        ],
+      );
     } catch (e) {
+      Navigator.pop(context); // cerrar loading si hay error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating memory: $e'),
+            content: Text('Error al guardar: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -201,60 +285,58 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
-    final confirmed = await showDialog<bool>(
+    await appPopupButtonDefault(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar memoria'),
-        content: const Text('¿Estás seguro de que quieres eliminar esta memoria? Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+      title: '¿Eliminar este Recuerdo?',
+      message: 'Esta acción no se puede deshacer',
+      buttons: [
+        AppPopupButton(
+          text: 'Cancelar',
+          onPressed: () {
+            // No hace nada, solo cierra el popup
+          },
+        ),
+        AppPopupButton(
+          text: 'Eliminar',
+          onPressed: () async {
+            setState(() => _isLoading = true);
+            try {
+              // Implementar el metodo de deleteMemory
+
+              if (mounted) {
+                Navigator.pop(context, true); // Indica que se eliminó la memoria
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al eliminar: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            } finally {
+              if (mounted) setState(() => _isLoading = false);
+            }
+          },
+        ),
+      ],
     );
-
-    if (confirmed != true) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // Implementar el metodo de deleteMemory
-
-      if (mounted) {
-        Navigator.pop(context, true); // Indica que se eliminó la memoria
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Determine if the app is in edit mode
     final bool isEditMode = _mode == MemoryMode.edit;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
-        title: isEditMode ? "Vista Previa" : "Recuerdo",
+        title: isEditMode ? "Vista Previa" : "Recuerdo", // Set title based on mode
         onBack: () => Navigator.pop(context),
       ),
       body: Padding(
@@ -265,6 +347,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Display header and action menu (edit/delete) in view mode
             if (!isEditMode)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
@@ -284,6 +367,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                           "Yo",
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
+                        // Display formatted date of memory creation
                         Text(
                           "${_editableMemory.createdDate.day.toString().padLeft(2, '0')}/${_editableMemory.createdDate.month.toString().padLeft(2, '0')}/${_editableMemory.createdDate.year}",
                           style: TextStyle(color: Colors.grey[600], fontSize: 12),
@@ -291,13 +375,14 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                       ],
                     ),
                     const Spacer(),
+                    // Popup menu with options to edit or delete
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
                         if (value == "edit") {
-                          _switchToEditMode();
+                          _switchToEditMode(); // Switch to edit mode
                         } else if (value == "delete") {
-                          _deleteMemory();
+                          _deleteMemory(); // Delete memory
                         }
                       },
                       itemBuilder: (context) => [
@@ -326,43 +411,47 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                   ],
                 ),
               ),
-            // Contenido de una Memoria
+
+            // Memory content (view/edit mode)
             Expanded(
               child: SingleChildScrollView(
                 child: MemoryContainer(
-                  edit: isEditMode,
+                  key: _memoryContainerKey,
+                  edit: isEditMode, // Pass edit mode flag to the container
                   existingFiles: _existingFiles,
-                  memory: _editableMemory,
+                  memory: _editableMemory,  // Current memory to display/edit
                   titleController: _titleController,
                   descriptionController: _descriptionController,
+                  mesController: _mesController,
+                  ahoController: _ahoController,
+                  locationController: _locationController,
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
+                    // Handle file actions (add, update, delete)
                     if (action == "add" && file != null) {
-                      setState(() => _newFiles.add(io.File(file.url)));
+                      _newFiles.add(io.File(file.url)); // Add new file
                     } else if (action == "update" && index != null && file != null) {
                       final ioFile = io.File(file.url);
                       if (index < _newFiles.length) {
-                        setState(() => _newFiles[index] = ioFile);
+                        _newFiles[index] = ioFile; // Update existing file
                       } else {
-                        setState(() => _newFiles.add(ioFile));
+                        _newFiles.add(ioFile); // Add new file to list
                       }
                     } else if (action == "delete" && index != null && file != null) {
                       final isExisting = file.id.isNotEmpty;
-                      setState(() {
-                        if (isExisting) {
-                          _deletedFiles.add(file);
-                          _existingFiles.removeWhere((f) => f.id == file.id);
-                        } else {
-                          _newFiles.removeWhere((f) => f.path == file.url);
-                        }
-                      });
+                      if (isExisting) {
+                        _deletedFiles.add(file); // Mark file for deletion
+                        _existingFiles.removeWhere((f) => f.id == file.id);
+                      } else {
+                        _newFiles.removeWhere((f) => f.path == file.url); // Remove from new files
+                      }
                     }
                   },
                 ),
               ),
             ),
 
-            // Botones en modo edición
+            // Action buttons in edit mode
             if (isEditMode)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -378,6 +467,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        // Cancel button
                         Expanded(
                           child: SecondaryButton(
                             text: "Cancelar",
@@ -387,6 +477,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                           ),
                         ),
                         SizedBox(width: screenWidth * 0.04),
+                        // Save button
                         Expanded(
                           child: PrimaryButton(
                             text: "Guardar",

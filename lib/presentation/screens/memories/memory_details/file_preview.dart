@@ -8,12 +8,16 @@ class FilePreview extends StatefulWidget {
   final String type; // "image" | "video" | "audio"
   final String url;
   final VoidCallback? onEdit;
+  final VideoPlayerController? videoController;
+  final Function(VideoPlayerController)? onVideoControllerInit;
 
   const FilePreview({
     super.key,
     required this.type,
     required this.url,
     this.onEdit,
+    this.videoController,
+    this.onVideoControllerInit,
   });
 
   @override
@@ -29,9 +33,6 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
-  // Nueva variable para manejar ruta local
-  String? _localVideoPath;
-
   @override
   void initState() {
     super.initState();
@@ -42,22 +43,25 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   void didUpdateWidget(covariant FilePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.type != oldWidget.type) {
+    // Solo reinicializar si realmente cambió el tipo o la url
+    if (widget.type != oldWidget.type || widget.url != oldWidget.url) {
       _disposeMedia();
       _initializeMedia();
-    } else if (widget.type == "video" && widget.url != oldWidget.url) {
-      _disposeVideo();
-      _initializeVideo(widget.url);
     }
   }
-
 
   void _initializeMedia() {
     if (widget.url.isEmpty) return;
 
     switch (widget.type) {
       case "video":
-        _initializeVideo(widget.url);
+      // Usamos el controlador de video proporcionado
+        _videoController = widget.videoController;
+
+        // Si el controlador no está inicializado, lo inicializamos
+        if (_videoController != null && !_videoController!.value.isInitialized) {
+          _initializeVideoController();
+        }
         break;
       case "audio":
         _initializeAudio(widget.url);
@@ -65,26 +69,19 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
     }
   }
 
-  Future<void> _initializeVideo(String path) async {
-    _disposeVideo();
+  Future<void> _initializeVideoController() async {
+    // Llamar al callback si es necesario
+    widget.onVideoControllerInit?.call(_videoController!);
 
-    // Si es URL remota
-    if (path.startsWith("http")) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(path));
-      _localVideoPath = null;
-    } else {
-      // Video local
-      final file = File(path);
-      bool exists = await file.exists();
-      if (!exists) {
-        print("⚠️ Archivo local no existe: $path");
-        return;
+    // Escuchar el fin del video para reiniciar si es necesario
+    _videoController!.addListener(() {
+      if (_videoController!.value.position >= _videoController!.value.duration) {
+        _videoController!.seekTo(Duration.zero);
+        _videoController!.pause();
+        setState(() {});
       }
-      _videoController = VideoPlayerController.file(file);
-      _localVideoPath = path;
-    }
+    });
 
-    await _videoController!.initialize();
     setState(() {});
   }
 
@@ -112,9 +109,10 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   }
 
   void _disposeVideo() {
-    _videoController?.dispose();
+    if (widget.videoController == null) {
+      _videoController?.dispose(); // solo si es interno
+    }
     _videoController = null;
-    _localVideoPath = null;
   }
 
   void _disposeMedia() {
@@ -148,7 +146,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ IMAGEN ------------------------
   Widget _buildImageWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Sin vista previa de imagen");
+    if (widget.url.isEmpty) return _buildPlaceholder("Cargando video...");
 
     return Stack(
       children: [
@@ -176,8 +174,9 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ VIDEO ------------------------
   Widget _buildVideoWidget() {
+    // Si el controlador no está inicializado, muestra cargando
     if (_videoController == null || !_videoController!.value.isInitialized) {
-      return _buildPlaceholder("Sin vista previa de video", showEdit: true);
+      return _buildPlaceholder("Cargando video...");
     }
 
     return AspectRatio(
@@ -186,23 +185,37 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
         alignment: Alignment.bottomCenter,
         children: [
           VideoPlayer(_videoController!),
-          VideoProgressIndicator(_videoController!, allowScrubbing: true),
+          ValueListenableBuilder(
+            valueListenable: _videoController!,
+            builder: (context, VideoPlayerValue value, child) {
+              return VideoProgressIndicator(
+                _videoController!,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: AppColors.primary,
+                  bufferedColor: Colors.grey,
+                  backgroundColor: Colors.black26,
+                ),
+              );
+            },
+          ),
           Align(
             alignment: Alignment.center,
-            child: IconButton(
-              icon: Icon(
-                _videoController!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
-                size: 64,
-                color: Colors.white,
+            child:
+              IconButton(
+                icon: Icon(
+                  _videoController!.value.isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  size: 64,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _videoController!.value.isPlaying
+                        ? _videoController!.pause()
+                        : _videoController!.play();
+                  });
+                },
               ),
-              onPressed: () {
-                setState(() {
-                  _videoController!.value.isPlaying
-                      ? _videoController!.pause()
-                      : _videoController!.play();
-                });
-              },
-            ),
           ),
           if (widget.onEdit != null)
             Positioned(top: 8, right: 8, child: _buildEditButton()),
@@ -213,8 +226,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ AUDIO ------------------------
   Widget _buildAudioWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Sin audio", showEdit: true, icon: Icons.mic);
-
+    if (widget.url.isEmpty) return _buildPlaceholder("Sin audio");
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -277,26 +289,18 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   }
 
   // ------------------------ HELPERS ------------------------
-  Widget _buildPlaceholder(String text, {bool showEdit = false, IconData? icon}) {
+  Widget _buildPlaceholder(String text) {
     return Container(
-      height: 150,
+      width: double.infinity,
+      height: double.infinity, // Ocupa todo el espacio disponible
       decoration: BoxDecoration(
         color: AppColors.inactive,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) Icon(icon, size: 32, color: Colors.black54),
-            if (icon != null) const SizedBox(width: 8),
-            Text(text, style: const TextStyle(fontSize: 16, color: Colors.black54)),
-            if (showEdit && widget.onEdit != null) ...[
-              const SizedBox(width: 12),
-              _buildEditButton(),
-            ]
-          ],
-        ),
+        child: text == "Cargando video..."
+            ? const CircularProgressIndicator()
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -304,14 +308,14 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   Widget _buildEditButton() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         shape: BoxShape.circle,
       ),
       child: CircleAvatar(
         backgroundColor: AppColors.primary,
         radius: 22,
         child: IconButton(
-          icon: const Icon(Icons.edit, color: Colors.white),
+          icon: const Icon(Icons.mic, color: Colors.white),
           onPressed: widget.onEdit,
         ),
       ),

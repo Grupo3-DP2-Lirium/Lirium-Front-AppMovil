@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:video_player/video_player.dart';
 
-class MemoryCard extends StatelessWidget {
+class MemoryCard extends StatefulWidget {
   final Memory memory;
   final VoidCallback? onTap;
   final bool isGridView;
@@ -15,11 +15,44 @@ class MemoryCard extends StatelessWidget {
   });
 
   @override
+  State<MemoryCard> createState() => _MemoryCardState();
+}
+
+class _MemoryCardState extends State<MemoryCard> {
+  VideoPlayerController? _videoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideoIfNeeded();
+  }
+
+  void _initializeVideoIfNeeded() {
+    if (widget.memory.files.isEmpty) return;
+    final firstFile = widget.memory.files.first;
+    final isVideo = firstFile.url.toLowerCase().endsWith('.mp4');
+    if (isVideo) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(firstFile.url))
+        ..initialize().then((_) {
+          setState(() {});
+          _videoController?.setLooping(true);
+          _videoController?.pause();
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
-        margin: isGridView ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
+        margin: widget.isGridView ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -33,50 +66,78 @@ class MemoryCard extends StatelessWidget {
             ),
           ],
         ),
-        child: isGridView ? _buildGridContent() : _buildListContent(),
+        child: widget.isGridView ? _buildGridContent() : _buildListContent(),
       ),
     );
   }
 
-  /// Muestra la imagen del primer archivo si existe
-  Widget _buildImagePreview() {
-    final firstImage = memory.images.isNotEmpty ? memory.images.first : null;
-
-    if (firstImage == null) {
-      // No hay imagen → placeholder
-      return Center(
+  Widget _buildMediaPreview() {
+    if (widget.memory.files.isEmpty) {
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.photo_library, size: 40, color: Colors.grey),
+          children: [
+            Icon(Icons.insert_drive_file, size: 40, color: Colors.grey),
             SizedBox(height: 8),
-            Text(
-              "Sin imagen",
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
+            Text("Sin archivos", style: TextStyle(fontSize: 14, color: Colors.grey)),
           ],
         ),
       );
     }
 
-    // Si tiene URL
-    if (firstImage.url.isNotEmpty) {
+    final firstFile = widget.memory.files.first;
+    final url = firstFile.url.toLowerCase();
+
+    final isVideo = url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.avi');
+    final isAudio = url.endsWith('.mp3') || url.endsWith('.wav') || url.endsWith('.m4a') || url.endsWith('.aac');
+    final isImage = url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.gif');
+
+    if (isVideo) {
+      if (_videoController == null || !_videoController!.value.isInitialized) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox(
+              width: _videoController!.value.size.width,
+              height: _videoController!.value.size.height,
+              child: VideoPlayer(_videoController!),
+            ),
+          ),
+        ),
+      );
+    } else if (isAudio) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.mic, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text("Audio", style: TextStyle(fontSize: 14, color: Colors.grey)),
+          ],
+        ),
+      );
+    } else if (isImage) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
-          firstImage.url,
+          firstFile.url,
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
-          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+          errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.broken_image, color: Colors.grey),
         ),
       );
+    } else {
+      return const Center(
+        child: Icon(Icons.insert_drive_file, size: 50, color: Colors.grey),
+      );
     }
-
-    // Fallback
-    return const Center(
-      child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-    );
   }
 
   Widget _buildGridContent() {
@@ -89,12 +150,12 @@ class MemoryCard extends StatelessWidget {
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: _buildImagePreview(),
+            child: _buildMediaPreview(),
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          memory.title,
+          widget.memory.title,
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -103,10 +164,10 @@ class MemoryCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        if (memory.photoDate != null) ...[
+        if (widget.memory.photoDate != null) ...[
           const SizedBox(height: 4),
           Text(
-            _formatDate(memory.photoDate!),
+            _formatDate(widget.memory.photoDate!),
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
@@ -122,7 +183,7 @@ class MemoryCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                memory.title,
+                widget.memory.title,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -130,21 +191,21 @@ class MemoryCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (memory.photoDate != null)
+            if (widget.memory.photoDate != null)
               Text(
-                _formatDate(memory.photoDate!),
+                _formatDate(widget.memory.photoDate!),
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
           ],
         ),
-        if (memory.description.isNotEmpty) ...[
+        if (widget.memory.description.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            memory.description,
+            widget.memory.description,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],
-        if (memory.images.isNotEmpty) ...[
+        if (widget.memory.images.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
             height: 120,
@@ -153,7 +214,7 @@ class MemoryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.hardEdge,
-            child: _buildImagePreview(),
+            child: _buildMediaPreview(),
           ),
         ],
       ],

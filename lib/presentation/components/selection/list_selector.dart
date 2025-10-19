@@ -5,12 +5,14 @@ class AppDropdownField extends StatefulWidget {
   final TextEditingController controller;
   final List<String> options;
   final String? Function(String?)? validator;
+  final String? header;
 
   const AppDropdownField({
     super.key,
     required this.controller,
     required this.options,
-    this.validator
+    this.validator,
+    this.header
   });
 
   @override
@@ -45,7 +47,7 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
           color: Colors.transparent,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white, // mismo color que AppTextField
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey[300]!),
             ),
@@ -92,13 +94,14 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
         child: AppTextField(
           hintText: "Selecciona una opción",
           controller: widget.controller,
+          label: widget.header,
+          floatingLabel: true,
           suffixIcon: const Icon(Icons.arrow_drop_down),
-          validator: widget.validator,
+          validator: widget.validator
         ),
       ),
     );
   }
-
   @override
   void dispose() {
     _removeOverlay();
