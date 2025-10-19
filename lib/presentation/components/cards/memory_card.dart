@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:video_player/video_player.dart';
 
+import '../common/app_colors.dart';
+
 class MemoryCard extends StatefulWidget {
   final Memory memory;
   final VoidCallback? onTap;
@@ -94,7 +96,9 @@ class _MemoryCardState extends State<MemoryCard> {
 
     if (isVideo) {
       if (_videoController == null || !_videoController!.value.isInitialized) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ));
       }
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),

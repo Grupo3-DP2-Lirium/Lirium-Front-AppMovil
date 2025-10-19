@@ -29,10 +29,13 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double appBarHeight = screenHeight * 0.09;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
         title: "Recuerdos",
+        appBarHeight: appBarHeight,
         onBack: () {
         },
       ),

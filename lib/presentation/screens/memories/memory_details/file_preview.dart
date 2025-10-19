@@ -299,7 +299,9 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
       ),
       child: Center(
         child: text == "Cargando video..."
-            ? const CircularProgressIndicator()
+            ? const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              )
             : const SizedBox.shrink(),
       ),
     );

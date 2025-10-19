@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
@@ -36,27 +37,22 @@ class _ProfilesScreenState extends State<ProfilesScreen>
 
   @override
   Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double appBarHeight = screenHeight * 0.13;
+
     final provider = context.watch<MemorialProvider>();
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Perfiles',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-          bottom: Tab_Bar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Mis Perfiles'),
-              Tab(text: 'Colaboraciones')
-            ],
-          ),
+      appBar: CustomMemoryAppBar(
+        title: 'Memoriales',
+        onBack: () => Navigator.pop(context),
+        tabController: _tabController,
+        showBackButton: false,
+        appBarHeight: appBarHeight,
+        tabs: const [
+          Tab(text: 'Mis Perfiles'),
+          Tab(text: 'Colaboraciones'),
+        ],
       ),
       body: TabBarView(
         controller: _tabController,
