@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memory_details/file_preview.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/fields_widget.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/files_preview_widget.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
+import 'package:mime/mime.dart';
 
 class MemoryContainer extends StatefulWidget {
   final Memory memory;
@@ -36,20 +36,16 @@ class MemoryContainer extends StatefulWidget {
   State<MemoryContainer> createState() => _MemoryContainerState();
 }
 
-class _MemoryContainerState extends State<MemoryContainer>
-    with AutomaticKeepAliveClientMixin {
-
-  late List<domain.File> _localFiles; // copia editable
+class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAliveClientMixin {
+  late List<domain.File> _localFiles; // Editable list of files for the memory
   final picker = ImagePicker();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   int _currentFileIndex = 0;
+  final Map<Key, VideoPlayerController> _videoControllers = {}; // Mapping of video controllers for video files
+  bool _isEditing = false; // Tracks widget mode
+  late final bool _hadOriginalFiles;
 
-  Map<Key, VideoPlayerController> _videoControllers = {};
-
-  // estado interno de edición (inicializa desde widget.edit en initState)
-  bool _isEditing = false;
-
-  // Método público que permite al padre cambiar el modo sin recrear el widget
+  // Method to switch edit mode without recreating the widget
   void setEditMode(bool value) {
     if (!mounted) return;
     setState(() {
@@ -57,22 +53,24 @@ class _MemoryContainerState extends State<MemoryContainer>
     });
   }
 
-  // 🔄 Restaura los archivos originales y texto
+  // Restores the original files and resets any changes made
   void restoreOriginalFiles(List<domain.File> originalFiles) {
     if (!mounted) return;
     setState(() {
-      _localFiles = List.from(originalFiles);
+      _localFiles = List.from(originalFiles); // Reset local files to the original state
       _currentFileIndex = 0;
     });
   }
 
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => true; // Keeps widget alive when switching tabs
 
+  // Initialize the audio recorder
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
   }
 
+  // Check and request microphone permissions if not granted
   Future<bool> _checkMicrophonePermission() async {
     var status = await Permission.microphone.status;
     if (!status.isGranted) {
@@ -84,26 +82,27 @@ class _MemoryContainerState extends State<MemoryContainer>
   @override
   void initState() {
     super.initState();
-    _localFiles = List.from(widget.existingFiles ?? []);
+    _localFiles = List.from(widget.existingFiles ?? []); // Initialize with existing files or empty list
     _isEditing = widget.edit;
-    _initRecorder();
+    _initRecorder(); // Initialize audio recorder
+    _hadOriginalFiles = (widget.existingFiles?.isNotEmpty ?? false);
   }
 
-  // Detectar cambios en existingFiles
+  // Detect changes in existing files passed
   @override
   void didUpdateWidget(covariant MemoryContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Get URLs of old and new files to check for changes
     final oldUrls = (oldWidget.existingFiles ?? []).map((f) => f.url).toList();
     final newUrls = (widget.existingFiles ?? []).map((f) => f.url).toList();
 
-    // Solo actualizar si cambió el contenido del padre (agregó/reemplazó archivos)
+    // Only update if the content of the parent has changed (added/replaced files)
     if (oldUrls.join(',') != newUrls.join(',')) {
-      // Evitamos resetear _currentFileIndex si ya teníamos archivos
+      // Avoid resetting the file index if files already exist
       setState(() {
         _localFiles = List.from(widget.existingFiles ?? []);
-
-        // Mantener el índice actual dentro del rango
+        // Ensure current file index stays within the valid range
         if (_currentFileIndex >= _localFiles.length) {
           _currentFileIndex = _localFiles.isEmpty ? 0 : _localFiles.length - 1;
         }
@@ -111,6 +110,7 @@ class _MemoryContainerState extends State<MemoryContainer>
     }
   }
 
+  // Dispose the recorder when the widget is disposed to clean up resources
   @override
   void dispose() {
     _recorder.closeRecorder();
@@ -121,17 +121,10 @@ class _MemoryContainerState extends State<MemoryContainer>
   Widget build(BuildContext context) {
     super.build(context);
 
-    // Caso: carta
-    if (_localFiles.isEmpty) {
-      return _buildQA();
-    }
-
-    // Caso: + archivo multimedia (videos/imagenes)
-    if (_localFiles.isNotEmpty &&
-        ["image", "video", "audio"].contains(_localFiles.first.type)) {
+    // Caso: hay archivos
+    if (_localFiles.isNotEmpty) {
       final file = _localFiles.first;
       final fileType = file.type;
-      final fileUrl = file.url;
       final previewHeight =
       fileType == "audio" ? widget.screenHeight * 0.10 : widget.screenHeight * 0.40;
 
@@ -139,15 +132,57 @@ class _MemoryContainerState extends State<MemoryContainer>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPreview(fileType, fileUrl, previewHeight, context),
-            _buildMetaData(),
-            _buildForm(),
+            PreviewWidget(
+              localFiles: _localFiles,
+              currentFileIndex: _currentFileIndex,
+              isEditing: _isEditing,
+              deleteFile: _deleteFile,
+              editFile: _editFile,
+              showAddOptions: _showAddOptions,
+              height: previewHeight,
+              videoControllers: _videoControllers,
+            ),
+            MemoryFormulario(
+              memory: widget.memory,
+              isEditing: _isEditing,
+              titleController: widget.titleController,
+              descriptionController: widget.descriptionController,
+            ),
           ],
         ),
       );
     }
 
-    return const Text("Tipo de memoria no soportado");
+    // Caso: no hay archivos
+    if (_localFiles.isEmpty && _hadOriginalFiles) {
+      // Mostrar PreviewWidget vacío + botón añadir
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PreviewWidget(
+              localFiles: _localFiles, // lista vacía
+              currentFileIndex: _currentFileIndex,
+              isEditing: _isEditing,
+              deleteFile: _deleteFile,
+              editFile: _editFile,
+              showAddOptions: _showAddOptions,
+              height: widget.screenHeight * 0.40,
+              videoControllers: _videoControllers,
+            ),
+            MemoryFormulario(
+              memory: widget.memory,
+              isEditing: _isEditing,
+              titleController: widget.titleController,
+              descriptionController: widget.descriptionController,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Memorias que nunca tuvieron archivos
+    return _buildQA();
   }
 
   // ------------------- Pregunta / Respuesta -------------------
@@ -218,216 +253,7 @@ class _MemoryContainerState extends State<MemoryContainer>
     );
   }
 
-  // ------------------- Vista previa -------------------
-  Widget _buildPreview(String type, String url, double height, BuildContext context) {
-    final multiple = _localFiles.length > 1;
-
-    return Container(
-      height: height,
-      width: double.infinity,
-      alignment: Alignment.center,
-      child: _localFiles.isEmpty
-          ? Center(
-        child: OutlinedButton.icon(
-          onPressed: () => _showAddOptions(context),
-          icon: const Icon(Icons.add, color: Colors.black87),
-          label: const Text(
-            "Añadir imágenes o videos",
-            style: TextStyle(color: Colors.black87),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.grey),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-      )
-          : Stack(
-        fit: StackFit.expand,
-        children: [
-          // Carrusel de archivos
-      PageView.builder(
-      controller: PageController(initialPage: _currentFileIndex),
-      itemCount: _localFiles.length,
-      onPageChanged: (index) {
-        setState(() {
-          _currentFileIndex = index;
-        });
-      },
-      itemBuilder: (context, index) {
-        final file = _localFiles[index];
-
-        // Si el archivo es un video y no se ha creado un controlador, crearlo
-        if (file.type == 'video' && !_videoControllers.containsKey(file.key)) {
-          _videoControllers[file.key] = VideoPlayerController.network(file.url)
-            ..initialize().then((_) {
-              setState(() {}); // Actualizar el estado después de inicializar el controlador
-            });
-        }
-
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: FilePreview(
-                key: PageStorageKey(file.key),
-                videoController: _videoControllers[file.key],
-                type: file.type,
-                url: file.url,
-              ),
-            ),
-          ],
-        );
-      },
-    ),
-
-    if (_isEditing)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () => _deleteFile(_currentFileIndex),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(6),
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
-                ),
-              ),
-            ),
-
-            // Contador (bottom-right)
-            if (multiple)
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "${_currentFileIndex + 1}/${_localFiles.length}",
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              ),
-
-          if (_isEditing)
-          // Botón flotante centrado abajo (igual que antes)
-            Positioned(
-              bottom: 12,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAddOptions(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text("Añadir imágenes o videos"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.85),
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-  }
-
-  // ------------------- Metadata -------------------
-  Widget _buildMetaData() => Container(
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: Colors.grey, width: 1)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          if (widget.memory.photoDate != null)
-            Text(
-              DateFormat('dd/MM/yy').format(widget.memory.photoDate!),
-              style: const TextStyle(
-                color: Colors.deepPurple,
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          if (widget.memory.location != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.inactive,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, size: 18, color: Colors.redAccent),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.memory.location!,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
-
-  // ------------------- Formulario -------------------
-  Widget _buildForm() => Padding(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      children: [
-        if (widget.memory.associatedQuestion != null &&
-            widget.memory.associatedQuestion!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: AppTextField(
-              controller: TextEditingController(text: widget.memory.associatedQuestion),
-              enabled: false,
-              hintText: 'Pregunta Default',
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: AppTextField(
-              hintText: "Escribe un título",
-              controller: widget.titleController,
-              enabled: _isEditing,
-              validator: (v) => (v == null || v.isEmpty) ? "El título es obligatorio" : null,
-            ),
-          ),
-        AppTextField(
-          hintText: "Escribe una descripción",
-          maxLines: 10,
-          controller: widget.descriptionController,
-          enabled: _isEditing,
-          validator: (v) =>
-          (v == null || v.isEmpty) ? "La descripción es obligatoria" : null,
-        ),
-      ],
-    ),
-  );
-
   // ------------------- Eliminar archivo -------------------
-
-
   void _deleteFile(int index) {
     final file = _localFiles[index];
 
@@ -448,7 +274,6 @@ class _MemoryContainerState extends State<MemoryContainer>
     });
     widget.onFileChanged?.call("delete", index, file);
   }
-
 
   // ------------------- Agregar archivo -------------------
   Future<void> _addFile(BuildContext context, String type) async {
@@ -494,7 +319,6 @@ class _MemoryContainerState extends State<MemoryContainer>
     final file = File(picked.path);
     final exists = await file.exists();
     if (!exists) {
-      //print("Archivo todavía no existe: ${picked.path}");
       return;
     }
 
@@ -540,26 +364,30 @@ class _MemoryContainerState extends State<MemoryContainer>
 
     if (type == "audio") {
       final hasPermission = await _checkMicrophonePermission();
+      if (!context.mounted) return null;
       if (!hasPermission) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Permiso de micrófono denegado")),
         );
         return null;
       }
+
       XFile? recordedFile;
       bool isRecording = false;
       bool isPlaying = false;
       Duration recordingDuration = Duration.zero;
-      Timer? _timer;
+      Timer? timer;
       final FlutterSoundPlayer player = FlutterSoundPlayer();
       await player.openPlayer();
 
-      await showModalBottomSheet(
+      if (!context.mounted) return null;
+
+      final XFile? result = await showModalBottomSheet<XFile>(
         context: context,
         isScrollControlled: true,
-        builder: (context) => SafeArea(
+        builder: (modalContext) => SafeArea(
           child: StatefulBuilder(
-            builder: (context, setModalState) => Padding(
+            builder: (modalContext, setModalState) => Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -569,12 +397,15 @@ class _MemoryContainerState extends State<MemoryContainer>
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-
-                  // Fila horizontal: Grabar | Reproducir (oculto si graba) | Tiempo
+                  Text(
+                    "${recordingDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:"
+                        "${recordingDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}",
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Botón Grabar
                       ElevatedButton.icon(
                         icon: Icon(isRecording ? Icons.stop : Icons.mic),
                         label: Text(isRecording ? "Detener" : "Grabar"),
@@ -592,7 +423,7 @@ class _MemoryContainerState extends State<MemoryContainer>
                               codec: Codec.aacADTS,
                             );
 
-                            _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+                            timer = Timer.periodic(const Duration(seconds: 1), (_) {
                               setModalState(() {
                                 recordingDuration += const Duration(seconds: 1);
                               });
@@ -601,16 +432,13 @@ class _MemoryContainerState extends State<MemoryContainer>
                             setModalState(() => isRecording = true);
                           } else {
                             await _recorder.stopRecorder();
-                            _timer?.cancel();
-                            _timer = null;
+                            timer?.cancel();
+                            timer = null;
                             setModalState(() => isRecording = false);
                           }
                         },
                       ),
-
                       const SizedBox(width: 16),
-
-                      // Botón Reproducir (solo si hay audio y no se está grabando)
                       if (recordedFile != null && !isRecording)
                         ElevatedButton.icon(
                           icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
@@ -631,46 +459,19 @@ class _MemoryContainerState extends State<MemoryContainer>
                             }
                           },
                         ),
-
-                      const SizedBox(width: 16),
-
-                      // Tiempo
-                      Text(
-                        "${recordingDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:"
-                            "${recordingDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}",
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-                      ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Línea divisoria
-                  Divider(
-                    thickness: 1.5,
-                    color: Colors.grey[400],
-                    indent: 20,
-                    endIndent: 20,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Botones Usar audio / Desechar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  Divider(thickness: 1.5, color: Colors.grey[400]),
+                  Column(
                     children: [
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text("Usar audio"),
-                        onPressed: () => Navigator.pop(context, recordedFile),
-                      ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.delete),
-                        label: const Text("Desechar"),
-                        onPressed: () {
-                          recordedFile = null;
-                          Navigator.pop(context, null);
-                        },
+                      SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          label: const Text("Usar Audio"),
+                          onPressed: () => Navigator.pop(modalContext, recordedFile),
+                        ),
                       ),
                     ],
                   ),
@@ -680,14 +481,22 @@ class _MemoryContainerState extends State<MemoryContainer>
           ),
         ),
       );
-
+      // Si se salió sin usar audio, eliminar el archivo temporal
+      if (recordedFile != null && result == null) {
+        final file = File(recordedFile!.path);
+        if (await file.exists()) await file.delete();
+        recordedFile = null;
+      }
       await player.closePlayer();
-      return recordedFile;
+      return result;
     }
-      // --- Video / Imagen ---
+
+    // --- Video / Imagen ---
+    if (!context.mounted) return null;
+
     return showModalBottomSheet<XFile?>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (modalContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -698,7 +507,8 @@ class _MemoryContainerState extends State<MemoryContainer>
                 final picked = type == "video"
                     ? await picker.pickVideo(source: ImageSource.gallery)
                     : await picker.pickImage(source: ImageSource.gallery);
-                Navigator.pop(context, picked);
+                if (!modalContext.mounted) return;
+                Navigator.pop(modalContext, picked);
               },
             ),
             ListTile(
@@ -708,7 +518,8 @@ class _MemoryContainerState extends State<MemoryContainer>
                 final picked = type == "video"
                     ? await picker.pickVideo(source: ImageSource.camera)
                     : await picker.pickImage(source: ImageSource.camera);
-                Navigator.pop(context, picked);
+                if (!modalContext.mounted) return;
+                Navigator.pop(modalContext, picked);
               },
             ),
           ],
@@ -718,11 +529,8 @@ class _MemoryContainerState extends State<MemoryContainer>
   }
 
   String _guessMimeType(String path) {
-    if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
-    if (path.endsWith(".png")) return "image/png";
-    if (path.endsWith(".mp4")) return "video/mp4";
-    if (path.endsWith(".mp3")) return "audio/mpeg";
-    return "application/octet-stream";
+    final mimeType = lookupMimeType(path);
+    return mimeType ?? "application/octet-stream";
   }
 
 }

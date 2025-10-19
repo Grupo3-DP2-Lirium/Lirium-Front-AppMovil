@@ -8,13 +8,14 @@ import 'package:flutter_frontend/presentation/screens/memories/memory_details/me
 import '../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
-// Modes: view, edit or create
-enum MemoryMode { view, edit}
+// Modes: view or edit
+enum MemoryMode {view, edit}
 
 class MemoryDetailScreen extends StatefulWidget {
-  final Memory? memory;
-  final MemoryMode mode;
+  final Memory? memory; // Memory data (can be null for new memory)
+  final MemoryMode mode; // Current screen mode (view or edit)
 
+  // Constructor: accepts memory and mode
   const MemoryDetailScreen({
     super.key,
     required this.memory,
@@ -27,37 +28,43 @@ class MemoryDetailScreen extends StatefulWidget {
 
 class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   final _service = MemoryService();
+
+  // Controllers for editing title and description
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
+  // State flags and data
   bool _isLoading = false;
-  late Memory _originalMemory;
-  late Memory _editableMemory;
+  late Memory _originalMemory; // Original memory object (for reset)
+  late Memory _editableMemory; // Editable copy of the memory
 
+  // Lists for managing files (existing, new, and deleted)
   List<File> _existingFiles = [];
   final List<io.File> _newFiles = [];
   final List<File> _deletedFiles = [];
 
+  // Current memory mode (view or edit)
   late MemoryMode _mode;
 
-  // al inicio del State:
+  // Key for accessing the memory container state
   final GlobalKey _memoryContainerKey = GlobalKey();
 
+  // Switch to edit mode
   void _switchToEditMode() {
-    // 1) Notificamos al contenedor que entre en modo edición (no recrearlo)
+    // 1) Notify the container to enter edit mode (without recreating it)
     (_memoryContainerKey.currentState as dynamic)?.setEditMode(true);
-
-    // 2) Seguimos usando setState para que la appBar y los botones aparezcan
+    // 2) Update UI (AppBar & buttons)
     setState(() => _mode = MemoryMode.edit);
   }
 
+  // Cancel the edit mode and restore the original data
   void _cancelEdit() {
-    // 1) Notificamos al contenedor que salga del modo edición
+    // 1) Notify the container to exit edit mode
     final containerState = _memoryContainerKey.currentState as dynamic;
     containerState?.setEditMode(false);
     containerState?.restoreOriginalFiles(_originalMemory.files);
 
-    // 2) Restauramos los datos localmente (sin tocar la referenica del widget en sí)
+    // 2) Restore editable data to its original state
     _editableMemory = _originalMemory.copyWith();
     _existingFiles = List.from(_originalMemory.files);
     _newFiles.clear();
@@ -65,7 +72,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _titleController.text = _originalMemory.title;
     _descriptionController.text = _originalMemory.description;
 
-    // 3) Actualizamos UI (appbar / botones)
+    // 3) Update UI to view mode (AppBar & buttons)
     setState(() => _mode = MemoryMode.view);
   }
 
@@ -74,11 +81,11 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     super.initState();
     _mode = widget.mode;
     if (widget.memory != null) {
-      // Edit / view existing memory
+      // Edit existing memory (if provided)
       _originalMemory = widget.memory!;
       _editableMemory = _originalMemory.copyWith();
     } else {
-      // Create new memory
+      // Initialize for creating new memory
       _originalMemory = Memory(
         id: "",
         type: "default",
@@ -96,6 +103,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _editableMemory = _originalMemory.copyWith();
     }
 
+    // Initialize lists with current memory data
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
@@ -103,32 +111,36 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   @override
   void dispose() {
+    // Dispose of controllers to prevent memory leaks
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
   // Services
-  // Save changes (Edit mode)
+
+  // Save changes when editing a memory
   Future<void> _saveChanges() async {
+    // Prevent multiple saves while loading
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
+      // Prepare the data to be saved (title, description, etc.)
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
-        "addTags": false,
+        "addTags": false, // Need to eliminate in Back
       };
 
+      // Files to upload (if any)
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+      // Files to delete (if any)
       final filesToDelete = _deletedFiles
           .map((f) => {"id": f.id, "path": f.url})
           .toList();
 
-      //print('Files to upload: ${filesToUpload?.map((f) => f.path).toList()}');
-      //print('Files to delete: $filesToDelete');
-
+      // Call service to update memory
       await _service.updateMemory(
         memoryId: widget.memory!.id,
         memoryJson: memoryJson,
@@ -136,11 +148,13 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         filesToDelete: filesToDelete,
       );
 
+      // Update local memory object after successful save
       final updatedMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
       );
 
+      // Navigate to the updated memory screen
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -248,15 +262,17 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Determine if the app is in edit mode
     final bool isEditMode = _mode == MemoryMode.edit;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
-        title: isEditMode ? "Vista Previa" : "Recuerdo",
+        title: isEditMode ? "Vista Previa" : "Recuerdo", // Set title based on mode
         onBack: () => Navigator.pop(context),
       ),
       body: Padding(
@@ -267,6 +283,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Display header and action menu (edit/delete) in view mode
             if (!isEditMode)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
@@ -286,6 +303,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                           "Yo",
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
+                        // Display formatted date of memory creation
                         Text(
                           "${_editableMemory.createdDate.day.toString().padLeft(2, '0')}/${_editableMemory.createdDate.month.toString().padLeft(2, '0')}/${_editableMemory.createdDate.year}",
                           style: TextStyle(color: Colors.grey[600], fontSize: 12),
@@ -293,13 +311,14 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                       ],
                     ),
                     const Spacer(),
+                    // Popup menu with options to edit or delete
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
                         if (value == "edit") {
-                          _switchToEditMode();
+                          _switchToEditMode(); // Switch to edit mode
                         } else if (value == "delete") {
-                          _deleteMemory();
+                          _deleteMemory(); // Delete memory
                         }
                       },
                       itemBuilder: (context) => [
@@ -328,43 +347,44 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                   ],
                 ),
               ),
-            // Contenido de una Memoria
+
+            // Memory content (view/edit mode)
             Expanded(
               child: SingleChildScrollView(
                 child: MemoryContainer(
                   key: _memoryContainerKey,
-                  edit: isEditMode,
+                  edit: isEditMode, // Pass edit mode flag to the container
                   existingFiles: _existingFiles,
-                  memory: _editableMemory,
+                  memory: _editableMemory,  // Current memory to display/edit
                   titleController: _titleController,
                   descriptionController: _descriptionController,
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
+                    // Handle file actions (add, update, delete)
                     if (action == "add" && file != null) {
-                      _newFiles.add(io.File(file.url));
+                      _newFiles.add(io.File(file.url)); // Add new file
                     } else if (action == "update" && index != null && file != null) {
                       final ioFile = io.File(file.url);
                       if (index < _newFiles.length) {
-                        _newFiles[index] = ioFile;
+                        _newFiles[index] = ioFile; // Update existing file
                       } else {
-                        _newFiles.add(ioFile);
+                        _newFiles.add(ioFile); // Add new file to list
                       }
                     } else if (action == "delete" && index != null && file != null) {
                       final isExisting = file.id.isNotEmpty;
                       if (isExisting) {
-                        _deletedFiles.add(file);
+                        _deletedFiles.add(file); // Mark file for deletion
                         _existingFiles.removeWhere((f) => f.id == file.id);
                       } else {
-                        _newFiles.removeWhere((f) => f.path == file.url);
+                        _newFiles.removeWhere((f) => f.path == file.url); // Remove from new files
                       }
                     }
-                    // ❌ No llames a setState aquí
                   },
                 ),
               ),
             ),
 
-            // Botones en modo edición
+            // Action buttons in edit mode
             if (isEditMode)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -380,6 +400,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        // Cancel button
                         Expanded(
                           child: SecondaryButton(
                             text: "Cancelar",
@@ -389,6 +410,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                           ),
                         ),
                         SizedBox(width: screenWidth * 0.04),
+                        // Save button
                         Expanded(
                           child: PrimaryButton(
                             text: "Guardar",

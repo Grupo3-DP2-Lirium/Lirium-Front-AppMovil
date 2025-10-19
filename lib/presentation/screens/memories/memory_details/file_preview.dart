@@ -16,8 +16,8 @@ class FilePreview extends StatefulWidget {
     required this.type,
     required this.url,
     this.onEdit,
-    this.videoController, // 💡 este sí
-    this.onVideoControllerInit, // 💡 este también
+    this.videoController,
+    this.onVideoControllerInit,
   });
 
   @override
@@ -32,9 +32,6 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   AudioPlayer? _audioPlayer;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-
-  // Nueva variable para manejar ruta local
-  String? _localVideoPath;
 
   @override
   void initState() {
@@ -58,7 +55,13 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
     switch (widget.type) {
       case "video":
-        _initializeVideo(widget.url);
+      // Usamos el controlador de video proporcionado
+        _videoController = widget.videoController;
+
+        // Si el controlador no está inicializado, lo inicializamos
+        if (_videoController != null && !_videoController!.value.isInitialized) {
+          _initializeVideoController();
+        }
         break;
       case "audio":
         _initializeAudio(widget.url);
@@ -66,37 +69,16 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
     }
   }
 
-  Future<void> _initializeVideo(String path) async {
-    // ✅ Si ya hay un controlador externo, úsalo
-    if (widget.videoController != null) {
-      _videoController = widget.videoController!;
-      if (!_videoController!.value.isInitialized) {
-        await _videoController!.initialize();
-      }
-    } else {
-      // ✅ Caso contrario, creamos uno nuevo
-      if (path.startsWith("http")) {
-        _videoController = VideoPlayerController.networkUrl(Uri.parse(path));
-      } else {
-        final file = File(path);
-        bool exists = await file.exists();
-        if (!exists) {
-          print("⚠️ Archivo local no existe: $path");
-          return;
-        }
-        _videoController = VideoPlayerController.file(file);
-      }
+  Future<void> _initializeVideoController() async {
+    // Llamar al callback si es necesario
+    widget.onVideoControllerInit?.call(_videoController!);
 
-      await _videoController!.initialize();
-      widget.onVideoControllerInit?.call(_videoController!); // 💡 notificamos al padre
-    }
-
-    // 🔁 Listener para reiniciar cuando termina
+    // Escuchar el fin del video para reiniciar si es necesario
     _videoController!.addListener(() {
       if (_videoController!.value.position >= _videoController!.value.duration) {
         _videoController!.seekTo(Duration.zero);
         _videoController!.pause();
-        setState(() {}); // para refrescar el ícono
+        setState(() {});
       }
     });
 
@@ -131,7 +113,6 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
       _videoController?.dispose(); // solo si es interno
     }
     _videoController = null;
-    _localVideoPath = null;
   }
 
   void _disposeMedia() {
@@ -165,7 +146,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ IMAGEN ------------------------
   Widget _buildImageWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Sin vista previa de imagen");
+    if (widget.url.isEmpty) return _buildPlaceholder("Cargando video...");
 
     return Stack(
       children: [
@@ -193,8 +174,9 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ VIDEO ------------------------
   Widget _buildVideoWidget() {
+    // Si el controlador no está inicializado, muestra el indicador de carga
     if (_videoController == null || !_videoController!.value.isInitialized) {
-      return _buildPlaceholder("Sin vista previa de video", showEdit: true);
+      return _buildPlaceholder("Cargando video...");
     }
 
     return AspectRatio(
@@ -244,8 +226,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ AUDIO ------------------------
   Widget _buildAudioWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Sin audio", showEdit: true, icon: Icons.mic);
-
+    if (widget.url.isEmpty) return _buildPlaceholder("Sin audio");
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -308,26 +289,18 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   }
 
   // ------------------------ HELPERS ------------------------
-  Widget _buildPlaceholder(String text, {bool showEdit = false, IconData? icon}) {
+  Widget _buildPlaceholder(String text) {
     return Container(
-      height: 150,
+      width: double.infinity,
+      height: double.infinity, // Ocupa todo el espacio disponible
       decoration: BoxDecoration(
         color: AppColors.inactive,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) Icon(icon, size: 32, color: Colors.black54),
-            if (icon != null) const SizedBox(width: 8),
-            Text(text, style: const TextStyle(fontSize: 16, color: Colors.black54)),
-            if (showEdit && widget.onEdit != null) ...[
-              const SizedBox(width: 12),
-              _buildEditButton(),
-            ]
-          ],
-        ),
+        child: text == "Cargando video..."
+            ? const CircularProgressIndicator()
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -335,14 +308,14 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   Widget _buildEditButton() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         shape: BoxShape.circle,
       ),
       child: CircleAvatar(
         backgroundColor: AppColors.primary,
         radius: 22,
         child: IconButton(
-          icon: const Icon(Icons.edit, color: Colors.white),
+          icon: const Icon(Icons.mic, color: Colors.white),
           onPressed: widget.onEdit,
         ),
       ),
