@@ -349,11 +349,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     // Determine if the app is in edit mode
     final bool isEditMode = _mode == MemoryMode.edit;
 
+    double appBarHeight = screenHeight * 0.09;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
         title: isEditMode ? "Vista Previa" : "Recuerdo", // Set title based on mode
         onBack: () => Navigator.pop(context),
+        appBarHeight: appBarHeight,
+        showBackButton: true,
       ),
       body: Padding(
         padding: EdgeInsets.symmetric(
