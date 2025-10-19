@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/auth_service.dart';
 import 'package:flutter_frontend/data/services/auth_storage.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../components/components.dart';
@@ -89,7 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const PreserveQuestionScreen()),
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
         );
       } else if (response.statusCode == 401) {
         _showMessage('Credenciales incorrectas');

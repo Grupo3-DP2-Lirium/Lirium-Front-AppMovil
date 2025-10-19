@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import '../memories/timeline_screen.dart';
 import '../profiles/profiles_screen.dart';
 import '../memories/memories_grid_screen.dart';
@@ -13,7 +14,7 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen>{
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
@@ -36,7 +37,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             _currentIndex = index;
           });
         },
-        selectedItemColor: const Color(0xFF6366F1),
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         elevation: 8,

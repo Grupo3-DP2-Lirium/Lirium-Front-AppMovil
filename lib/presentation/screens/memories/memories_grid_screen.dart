@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
+import 'package:flutter_frontend/presentation/components/forms/search_field.dart';
 import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_detail_screen.dart';
 import '../../components/components.dart';
+import '../main/main_navigation_screen.dart';
 
+// Screen that displays the list of memories
 class MemoriesGridScreen extends StatefulWidget {
   const MemoriesGridScreen({super.key});
 
@@ -27,34 +31,10 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Memorias',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isGridView ? Icons.view_list : Icons.grid_view,
-              color: Colors.black,
-            ),
-            onPressed: () {
-              setState(() {
-                isGridView = !isGridView;
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
+      appBar: CustomMemoryAppBar(
+        title: "Recuerdos",
+        onBack: () {
+        },
       ),
       body: Column(
         children: [
@@ -64,33 +44,16 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, color: Colors.grey, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Buscar recuerdos...',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: AppSearchBar(
+                    hintText: 'Buscar recuerdos...',
+                    onChanged: (text) {
+                    },
                   ),
                 ),
-                const SizedBox(width: 12),
-                IconButtonCustom(icon: Icons.tune, onPressed: () {}),
               ],
             ),
           ),
-          // Content
+          // List of Memories (Grid)
           Expanded(
             child: FutureBuilder<List<Memory>>(
               future: _future,
@@ -98,13 +61,14 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('No memories found'));
+                }
                 final memories = snapshot.data!;
-                return isGridView
-                    ? _buildGridView(memories)
-                    : _buildListView(memories);
+                return _buildGridView(memories);
               },
             ),
-          ),
+          )
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -112,13 +76,13 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
           context,
           MaterialPageRoute(builder: (context) => CreateMemoryToMemorial()),
         ),
-        backgroundColor: const Color(0xFF6366F1),
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  // GridView y ListView reciben la lista de memorias
+  // GridView
   Widget _buildGridView(List<Memory> memories) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
@@ -135,44 +99,17 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
           memory: memory,
           isGridView: true,
           onTap: () async {
-            // Ir a la pantalla de detalle y esperar a que devuelva el memory actualizado
             final updatedMemory = await Navigator.push<Memory>(
               context,
               MaterialPageRoute(
                 builder: (_) => MemoryDetailScreen(memory: memory),
               ),
             );
-
-            // Si hay memory actualizado, reemplaza el antiguo en la lista
             if (updatedMemory != null) {
               setState(() {
                 memories[index] = updatedMemory;
               });
             }
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildListView(List<Memory> memories) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: memories.length,
-      itemBuilder: (context, index) {
-        final memory = memories[index];
-        return MemoryCard(
-          memory: memory,
-          isGridView: true,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MemoryDetailScreen(
-                  memory: memory,
-                ),
-              ),
-            );
           },
         );
       },

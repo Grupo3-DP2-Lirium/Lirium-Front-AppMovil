@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class SecondaryButton extends StatelessWidget {
   final String text;
@@ -22,8 +23,8 @@ class SecondaryButton extends StatelessWidget {
       return OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: textColor ?? const Color(0xFF6366F1), // fuerza color activo/inactivo
-          side: const BorderSide(color: Color(0xFF6366F1)),       // borde siempre morado
+          foregroundColor: textColor ?? AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -33,13 +34,13 @@ class SecondaryButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 18, color: textColor ?? const Color(0xFF6366F1)),
+              Icon(icon, size: 18, color: textColor ?? AppColors.primary),
               const SizedBox(width: 8),
             ],
             Text(
               text,
               style: TextStyle(
-                color: textColor ?? const Color(0xFF6366F1),
+                color: textColor ?? AppColors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),

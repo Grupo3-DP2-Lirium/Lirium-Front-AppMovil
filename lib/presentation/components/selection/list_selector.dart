@@ -6,13 +6,15 @@ class AppDropdownField extends StatefulWidget {
   final List<String> options;
   final String? Function(String?)? validator;
   final String? header;
+  final bool? enable;
 
   const AppDropdownField({
     super.key,
     required this.controller,
     required this.options,
     this.validator,
-    this.header
+    this.header,
+    this.enable = true,
   });
 
   @override
@@ -25,10 +27,13 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
   bool _isOpen = false;
 
   void _toggleDropdown() {
-    if (_isOpen) {
-      _removeOverlay();
-    } else {
-      _showOverlay();
+    // Solo abrir el dropdown si 'enable' es verdadero
+    if (widget.enable ?? true) {
+      if (_isOpen) {
+        _removeOverlay();
+      } else {
+        _showOverlay();
+      }
     }
   }
 
@@ -58,17 +63,14 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
               itemBuilder: (context, index) {
                 final option = widget.options[index];
                 return ListTile(
-                  title: Text(
-                      option,
-                      style: const TextStyle(color: Colors.grey)
-                  ),
+                  title: Text(option, style: const TextStyle(color: Colors.grey)),
                   onTap: () {
                     widget.controller.text = option;
                     _removeOverlay();
                   },
                 );
               },
-              separatorBuilder: (_, __) => Divider(height: 1),
+              separatorBuilder: (_, __) => const Divider(height: 1),
             ),
           ),
         ),
@@ -97,11 +99,12 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
           label: widget.header,
           floatingLabel: true,
           suffixIcon: const Icon(Icons.arrow_drop_down),
-          validator: widget.validator
+          validator: widget.validator,
         ),
       ),
     );
   }
+
   @override
   void dispose() {
     _removeOverlay();

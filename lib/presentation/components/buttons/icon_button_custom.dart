@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class IconButtonCustom extends StatelessWidget {
   final IconData icon;
@@ -24,7 +25,7 @@ class IconButtonCustom extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: backgroundColor ?? const Color(0xFF6366F1),
+        color: backgroundColor ?? AppColors.primary,
         shape: BoxShape.circle,
       ),
       child: IconButton(
