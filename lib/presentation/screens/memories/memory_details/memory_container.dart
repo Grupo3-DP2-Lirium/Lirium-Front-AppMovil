@@ -16,6 +16,9 @@ class MemoryContainer extends StatefulWidget {
   final Memory memory;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
+  final TextEditingController mesController;
+  final TextEditingController ahoController;
+  final TextEditingController locationController;
   final double screenHeight;
   final bool edit;
   final List<domain.File>? existingFiles;
@@ -26,6 +29,9 @@ class MemoryContainer extends StatefulWidget {
     required this.memory,
     required this.titleController,
     required this.descriptionController,
+    required this.mesController,
+    required this.ahoController,
+    required this.locationController,
     required this.screenHeight,
     this.edit = false,
     this.onFileChanged,
@@ -147,6 +153,9 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
               isEditing: _isEditing,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
+              mesController: widget.mesController,
+              ahoController: widget.ahoController,
+              locationController: widget.locationController,
             ),
           ],
         ),
@@ -175,6 +184,9 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
               isEditing: _isEditing,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
+              mesController: widget.mesController,
+              ahoController: widget.ahoController,
+              locationController: widget.locationController,
             ),
           ],
         ),

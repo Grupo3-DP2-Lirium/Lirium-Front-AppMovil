@@ -12,6 +12,7 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final bool enabled;
   final Color? textColor;
+  final bool floatingLabel;
 
   const AppTextField({
     super.key,
@@ -27,6 +28,7 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.enabled = true,
     this.textColor,
+    this.floatingLabel = false,
   });
 
   @override
@@ -34,18 +36,18 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label != null && label!.isNotEmpty) ...[
+        // Solo muestra el Text arriba si no es floating
+        if (!floatingLabel && label != null && label!.isNotEmpty) ...[
           Text(
             label!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: Colors.black87,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 8),
         ],
-        // 🟢 Usa TextFormField para que validator funcione
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
@@ -58,10 +60,9 @@ class AppTextField extends StatelessWidget {
           style: TextStyle(color: textColor ?? Colors.grey),
           decoration: InputDecoration(
             hintText: hintText,
+            labelText: floatingLabel ? label : null, // label flotante
             hintStyle: const TextStyle(color: Colors.grey),
-            prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: Colors.grey)
-                : null,
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: Colors.grey) : null,
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

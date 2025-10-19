@@ -174,7 +174,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ VIDEO ------------------------
   Widget _buildVideoWidget() {
-    // Si el controlador no está inicializado, muestra el indicador de carga
+    // Si el controlador no está inicializado, muestra cargando
     if (_videoController == null || !_videoController!.value.isInitialized) {
       return _buildPlaceholder("Cargando video...");
     }

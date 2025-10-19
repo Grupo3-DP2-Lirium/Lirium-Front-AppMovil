@@ -53,7 +53,9 @@ dependencies:
   just_audio: ^0.10.5
   intl: ^0.20.2
   video_thumbnail: ^0.5.3
-  # The following adds the Cupertino Icons font to your application.
+  flutter_map: ^8.2.2   # para mostrar el mapa
+  latlong2: ^0.9.0       # para trabajar con coordenadas LatLng
+  geolocator: ^9.0.2     # opcional: obtener ubicación actual del usuario  # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.4.1

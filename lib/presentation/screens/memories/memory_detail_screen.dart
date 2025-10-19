@@ -29,9 +29,12 @@ class MemoryDetailScreen extends StatefulWidget {
 class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   final _service = MemoryService();
 
-  // Controllers for editing title and description
+  // Controllers for editing metadatos
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
+  late TextEditingController _mesController;
+  late TextEditingController _ahoController;
+  late TextEditingController _locationController;
 
   // State flags and data
   bool _isLoading = false;
@@ -107,6 +110,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
+    _mesController = TextEditingController(text: "");
+    _ahoController = TextEditingController(text: "");
+    _locationController = TextEditingController(text: _editableMemory.location ?? "");
   }
 
   @override
@@ -358,6 +364,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                   memory: _editableMemory,  // Current memory to display/edit
                   titleController: _titleController,
                   descriptionController: _descriptionController,
+                  mesController: _mesController,
+                  ahoController: _ahoController,
+                  locationController: _locationController,
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
                     // Handle file actions (add, update, delete)
