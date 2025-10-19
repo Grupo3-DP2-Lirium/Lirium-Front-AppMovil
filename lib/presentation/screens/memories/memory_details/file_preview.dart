@@ -292,7 +292,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
   Widget _buildPlaceholder(String text) {
     return Container(
       width: double.infinity,
-      height: double.infinity, // Ocupa todo el espacio disponible
+      height: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.inactive,
         borderRadius: BorderRadius.circular(16),

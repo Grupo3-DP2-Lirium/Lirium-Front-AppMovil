@@ -50,6 +50,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
           fontWeight: FontWeight.w600,
         ),
       ),
+      iconColor: AppColors.primary,
       childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       tilePadding: const EdgeInsets.symmetric(horizontal: 16),
       shape: const Border(
@@ -69,6 +70,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                   header: 'Mes',
                   controller: widget.mesController,
                   options: ["Enero", "Febrero", "Marzo", "Abril"],
+                  enable: widget.isEditing,
                 ),
               ),
               const SizedBox(width: 16),
@@ -77,6 +79,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                   header: 'Año',
                   controller: widget.ahoController,
                   options: ["2000", "2001", "2002", "2003"],
+                  enable: widget.isEditing,
                 ),
               ),
             ],
@@ -91,7 +94,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
               LatLng initialLatLng = LatLng(-12.0464, -77.0428); // default Lima
 
             if (widget.locationController.text.isNotEmpty) {
-              // ⚡ Hacer geocoding de la ciudad guardada
+              // Hacer geocoding de la ciudad guardada
               final city = widget.locationController.text;
               final url = Uri.parse(
                   'https://nominatim.openstreetmap.org/search?q=$city&format=json&limit=1');

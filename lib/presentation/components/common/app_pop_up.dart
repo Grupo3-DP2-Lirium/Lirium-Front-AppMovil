@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'app_colors.dart';
 
 class AppPopupButton {
   final String text;
@@ -19,7 +19,7 @@ Future<void> appPopupButtonDefault({
   required String title,
   required String message,
   required List<AppPopupButton> buttons, // 1 o 2 botones
-  bool isLoading = false, // <-- Nuevo parámetro para loading
+  bool isLoading = false,
 }) async {
   assert(buttons.isNotEmpty && buttons.length <= 2,
   "El pop-up solo puede tener 1 o 2 botones");
@@ -43,7 +43,9 @@ Future<void> appPopupButtonDefault({
               if (isLoading)
                 Column(
                   children: const [
-                    CircularProgressIndicator(),
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
                     SizedBox(height: 24),
                     Text(
                       "Guardando tu recuerdo...",
@@ -73,6 +75,7 @@ Future<void> appPopupButtonDefault({
                         width: 294,
                         height: 60,
                         child: CupertinoButton.filled(
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(12),
                           child: Text(
                             buttons[0].text,
@@ -98,10 +101,9 @@ Future<void> appPopupButtonDefault({
                                 height: 60,
                                 child: CupertinoButton.filled(
                                   borderRadius: BorderRadius.circular(12),
-                                  color: btn.color ??
-                                      (index == 0
-                                          ? Colors.grey[200]
-                                          : AppColors.primary),
+                                  color: btn.color ?? (
+                                      buttons.length == 1 ? AppColors.primary :
+                                      (index == 0 ? Colors.grey[200] : AppColors.primary)),
                                   child: Text(
                                     btn.text,
                                     style: TextStyle(

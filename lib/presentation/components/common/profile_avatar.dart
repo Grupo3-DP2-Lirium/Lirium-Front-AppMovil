@@ -2,13 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'app_colors.dart';
 
 class ProfileAvatar extends StatefulWidget {
   final double radius;
   final IconData? placeholderIcon;
   final bool showCameraIcon;
 
-  /// Opcional: callback cuando cambia la imagen
   final void Function(File?)? onImageChanged;
 
   const ProfileAvatar({
@@ -104,7 +104,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
                 width: widget.radius * 0.6,
                 height: widget.radius * 0.6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF6366F1),
+                  color: AppColors.primary2,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

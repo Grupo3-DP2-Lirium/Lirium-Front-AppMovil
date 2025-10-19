@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/file_preview.dart';
 import 'package:video_player/video_player.dart';
 
@@ -76,19 +77,23 @@ class _PreviewWidgetState extends State<PreviewWidget> {
       alignment: Alignment.center,
       child: widget.localFiles.isEmpty
           ? Center(
-        child: OutlinedButton.icon(
+        child: ElevatedButton.icon(
           onPressed: () => widget.showAddOptions(context),
-          icon: const Icon(Icons.add, color: Colors.black87),
+          icon: const Icon(Icons.library_add, size: 20),
           label: const Text(
             "Añadir imágenes o videos",
-            style: TextStyle(color: Colors.black87),
+            style: TextStyle(fontSize: 14),
           ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.grey),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 4,
+            shadowColor: Colors.black.withValues(alpha: 0.25),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(5),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            minimumSize: const Size(242, 37),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2), // Padding entre texto e icono
           ),
         ),
       )
@@ -136,11 +141,12 @@ class _PreviewWidgetState extends State<PreviewWidget> {
               );
             },
           ),
-          // Botón eliminar solo si NO es audio && widget.localFiles[currentFileIndex].type != 'audio'
+
+          // Botón eliminar solo si es IMAGEN/VIDEO
           if (widget.isEditing && widget.localFiles[currentFileIndex].type != 'audio')
             Positioned(
-              top: 8,
-              right: 8,
+              top: 16,
+              right: 16,
               child: GestureDetector(
                 onTap: () {
                   widget.deleteFile(currentFileIndex);
@@ -152,28 +158,48 @@ class _PreviewWidgetState extends State<PreviewWidget> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black54,
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        offset: Offset(0, 4),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.all(6),
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(
+                    Icons.close,
+                    color: AppColors.primary2,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
 
           if (multiple)
             Positioned(
-              bottom: 8,
-              right: 8,
+              top: widget.isEditing ? 16 : null,
+              bottom: widget.isEditing ? null : 16,
+              left: widget.isEditing ? 16 : null,
+              right: widget.isEditing ? null : 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      offset: Offset(0, 4),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
                 child: Text(
                   "${currentFileIndex + 1}/${widget.localFiles.length}",
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: const TextStyle(color: Colors.black, fontSize: 12),
                 ),
               ),
             ),
@@ -186,19 +212,25 @@ class _PreviewWidgetState extends State<PreviewWidget> {
               child: Center(
                 child: ElevatedButton.icon(
                   onPressed: () => widget.showAddOptions(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text("Añadir imágenes o videos"),
+                  icon: const Icon(Icons.library_add, size: 20),
+                  label: const Text(
+                    "Añadir imágenes o videos",
+                    style: TextStyle(fontSize: 14),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha:0.85),
+                    backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    elevation: 0,
+                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.25),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(5),
                     ),
+                    minimumSize: const Size(242, 37),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2), // Padding entre texto e icono
                   ),
                 ),
               ),
-            ),
+            )
         ],
       ),
     );
