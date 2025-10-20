@@ -102,9 +102,11 @@ class MemoryCard extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
         child: imageFile?.fileUrl != null
             ? Image.network(
-                imageFile!.fileUrl,
+                imageFile!.downloadUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
+                  print('Error loading image: $error');
+                  print('Image URL: ${imageFile!.downloadUrl}');
                   return _buildPlaceholder();
                 },
               )
