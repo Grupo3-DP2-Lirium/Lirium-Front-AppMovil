@@ -172,6 +172,14 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           .map((f) => {"id": f.id, "path": f.url})
           .toList();
 
+      print('filesToUpload es nulo? ${filesToUpload == null}');
+      print('filesToUpload tiene elementos? ${filesToUpload?.length ?? 0}');
+      print('filesToUpload: $filesToUpload');
+
+      print('filesToDelete es nulo? ${filesToDelete == null}');
+      print('filesToDelete tiene elementos? ${filesToDelete.length}');
+      print('filesToDelete: $filesToDelete');
+
       // Llamar al servicio para actualizar memoria
       await _service.updateMemory(
         memoryId: widget.memory!.id,
@@ -247,7 +255,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           ),
         ],
       );
-    } catch (e) {
+    } catch (e, stackTrace) {  // <- agregué stackTrace aquí
       Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -257,6 +265,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           ),
         );
       }
+      // Imprimir el stack trace completo para mejor diagnóstico
+      print('Error al guardar: $e');
+      print(stackTrace);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -6,7 +6,9 @@ import 'package:flutter_frontend/data/models/memory_response.dart';
 class FileUrlHelper {
 
   // Para emulador Android:
-  static const String baseUrl = 'http://10.0.2.2:8080';
+  //static const String baseUrl = 'http://10.0.2.2:8080';
+  // Para celular físico:
+  static const String baseUrl = 'http://192.168.18.177:8080';
 
   /// Construye la URL completa para descargar un archivo
   static String getFileUrl({

@@ -119,6 +119,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   // Dispose the recorder when the widget is disposed to clean up resources
   @override
   void dispose() {
+    for (var controller in _videoControllers.values) {
+      controller.dispose();
+    }
+    _videoControllers.clear();
     _recorder.closeRecorder();
     super.dispose();
   }
@@ -313,13 +317,21 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         if (existingIndex != -1) {
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
+          print("🔁 Reemplazado audio en índice $existingIndex");
           return;
         }
       }
 
-      // Si no, agregarlo normalmente
+      // Agregar nuevo archivo
       _localFiles.add(newFile);
+
+      // Actualizar índice al nuevo archivo
+      _currentFileIndex = _localFiles.length - 1;
+
       widget.onFileChanged?.call("add", null, newFile);
+      print("✅ Archivo agregado: ${newFile.name}");
+      print("🔹 _currentFileIndex actualizado: $_currentFileIndex");
+      print("📁 Archivos totales: ${_localFiles.length}");
     });
   }
 
@@ -353,14 +365,14 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       } else if (type == "audio") {
         // Si ya hay un audio, reemplazarlo
         final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
-        if (existingIndex != -1) {
-          _localFiles[existingIndex] = newFile;
-          widget.onFileChanged?.call("update", existingIndex, newFile);
-        } else {
-          // No hay audio previo, agregar
-          _localFiles.add(newFile);
-          widget.onFileChanged?.call("add", null, newFile);
-        }
+        final oldAudio = _localFiles[existingIndex];
+
+        // Notificar que se elimina el anterior
+        widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+        // Reemplazarlo por el nuevo audio
+        _localFiles[existingIndex] = newFile;
+        widget.onFileChanged?.call("update", existingIndex, newFile);
       } else {
         // Otros tipos (imagen/video) se agregan
         _localFiles.add(newFile);

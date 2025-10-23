@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:video_player/video_player.dart';
@@ -31,22 +33,50 @@ class _MemoryCardState extends State<MemoryCard> {
 
   void _initializeVideoIfNeeded() {
     if (widget.memory.files.isEmpty) return;
+
     final firstFile = widget.memory.files.first;
-    final isVideo = firstFile.url.toLowerCase().endsWith('.mp4');
-    if (isVideo) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(firstFile.url))
-        ..initialize().then((_) {
-          setState(() {});
-          _videoController?.setLooping(true);
-          _videoController?.pause();
-        });
+    final urlLower = firstFile.url.toLowerCase();
+    final isVideo = urlLower.endsWith('.mp4') ||
+        urlLower.endsWith('.mov') ||
+        urlLower.endsWith('.avi');
+
+    if (!isVideo) return;
+
+    if (_videoController != null) return;
+
+    if (firstFile.url.startsWith('http')) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(firstFile.url));
+    } else {
+      _videoController = VideoPlayerController.file(File(firstFile.url));
     }
+
+    _videoController!.initialize().then((_) {
+      if (!mounted) return;
+      setState(() {});
+      _videoController!.setLooping(true);
+      _videoController!.pause();
+    });
   }
 
   @override
   void dispose() {
     _videoController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant MemoryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Si cambió la URL del primer archivo, reinicializa el video
+    final oldUrl = oldWidget.memory.files.isNotEmpty ? oldWidget.memory.files.first.url : '';
+    final newUrl = widget.memory.files.isNotEmpty ? widget.memory.files.first.url : '';
+
+    if (oldUrl != newUrl) {
+      _videoController?.dispose();
+      _videoController = null;
+      _initializeVideoIfNeeded();
+    }
   }
 
   @override
@@ -126,10 +156,21 @@ class _MemoryCardState extends State<MemoryCard> {
         ),
       );
     } else if (isImage) {
+      final isNetwork = firstFile.url.startsWith('http');
+
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
+        child: isNetwork
+            ? Image.network(
           firstFile.url,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.broken_image, color: Colors.grey),
+        )
+            : Image.file(
+          File(firstFile.url),
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
@@ -137,7 +178,8 @@ class _MemoryCardState extends State<MemoryCard> {
           const Icon(Icons.broken_image, color: Colors.grey),
         ),
       );
-    } else {
+    }
+    else {
       return const Center(
         child: Icon(Icons.insert_drive_file, size: 50, color: Colors.grey),
       );
