@@ -315,6 +315,13 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       if (type == "audio") {
         final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
         if (existingIndex != -1) {
+          // Si ya hay un audio, reemplazarlo
+          final oldAudio = _localFiles[existingIndex];
+
+          // Notificar que se elimina el anterior
+          widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+          // Reemplazarlo por el nuevo audio
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
           print("🔁 Reemplazado audio en índice $existingIndex");
@@ -341,10 +348,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     if (picked == null) return;
 
     final file = File(picked.path);
-    final exists = await file.exists();
-    if (!exists) {
-      return;
-    }
+    if (!await file.exists()) return;
 
     final newFile = domain.File(
       id: "",
@@ -358,28 +362,26 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     );
 
     setState(() {
-      if (index != null && index < _localFiles.length) {
-        // Actualizar archivo existente
-        _localFiles[index] = newFile;
-        widget.onFileChanged?.call("update", index, newFile);
-      } else if (type == "audio") {
-        // Si ya hay un audio, reemplazarlo
-        final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+      // Buscar si ya hay un audio
+      final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+
+      if (existingIndex != -1) {
         final oldAudio = _localFiles[existingIndex];
 
-        // Notificar que se elimina el anterior
+        // Notificar que se elimina el anterior (para que el padre lo borre del backend)
         widget.onFileChanged?.call("delete", existingIndex, oldAudio);
 
         // Reemplazarlo por el nuevo audio
         _localFiles[existingIndex] = newFile;
         widget.onFileChanged?.call("update", existingIndex, newFile);
+
       } else {
-        // Otros tipos (imagen/video) se agregan
+        // Si por alguna razón no existía, simplemente agregarlo
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
       }
-    });
 
+    });
   }
 
   // ------------------- Selector de imagen/video/audio -------------------
