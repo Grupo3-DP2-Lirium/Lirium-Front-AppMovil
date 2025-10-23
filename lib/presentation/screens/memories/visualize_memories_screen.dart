@@ -4,6 +4,9 @@ import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/presentation/components/memory_card.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memories_by_type_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memories_by_category_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memories_by_moment_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/timeline_memories_screen.dart';
 
 // Typedef para compatibilidad
 typedef MemorialResponse = MemorialResponseModel;
@@ -416,66 +419,33 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   }
 
   Future<void> _loadMemoriesByTimeline() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final response = await _memoryService.getMemoriesByTimeline(
-        memorialId: widget.memorial.idMemorial,
-      );
-      
-      // TODO: Procesar respuesta de timeline
-      setState(() {
-        _memories = []; // Temporal
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar timeline: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    // Navegar a la pantalla de timeline
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TimelineMemoriesScreen(memorial: widget.memorial),
+      ),
+    );
   }
 
   Future<void> _loadMemoriesByThemes() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final response = await _memoryService.getMemoriesByThemes(
-        memorialId: widget.memorial.idMemorial,
-      );
-      
-      // TODO: Procesar respuesta de temas
-      setState(() {
-        _memories = []; // Temporal
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar temas: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    // Navegar a la pantalla de categorías
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemoriesByCategoryScreen(memorial: widget.memorial),
+      ),
+    );
   }
 
   Future<void> _loadMemoriesByMoments() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final response = await _memoryService.getMemoriesByMoments(
-        memorialId: widget.memorial.idMemorial,
-      );
-      
-      // TODO: Procesar respuesta de momentos
-      setState(() {
-        _memories = []; // Temporal
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar momentos: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    // Navegar a la pantalla de momentos
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemoriesByMomentScreen(memorial: widget.memorial),
+      ),
+    );
   }
 
   void _showOrganizeOptions() {
