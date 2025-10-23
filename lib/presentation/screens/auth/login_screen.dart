@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/auth_service.dart';
 import 'package:flutter_frontend/data/services/auth_storage.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
 import 'register_screen.dart';
@@ -23,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final authService = AuthService();
   final httpService = HttpService();
   final storage = AuthStorage();
+  final notificationService = NotificationService();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -45,6 +48,46 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _emailController.text = lastEmail;
       });
+    }
+  }
+
+  // ✅ Función para registrar el token FCM después del login
+  Future<void> _registerFCMToken() async {
+    try {
+      print('📱 Starting FCM token registration...');
+      
+      final FirebaseMessaging messaging = FirebaseMessaging.instance;
+      
+      // Solicitar permisos
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      
+      print('🔔 FCM Permission status: ${settings.authorizationStatus}');
+      
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // Obtener token
+        String? token = await messaging.getToken();
+        
+        if (token != null && token.isNotEmpty) {
+          print('✅ FCM Token obtained: ${token.substring(0, 20)}...');
+          
+          // Registrar en el backend
+          await notificationService.registerDeviceToken(token);
+          
+          print('✅ FCM Token registered in backend successfully');
+        } else {
+          print('⚠️ Failed to obtain FCM token');
+        }
+      } else {
+        print('❌ Notification permissions not granted: ${settings.authorizationStatus}');
+      }
+    } catch (e) {
+      print('❌ Error registering FCM token: $e');
+      // No lanzar error, solo loggear para no interrumpir el login
     }
   }
 
@@ -85,6 +128,9 @@ class _LoginScreenState extends State<LoginScreen> {
         await storage.save(access: access, refresh: refresh); // persiste seguro
         await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
 
+        // ✅ CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
+        await _registerFCMToken();
+
         _showMessage('¡Login exitoso!');
 
         if (!mounted) return;
@@ -119,8 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
         body: jsonEncode({
           'firstName': 'Rodrigo',
           'firstLastName': 'Usuario',
-          'email': 'rodrigo@test.com',  // Cambié el email para evitar conflictos
-          'password': 'rodrigo',  // La contraseña que quieres usar
+          'email': 'rodrigo@test.com',
+          'password': 'rodrigo',
         }),
       );
 
