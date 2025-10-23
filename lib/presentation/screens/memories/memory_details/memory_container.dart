@@ -324,7 +324,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
           // Reemplazarlo por el nuevo audio
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
-          print("🔁 Reemplazado audio en índice $existingIndex");
           return;
         }
       }
@@ -336,9 +335,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       _currentFileIndex = _localFiles.length - 1;
 
       widget.onFileChanged?.call("add", null, newFile);
-      print("✅ Archivo agregado: ${newFile.name}");
-      print("🔹 _currentFileIndex actualizado: $_currentFileIndex");
-      print("📁 Archivos totales: ${_localFiles.length}");
     });
   }
 

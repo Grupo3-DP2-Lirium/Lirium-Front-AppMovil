@@ -8,9 +8,9 @@ class ApiConstants {
       return "http://localhost:8080/api";
     } else {
       // Para celular físico en la misma red Wi-Fi
-      return "http://192.168.18.177:8080/api"; // <- tu IP de Wi-Fi
+      //return "http://192.168.18.177:8080/api"; // <- tu IP de Wi-Fi
       // Si quisieras seguir usando el emulador:
-      // return "http://10.0.2.2:8080/api";
+      return "http://10.0.2.2:8080/api";
     }
   }
 

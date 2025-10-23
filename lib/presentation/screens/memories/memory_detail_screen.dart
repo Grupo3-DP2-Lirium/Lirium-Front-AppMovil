@@ -258,7 +258,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           ),
         ],
       );
-    } catch (e, stackTrace) {  // <- agregué stackTrace aquí
+    } catch (e, stackTrace) {
       Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
