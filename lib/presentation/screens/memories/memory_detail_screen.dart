@@ -205,6 +205,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
           type = 'video';
           mimeType = 'video/$ext';
+        } else if (['mp3', 'm4a', 'wav', 'aac', 'ogg'].contains(ext)) {
+          type = 'audio';
+          mimeType = 'audio/$ext';
         } else {
           type = 'file';
           mimeType = 'application/octet-stream';
