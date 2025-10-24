@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 import 'new_reflection_screen.dart';
@@ -18,12 +19,21 @@ class ReflectionDetailScreen extends StatefulWidget {
 
 class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   final ReflectionService _reflectionService = ReflectionService();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   late ReflectionModel _reflection;
+  bool _isPlayingAudio = false;
+  String? _currentlyPlayingAudioId;
 
   @override
   void initState() {
     super.initState();
     _reflection = widget.reflection;
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   void _navigateToEdit() async {
@@ -72,6 +82,39 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _playAudio(ReflectionFile audio) async {
+    try {
+      if (_isPlayingAudio && _currentlyPlayingAudioId == audio.id) {
+        // Pausar audio actual
+        await _audioPlayer.pause();
+        setState(() {
+          _isPlayingAudio = false;
+          _currentlyPlayingAudioId = null;
+        });
+      } else {
+        // Reproducir nuevo audio
+        await _audioPlayer.stop();
+        await _audioPlayer.play(DeviceFileSource(audio.path));
+        setState(() {
+          _isPlayingAudio = true;
+          _currentlyPlayingAudioId = audio.id;
+        });
+
+        // Escuchar cuando termine la reproducción
+        _audioPlayer.onPlayerComplete.listen((_) {
+          setState(() {
+            _isPlayingAudio = false;
+            _currentlyPlayingAudioId = null;
+          });
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al reproducir audio: $e')),
+      );
+    }
   }
 
   Future<void> _deleteReflection() async {
@@ -422,13 +465,13 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
             ),
           ),
           IconButton(
-            onPressed: () {
-              // TODO: Reproducir audio
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reproducción de audio en desarrollo')),
-              );
-            },
-            icon: Icon(Icons.play_arrow, color: Colors.blue.shade600),
+            onPressed: () => _playAudio(audio),
+            icon: Icon(
+              _isPlayingAudio && _currentlyPlayingAudioId == audio.id 
+                  ? Icons.pause 
+                  : Icons.play_arrow,
+              color: Colors.blue.shade600,
+            ),
           ),
         ],
       ),
@@ -470,12 +513,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
             ),
           ),
           IconButton(
-            onPressed: () {
-              // TODO: Reproducir video
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reproducción de video en desarrollo')),
-              );
-            },
+            onPressed: () => _showVideoPlayer(video),
             icon: Icon(Icons.play_arrow, color: Colors.purple.shade600),
           ),
         ],
@@ -496,6 +534,53 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
           body: Center(
             child: InteractiveViewer(
               child: Image.file(File(imageFile.path)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showVideoPlayer(ReflectionFile videoFile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              videoFile.name,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.video_library,
+                  size: 80,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Reproductor de video en desarrollo',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Archivo: ${videoFile.name}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -146,6 +146,38 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
                             style: TextStyle(color: Colors.blue.shade600),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        // Botón para cambiar tipo de usuario (solo para testing)
+                        TextButton.icon(
+                          onPressed: () {
+                            final currentType = _reflectionService.userType;
+                            final newType = currentType == UserType.free 
+                                ? UserType.premium 
+                                : UserType.free;
+                            _reflectionService.setUserType(newType);
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Cambiado a usuario ${newType == UserType.premium ? 'Premium' : 'Gratuito'}',
+                                ),
+                                backgroundColor: newType == UserType.premium 
+                                    ? Colors.green 
+                                    : Colors.orange,
+                              ),
+                            );
+                          },
+                          icon: Icon(
+                            _reflectionService.userType == UserType.premium 
+                                ? Icons.star 
+                                : Icons.star_border,
+                            color: Colors.amber.shade600,
+                          ),
+                          label: Text(
+                            'Usuario: ${_reflectionService.userType == UserType.premium ? 'Premium' : 'Gratuito'}',
+                            style: TextStyle(color: Colors.amber.shade600),
+                          ),
+                        ),
                       ],
                     ),
                   ),

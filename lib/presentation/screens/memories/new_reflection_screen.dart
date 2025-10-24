@@ -1,6 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 
@@ -22,8 +27,16 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   final ReflectionService _reflectionService = ReflectionService();
   final ImagePicker _imagePicker = ImagePicker();
   
+  // Audio recording variables (usando flutter_sound como en answer_question_screen)
+  FlutterSoundRecorder? _audioRecorder;
+  bool _isRecorderInitialized = false;
+  String? _audioPath;
+  Duration _recordingDuration = Duration.zero;
+  Timer? _recordingTimer;
+  
   List<ReflectionFile> _attachedFiles = [];
   bool _isSaving = false;
+  bool _isRecording = false;
 
   @override
   void initState() {
@@ -33,12 +46,15 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _contentController.text = widget.editingReflection!.content;
       _attachedFiles = List.from(widget.editingReflection!.attachedFiles);
     }
+    _initializeRecorder();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _audioRecorder?.closeRecorder();
+    _recordingTimer?.cancel();
     super.dispose();
   }
 
@@ -71,19 +87,76 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     }
 
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
+      // Mostrar diálogo de selección entre imagen y video
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Seleccionar archivo'),
+          content: const Text('¿Qué tipo de archivo deseas adjuntar?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'image'),
+              child: const Text('Imagen'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'video'),
+              child: const Text('Video'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       );
 
-      if (image != null) {
-        await _processPickedFile(File(image.path), ReflectionFileType.image);
+      if (result == null) return;
+
+      if (result == 'image') {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1080,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (image != null) {
+          await _processPickedFile(File(image.path), ReflectionFileType.image);
+        }
+      } else if (result == 'video') {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.video,
+          allowMultiple: false,
+        );
+
+        if (result != null && result.files.single.path != null) {
+          await _processPickedFile(File(result.files.single.path!), ReflectionFileType.video);
+        }
       }
     } catch (e) {
-      _showErrorDialog('Error al seleccionar la imagen: $e');
+      _showErrorDialog('Error al seleccionar archivo: $e');
     }
+  }
+
+  // Métodos de inicialización y grabación de audio (basados en answer_question_screen)
+  Future<void> _initializeRecorder() async {
+    try {
+      _audioRecorder = FlutterSoundRecorder();
+      await _audioRecorder!.openRecorder();
+      _isRecorderInitialized = true;
+    } catch (e) {
+      _isRecorderInitialized = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al inicializar grabador de audio')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _checkPermissions() async {
+    return await Permission.microphone.isGranted || 
+           await Permission.microphone.request().isGranted;
   }
 
   Future<void> _recordAudio() async {
@@ -91,9 +164,112 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _showPremiumRequiredDialog('grabar audio');
       return;
     }
-    
-    // TODO: Implementar grabación de audio
-    _showErrorDialog('Función de audio en desarrollo');
+
+    try {
+      if (!_isRecording) {
+        // Iniciar grabación
+        await _startRecording();
+      } else {
+        // Detener grabación
+        await _stopRecording();
+      }
+    } catch (e) {
+      setState(() {
+        _isRecording = false;
+      });
+      _showErrorDialog('Error al grabar audio: $e');
+    }
+  }
+
+  Future<void> _startRecording() async {
+    if (!_isRecorderInitialized) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Grabador de audio no inicializado')),
+        );
+      }
+      return;
+    }
+
+    if (!await _checkPermissions()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Se requiere permiso de micrófono')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final directory = await getTemporaryDirectory();
+      _audioPath = '${directory.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
+      
+      await _audioRecorder!.startRecorder(
+        toFile: _audioPath!,
+        codec: Codec.aacADTS,
+      );
+
+      setState(() => _isRecording = true);
+      _startTimer();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Grabando audio... Toca de nuevo para detener'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al iniciar grabación')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_isRecording || _audioRecorder == null) return;
+
+    try {
+      await _audioRecorder!.stopRecorder();
+      _stopTimer();
+      
+      if (_audioPath != null && mounted) {
+        setState(() {
+          _isRecording = false;
+        });
+        
+        await _processPickedFile(File(_audioPath!), ReflectionFileType.audio);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio grabado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRecording = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al detener grabación')),
+        );
+      }
+    }
+  }
+
+  void _startTimer() {
+    _recordingDuration = Duration.zero;
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _recordingDuration = Duration(seconds: timer.tick);
+      });
+    });
+  }
+
+  void _stopTimer() {
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
   }
 
   Future<void> _processPickedFile(File file, ReflectionFileType type) async {
@@ -366,9 +542,10 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                         onPressed: _takePhoto,
                       ),
                       _buildToolbarButton(
-                        icon: Icons.mic_none_outlined,
-                        tooltip: 'Audio',
+                        icon: _isRecording ? Icons.stop : Icons.mic_none_outlined,
+                        tooltip: _isRecording ? 'Detener grabación' : 'Audio',
                         onPressed: _recordAudio,
+                        isRecording: _isRecording,
                       ),
                       _buildToolbarButton(
                         icon: Icons.image_outlined,
@@ -390,12 +567,24 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
+    bool isRecording = false,
   }) {
-    return IconButton(
-      tooltip: tooltip,
-      icon: Icon(icon),
-      onPressed: onPressed,
-      iconSize: 24,
+    return Container(
+      decoration: isRecording 
+          ? BoxDecoration(
+              color: Colors.red.shade100,
+              shape: BoxShape.circle,
+            )
+          : null,
+      child: IconButton(
+        tooltip: tooltip,
+        icon: Icon(
+          icon,
+          color: isRecording ? Colors.red : null,
+        ),
+        onPressed: onPressed,
+        iconSize: 24,
+      ),
     );
   }
 
@@ -452,11 +641,31 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                       },
                     )
                   : Container(
-                      color: Colors.grey.shade100,
-                      child: Icon(
-                        file.isAudio ? Icons.audiotrack : Icons.videocam,
-                        size: 32,
-                        color: Colors.grey.shade600,
+                      color: file.isAudio 
+                          ? Colors.blue.shade50 
+                          : Colors.purple.shade50,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            file.isAudio ? Icons.audiotrack : Icons.videocam,
+                            size: 24,
+                            color: file.isAudio 
+                                ? Colors.blue.shade600 
+                                : Colors.purple.shade600,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            file.isAudio ? 'Audio' : 'Video',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: file.isAudio 
+                                  ? Colors.blue.shade600 
+                                  : Colors.purple.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
             ),

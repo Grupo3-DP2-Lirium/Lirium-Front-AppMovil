@@ -10,7 +10,7 @@ class ReflectionService {
   static const int _maxStorageForFreeUsers = 100 * 1024 * 1024; // 100 MB en bytes
 
   // Simulamos el tipo de usuario (en una app real vendría del backend)
-  UserType _userType = UserType.free; // Por defecto usuario gratuito
+  UserType _userType = UserType.premium; // Cambiado a premium para testing
 
   Future<List<ReflectionModel>> getAllReflections() async {
     final prefs = await SharedPreferences.getInstance();
@@ -84,7 +84,7 @@ class ReflectionService {
   }
 
   // Gestión de archivos y almacenamiento
-  Future<String> _getReflectionsDirectory() async {
+  Future<String> getReflectionsDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
     final reflectionsDir = Directory('${appDir.path}/reflections');
     
@@ -96,7 +96,7 @@ class ReflectionService {
   }
 
   Future<ReflectionFile> copyFileToReflectionsDirectory(File sourceFile, ReflectionFileType type) async {
-    final reflectionsDir = await _getReflectionsDirectory();
+    final reflectionsDir = await getReflectionsDirectory();
     final fileName = '${DateTime.now().millisecondsSinceEpoch}_${sourceFile.uri.pathSegments.last}';
     final targetPath = '$reflectionsDir/$fileName';
     
