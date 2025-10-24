@@ -249,7 +249,7 @@ class MemoryService {
   Future<MemoriesByTypeResponse> getMemoriesByType({
     required String memorialId,
   }) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-type');
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/by-type/$memorialId');
 
     final res = await _client.get(
       uri,

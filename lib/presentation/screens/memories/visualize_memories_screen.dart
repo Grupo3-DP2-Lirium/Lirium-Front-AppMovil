@@ -25,7 +25,7 @@ class VisualizeMemoriesScreen extends StatefulWidget {
 
 class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   final MemoryService _memoryService = MemoryService();
-  
+
   String _selectedFilter = 'all';
   final String _selectedSort = 'date';
   bool _isLoading = false;
@@ -46,22 +46,28 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   }
 
   Future<void> _loadMemories() async {
+    _loadAllMemories();
+  }
+
+  Future<void> _loadAllMemories() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      final response = await _memoryService.getMemoriesOrganized(
+      final response = await _memoryService.listMemories(
         memorialId: widget.memorial.idMemorial,
-        filterType: _selectedFilter,
-        sortBy: _selectedSort,
+        page: 0,
+        size: 50,
       );
-      
+
       setState(() {
-        _memories = response.memories;
+        _memories = response.content;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar recuerdos: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar recuerdos: $e')),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -89,21 +95,21 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
         children: [
           // Header con información del memorial
           _buildMemorialHeader(),
-          
+
           // Botones de acción
           _buildActionButtons(),
-          
+
           // Botón organizar
           _buildOrganizeButton(),
-          
+
           // Opciones de filtro
           _buildFilterOptions(),
-          
+
           // Lista de recuerdos
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : _buildMemoriesContent(),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMemoriesContent(),
           ),
         ],
       ),
@@ -124,15 +130,15 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
                 : null,
             child: widget.memorial.profilePhoto?.fileUrl == null
                 ? Text(
-                    widget.memorial.name.isNotEmpty 
-                        ? widget.memorial.name[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  )
+              widget.memorial.name.isNotEmpty
+                  ? widget.memorial.name[0].toUpperCase()
+                  : '?',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            )
                 : null,
           ),
           const SizedBox(width: 16),
-          
+
           // Información del memorial
           Expanded(
             child: Column(
@@ -254,7 +260,7 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
               itemBuilder: (context, index) {
                 final option = _filterOptions[index];
                 final isSelected = _selectedFilter == option['key'];
-                
+
                 return Container(
                   margin: const EdgeInsets.only(right: 12),
                   child: GestureDetector(
@@ -369,10 +375,10 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   void _handleFilterChange(String filterKey) {
     switch (filterKey) {
       case 'all':
-        _loadMemories();
+        _loadAllMemories();
         break;
       case 'images':
-        // Navegar a la pantalla de tipos
+      // Navegar a la pantalla de tipos
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -394,18 +400,18 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
 
   Future<void> _loadMemoriesByType() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final response = await _memoryService.getMemoriesByType(
         memorialId: widget.memorial.idMemorial,
       );
-      
+
       // Convertir la respuesta agrupada a una lista plana para mostrar
       List<MemoryResponse> allMemories = [];
       response.memoriesByType.values.forEach((memories) {
         allMemories.addAll(memories);
       });
-      
+
       setState(() {
         _memories = allMemories;
       });
@@ -471,7 +477,7 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             const Text(
               'Organizar recuerdos',
               style: TextStyle(
@@ -480,7 +486,7 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Opciones de organización
             ..._filterOptions.map((option) => ListTile(
               leading: Icon(option['icon'], color: Colors.red[400]),
@@ -493,7 +499,7 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
                 _handleFilterChange(option['key']);
               },
             )).toList(),
-            
+
             const SizedBox(height: 20),
           ],
         ),
