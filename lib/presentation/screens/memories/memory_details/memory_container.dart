@@ -119,6 +119,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   // Dispose the recorder when the widget is disposed to clean up resources
   @override
   void dispose() {
+    for (var controller in _videoControllers.values) {
+      controller.dispose();
+    }
+    _videoControllers.clear();
     _recorder.closeRecorder();
     super.dispose();
   }
@@ -311,14 +315,25 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       if (type == "audio") {
         final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
         if (existingIndex != -1) {
+          // Si ya hay un audio, reemplazarlo
+          final oldAudio = _localFiles[existingIndex];
+
+          // Notificar que se elimina el anterior
+          widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+          // Reemplazarlo por el nuevo audio
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
           return;
         }
       }
 
-      // Si no, agregarlo normalmente
+      // Agregar nuevo archivo
       _localFiles.add(newFile);
+
+      // Actualizar índice al nuevo archivo
+      _currentFileIndex = _localFiles.length - 1;
+
       widget.onFileChanged?.call("add", null, newFile);
     });
   }
@@ -329,10 +344,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     if (picked == null) return;
 
     final file = File(picked.path);
-    final exists = await file.exists();
-    if (!exists) {
-      return;
-    }
+    if (!await file.exists()) return;
 
     final newFile = domain.File(
       id: "",
@@ -346,28 +358,26 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     );
 
     setState(() {
-      if (index != null && index < _localFiles.length) {
-        // Actualizar archivo existente
-        _localFiles[index] = newFile;
-        widget.onFileChanged?.call("update", index, newFile);
-      } else if (type == "audio") {
-        // Si ya hay un audio, reemplazarlo
-        final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
-        if (existingIndex != -1) {
-          _localFiles[existingIndex] = newFile;
-          widget.onFileChanged?.call("update", existingIndex, newFile);
-        } else {
-          // No hay audio previo, agregar
-          _localFiles.add(newFile);
-          widget.onFileChanged?.call("add", null, newFile);
-        }
+      // Buscar si ya hay un audio
+      final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+
+      if (existingIndex != -1) {
+        final oldAudio = _localFiles[existingIndex];
+
+        // Notificar que se elimina el anterior (para que el padre lo borre del backend)
+        widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+        // Reemplazarlo por el nuevo audio
+        _localFiles[existingIndex] = newFile;
+        widget.onFileChanged?.call("update", existingIndex, newFile);
+
       } else {
-        // Otros tipos (imagen/video) se agregan
+        // Si por alguna razón no existía, simplemente agregarlo
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
       }
-    });
 
+    });
   }
 
   // ------------------- Selector de imagen/video/audio -------------------
