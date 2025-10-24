@@ -95,6 +95,23 @@ class MemoryResponse {
       createdDate: createdDate,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'idMemory': idMemory,
+      'type': type,
+      'title': title,
+      'description': description,
+      'photoDate': photoDate?.toIso8601String(),
+      'location': location,
+      'visible': visible,
+      'tags': tags,
+      'associatedQuestion': associatedQuestion,
+      'files': files.map((f) => f.toJson()).toList(),
+      'totalUsedSpace': totalUsedSpace,
+      'createdDate': createdDate.toIso8601String(),
+    };
+  }
 }
 
 // Un contenedor de paginación simple (solo lo que necesitamos)

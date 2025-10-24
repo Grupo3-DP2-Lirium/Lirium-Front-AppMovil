@@ -2,9 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/visualize_memories_screen.dart';
+import 'package:flutter_frontend/data/models/memorial_response.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
 
+// Modos de organización de galería (HU19)
+enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
@@ -39,6 +44,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   final int pageSize = 10;
   bool hasMoreMemories = true;
 
+  // Organización de galería (HU19)
+  OrganizationMode _organizationMode = OrganizationMode.formato;
+
   @override
   void initState() {
     super.initState();
@@ -56,12 +64,25 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   ImageProvider _getAvatarImage() {
     if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return MemoryImage(base64Decode(widget.avatarUrl!));
-    } else if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return NetworkImage(widget.avatarUrl!);
+      // Verificar si es una imagen en base64
+      if (widget.avatarUrl!.startsWith('data:image') || widget.avatarUrl!.length > 500) {
+        try {
+          // Si empieza con data:image, extraer solo la parte base64
+          final base64String = widget.avatarUrl!.contains(',') 
+              ? widget.avatarUrl!.split(',').last 
+              : widget.avatarUrl!;
+          return MemoryImage(base64Decode(base64String));
+        } catch (e) {
+          print('Error decoding base64 image: $e');
+          return const AssetImage('assets/images/CreaPerfil.png');
+        }
+      } else {
+        // Es una URL normal
+        return NetworkImage(widget.avatarUrl!);
+      }
     } else {
-      // Usar un Container con ícono por defecto
-      return const AssetImage('assets/images/CreaPerfil.png'); // Usar uno de los assets existentes
+      // Usar imagen por defecto
+      return const AssetImage('assets/images/CreaPerfil.png');
     }
   }
 
@@ -225,7 +246,42 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navegar a la pantalla de visualizar recuerdos
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VisualizeMemoriesScreen(
+                                      memorial: MemorialResponseModel(
+                                        idMemorial: widget.memorialId,
+                                        name: widget.name,
+                                        nickname: '',
+                                        description: widget.description ?? '',
+                                        gender: '',
+                                        relation: '',
+                                        birthDate: '',
+                                        isCollaborative: true,
+                                        isJournal: false,
+                                        userId: '',
+                                        createdDate: DateTime.now(),
+                                        updatedDate: DateTime.now(),
+                                        profilePhoto: widget.avatarUrl != null 
+                                            ? FileResponse(
+                                                idFile: '',
+                                                fileName: 'profile.jpg',
+                                                originalFileName: 'profile.jpg',
+                                                fileType: 'image',
+                                                mimeType: 'image/jpeg',
+                                                fileUrl: widget.avatarUrl!,
+                                                fileSize: 0.0,
+                                                uploadedDate: DateTime.now(),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
@@ -609,68 +665,199 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     }
   }
 
-  // Tab 1: Añadir (Timeline)
+  // Tab 1: Timeline con datos reales
   Widget _buildTimelineTab() {
-    final timelineEvents = [
-      {
-        'year': '1946',
-        'title': 'Nació Lourdes',
-        'image': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '1972',
-        'title': 'Lourdes se convirtió en mamá',
-        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-        'hasButton': true,
-      },
-      {
-        'year': '1984',
-        'title': 'Primer viaje familiar',
-        'image': 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-        'hasButton': true,
-      },
-      {
-        'year': '2002',
-        'title': 'Nacimiento de su última nieta',
-        'image': 'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '2016',
-        'title': 'Cumpleaños N°70',
-        'image': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '2018',
-        'title': 'Cumpleaños N°72',
-        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-        'hasButton': false,
-      },
-    ];
+    print('DEBUG Timeline: Building timeline with ${memories.length} memories');
+    
+    if (isLoadingMemories) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (memories.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.timeline,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No hay memorias para mostrar en el timeline',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  currentPage = 0;
+                  _loadMemories();
+                },
+                child: const Text('Recargar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Filtrar solo memorias con imágenes
+    final memoriesWithImages = memories
+        .where((memory) => memory.files.any((file) => file.isImage))
+        .toList();
+
+    print('DEBUG Timeline: Memories with images: ${memoriesWithImages.length}');
+
+    if (memoriesWithImages.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.photo_library_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No hay imágenes para mostrar en el timeline',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                'Total de memorias: ${memories.length}',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Ordenar por fecha (más reciente primero)
+    memoriesWithImages.sort((a, b) {
+      final dateA = a.photoDate ?? a.createdDate;
+      final dateB = b.photoDate ?? b.createdDate;
+      return dateB.compareTo(dateA);
+    });
+
+    // Agrupar por año
+    final Map<int, List<MemoryResponse>> memoriesByYear = {};
+    for (final memory in memoriesWithImages) {
+      final date = memory.photoDate ?? memory.createdDate;
+      final year = date.year;
+      memoriesByYear.putIfAbsent(year, () => []).add(memory);
+    }
+
+    final years = memoriesByYear.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: timelineEvents.map((event) {
-          return _buildTimelineItem(
-            year: event['year'] as String,
-            title: event['title'] as String,
-            imageUrl: event['image'] as String,
-            hasButton: event['hasButton'] as bool,
-          );
+        children: years.map((year) {
+          final yearMemories = memoriesByYear[year]!;
+          return _buildTimelineYearSection(year, yearMemories);
         }).toList(),
       ),
     );
   }
 
-  Widget _buildTimelineItem({
-    required String year,
-    required String title,
-    required String imageUrl,
-    required bool hasButton,
-  }) {
+  // Construye una sección del timeline para un año específico
+  Widget _buildTimelineYearSection(int year, List<MemoryResponse> yearMemories) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header del año
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF6366F1).withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        year.toString(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${yearMemories.length} memoria${yearMemories.length != 1 ? 's' : ''}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Lista de memorias del año
+          ...yearMemories.asMap().entries.map((entry) {
+            final index = entry.key;
+            final memory = entry.value;
+            final isLast = index == yearMemories.length - 1;
+            
+            return _buildTimelineMemoryItem(memory, isLast);
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  // Construye un item individual del timeline con datos reales
+  Widget _buildTimelineMemoryItem(MemoryResponse memory, bool isLast) {
+    final date = memory.photoDate ?? memory.createdDate;
+    final imageFile = memory.files.firstWhere(
+      (file) => file.isImage,
+      orElse: () => memory.files.first,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
@@ -687,74 +874,127 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   shape: BoxShape.circle,
                 ),
               ),
-              Container(
-                width: 2,
-                height: 120,
-                color: Colors.grey[300],
-              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 120,
+                  color: Colors.grey[300],
+                ),
             ],
           ),
           const SizedBox(width: 16),
+          
           // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Fecha específica
                 Text(
-                  year,
+                  '${date.day}/${date.month}/${date.year}',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF6366F1),
                   ),
                 ),
                 const SizedBox(height: 4),
+                
+                // Título de la memoria
                 Text(
-                  title,
+                  memory.title.isNotEmpty ? memory.title : 'Sin título',
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                
+                // Descripción si existe
+                if (memory.description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    memory.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                
                 const SizedBox(height: 8),
+                
+                // Imagen y botón "Ver más"
                 Row(
                   children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: NetworkImage(imageUrl),
-                          fit: BoxFit.cover,
+                    // Imagen principal
+                    GestureDetector(
+                      onTap: () => _showImageDetail(imageFile, memory, date),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            imageFile.downloadUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              print('Error loading image: $error');
+                              return Container(
+                                color: Colors.grey[300],
+                                child: Icon(Icons.photo, color: Colors.grey[500]),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                    if (hasButton) ...[
+                    
+                    // Botón "Ver más" si hay más archivos
+                    if (memory.files.length > 1) ...[
                       const SizedBox(width: 12),
                       Expanded(
                         child: Container(
                           height: 100,
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              TextButton.icon(
-                                onPressed: () {},
-                                icon: const Icon(
-                                  Icons.add_circle_outline,
+                              Icon(
+                                Icons.photo_library,
+                                color: Color(0xFF6366F1),
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '+${memory.files.length - 1}',
+                                style: const TextStyle(
                                   color: Color(0xFF6366F1),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
-                                label: const Text(
-                                  'Ver más',
-                                  style: TextStyle(
-                                    color: Color(0xFF6366F1),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                              Text(
+                                'más',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -764,6 +1004,30 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ],
                 ),
+                
+                // Tags si existen
+                if (memory.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: memory.tags.take(3).map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF6366F1).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '#$tag',
+                        style: const TextStyle(
+                          color: Color(0xFF6366F1),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ],
               ],
             ),
           ),
@@ -772,64 +1036,257 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
-  // Tab 2: Organizar (Grid de todas las fotos)
-  Widget _buildOrganizeTab() {
-    final images = [
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-    ];
+  // Método para mostrar el detalle de una imagen
+  void _showImageDetail(dynamic file, MemoryResponse memory, DateTime date) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            memory.title.isNotEmpty ? memory.title : 'Sin título',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${date.day}/${date.month}/${date.year}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Imagen
+              Flexible(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      file.downloadUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.error, size: 48, color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Descripción si existe
+              if (memory.description.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    memory.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  // Tab 2: Organizar (HU19)
+  Widget _buildOrganizeTab() {
+    // Selector de modo de organización
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Large featured image
-          Container(
-            width: double.infinity,
-            height: 220,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(images[0]),
-                fit: BoxFit.cover,
-              ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildOrgChip('Formato', OrganizationMode.formato),
+                const SizedBox(width: 8),
+                _buildOrgChip('Línea de tiempo', OrganizationMode.lineaDeTiempo),
+                const SizedBox(width: 8),
+                _buildOrgChip('Temáticas', OrganizationMode.tematicas),
+                const SizedBox(width: 8),
+                _buildOrgChip('Momentos', OrganizationMode.momentos),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-
-          // Grid of smaller images
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
-            ),
-            itemCount: images.length - 1,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(images[index + 1]),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
-            },
-          ),
+          if (isLoadingMemories)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          else if (errorMessage != null)
+            Text(errorMessage!, style: TextStyle(color: Colors.red[600]))
+          else if (memories.isEmpty)
+            const Text('No hay memorias para organizar')
+          else
+            Expanded(child: _buildOrganizedList())
         ],
       ),
     );
+  }
+
+  Widget _buildOrgChip(String label, OrganizationMode mode) {
+    final selected = _organizationMode == mode;
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      onSelected: (_) => setState(() => _organizationMode = mode),
+    );
+  }
+
+  Widget _buildOrganizedList() {
+    // Construir estructura según modo
+    final Map<String, List<MemoryResponse>> groups = _groupMemories();
+    final groupKeys = groups.keys.toList();
+
+    return ListView.builder(
+      itemCount: groupKeys.length,
+      itemBuilder: (context, index) {
+        final key = groupKeys[index];
+        final items = groups[key] ?? const [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                key,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final m = items[i];
+                final url = m.firstImageUrl ?? 'https://via.placeholder.com/300x300.png?text=Memoria';
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(url, fit: BoxFit.cover),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, List<MemoryResponse>> _groupMemories() {
+    switch (_organizationMode) {
+      case OrganizationMode.formato:
+        return _groupBy(memories, (m) => _formatFromMemory(m));
+      case OrganizationMode.lineaDeTiempo:
+        // Agrupar por año-mes
+        return _groupBy(memories, (m) {
+          final d = m.photoDate ?? m.createdDate;
+          return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+        }, sortByKey: true, keyComparator: (a, b) => b.compareTo(a));
+      case OrganizationMode.tematicas:
+        // Para cada etiqueta crear grupos; si no hay, va a 'Sin etiqueta'
+        final Map<String, List<MemoryResponse>> g = {};
+        for (final m in memories) {
+          final tags = m.tags.isEmpty ? ['Sin etiqueta'] : m.tags;
+          for (final t in tags) {
+            g.putIfAbsent(t, () => []).add(m);
+          }
+        }
+        return g;
+      case OrganizationMode.momentos:
+        return _groupBy(memories, (m) => m.associatedQuestion ?? (m.tags.isNotEmpty ? m.tags.first : 'General'));
+    }
+  }
+
+  String _formatFromMemory(MemoryResponse m) {
+    // Usar field type cuando esté disponible, si no, derivar del media
+    final t = m.type.toLowerCase();
+    if (t.isNotEmpty) return t;
+    final types = m.mediaTypes;
+    if (types.length == 1) {
+      switch (types.first) {
+        case 'image':
+          return 'foto';
+        case 'video':
+          return 'video';
+        case 'audio':
+          return 'audio';
+      }
+    }
+    return types.isEmpty ? 'texto' : 'mixto';
+  }
+
+  Map<String, List<MemoryResponse>> _groupBy<T>(
+    List<MemoryResponse> list,
+    String Function(MemoryResponse) keySelector, {
+    bool sortByKey = false,
+    int Function(String a, String b)? keyComparator,
+  }) {
+    final Map<String, List<MemoryResponse>> map = {};
+    for (final item in list) {
+      final k = keySelector(item);
+      map.putIfAbsent(k, () => []).add(item);
+    }
+    if (sortByKey) {
+      final entries = map.entries.toList()
+        ..sort((a, b) => (keyComparator ?? (String a, String b) => a.compareTo(b))(a.key, b.key));
+      return {for (final e in entries) e.key: e.value};
+    }
+    return map;
   }
 
 

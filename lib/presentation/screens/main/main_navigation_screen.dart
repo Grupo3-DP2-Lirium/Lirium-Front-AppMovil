@@ -46,10 +46,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>{
             icon: Icon(Icons.home_outlined),
             label: 'Home',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Perfiles'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Memoriales'),
           BottomNavigationBarItem(
             icon: Icon(Icons.add_circle_outline),
-            label: 'Memorias',
+            label: 'Recuerdos',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.movie_creation_outlined), label: 'Videos'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: 'Cuenta'),
