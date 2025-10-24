@@ -46,22 +46,28 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   }
 
   Future<void> _loadMemories() async {
+    _loadAllMemories();
+  }
+
+  Future<void> _loadAllMemories() async {
     setState(() => _isLoading = true);
     
     try {
-      final response = await _memoryService.getMemoriesOrganized(
+      final response = await _memoryService.listMemories(
         memorialId: widget.memorial.idMemorial,
-        filterType: _selectedFilter,
-        sortBy: _selectedSort,
+        page: 0,
+        size: 50,
       );
       
       setState(() {
-        _memories = response.memories;
+        _memories = response.content;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar recuerdos: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar recuerdos: $e')),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -369,7 +375,7 @@ class _VisualizeMemoriesScreenState extends State<VisualizeMemoriesScreen> {
   void _handleFilterChange(String filterKey) {
     switch (filterKey) {
       case 'all':
-        _loadMemories();
+        _loadAllMemories();
         break;
       case 'images':
         // Navegar a la pantalla de tipos
