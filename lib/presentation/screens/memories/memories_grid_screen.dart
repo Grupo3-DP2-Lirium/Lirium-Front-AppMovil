@@ -4,7 +4,7 @@ import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/forms/search_field.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memory_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 import '../../components/components.dart';
 
 // Screen that displays the list of memories

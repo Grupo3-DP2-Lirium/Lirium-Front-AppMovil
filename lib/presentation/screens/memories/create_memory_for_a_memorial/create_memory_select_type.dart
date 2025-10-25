@@ -3,6 +3,7 @@ import 'package:flutter_frontend/presentation/components/buttons/rectangle_butto
 import 'package:flutter_frontend/presentation/components/common/app_title.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/select_category.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/upload_pictures_and_videos.dart';
+import '../memory_details/memory_detail_screen.dart';
 import 'write_letter_screen.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
@@ -55,13 +56,17 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                         icon: Icons.photo_camera,
                         label: "Subir fotos y videos",
                         size: 120,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => UploadPicturesAndVideos(
-                                memorialId: widget.memorialId),
-                          ),
-                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemoryDetailScreen(
+                                memory: null,
+                                mode: MemoryMode.edit, // modo creación
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       RectangleButton(
                         icon: Icons.edit,

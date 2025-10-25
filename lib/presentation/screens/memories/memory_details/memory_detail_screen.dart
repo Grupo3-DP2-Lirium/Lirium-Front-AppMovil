@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
 import 'package:flutter_frontend/presentation/components/buttons/pop_menu_button.dart';
 import 'package:flutter_frontend/presentation/components/cards/header_memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
-import '../../../domain/entities/memory.dart';
+import '../../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
 // Modes: view or edit
@@ -16,11 +18,13 @@ enum MemoryMode {view, edit}
 class MemoryDetailScreen extends StatefulWidget {
   final Memory? memory; // Memory data (can be null for new memory)
   final MemoryMode mode; // Current screen mode (view or edit)
+  final String? memorialId;
 
   const MemoryDetailScreen({
     super.key,
     required this.memory,
     this.mode = MemoryMode.view, // Default mode is view
+    this.memorialId,
   });
 
   @override
@@ -268,7 +272,6 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           ),
         );
       }
-      // Imprimir el stack trace completo para mejor diagnóstico
       print('Error al guardar: $e');
       print(stackTrace);
     } finally {
@@ -277,33 +280,90 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Create a new memory (Create mode)
-  /*Future<void> _createMemory() async {
+  Future<void> _createMemory() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
-      /*final memoryJson = {
-        "title": _titleController.text.trim(),
-        "description": _descriptionController.text.trim(),
-        "addTags": _addTags,
-      };*/
+      final request = MemoryCreateRequest(
+        memorialId: widget.memorialId!,
+        type: MemoryOriginType.spontaneous,
+        title: _titleController.text.trim(),
+        photoDate: DateTime.now(),
+      );
 
-      //final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+      final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
 
-      // IMPLEMENTAR
-      /*await _service.createMemory(
-        memoryJson: memoryJson,
+      await _service.createMemory(
+        request: request,
         files: filesToUpload,
-      );*/
+      );
 
-      if (mounted) {
-        Navigator.pop(context, true); // Go back to list
-      }
+      // Convertir archivos nuevos a File completos
+      final newFilesAsMemoryFiles = _newFiles.map((f) {
+        final ext = f.path.split('.').last.toLowerCase();
+        String type;
+        String mimeType;
+        if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
+          type = 'image';
+          mimeType = 'image/$ext';
+        } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
+          type = 'video';
+          mimeType = 'video/$ext';
+        } else if (['mp3', 'm4a', 'wav', 'aac', 'ogg'].contains(ext)) {
+          type = 'audio';
+          mimeType = 'audio/$ext';
+        } else {
+          type = 'file';
+          mimeType = 'application/octet-stream';
+        }
+        return File(
+          id: "",
+          name: f.path.split('/').last,
+          originalName: f.path.split('/').last,
+          type: type,
+          mimeType: mimeType,
+          size: 0,
+          url: f.path,
+          uploadedDate: DateTime.now(),
+        );
+      }).toList();
+
+      // Actualizar el memory original combinando los archivos restantes + nuevos
+      _originalMemory = _originalMemory.copyWith(
+        title: _editableMemory.title,
+        description: _editableMemory.description,
+        files: newFilesAsMemoryFiles,
+      );
+
+      // Limpiar listas temporales de edición
+      _existingFiles = List.from(_originalMemory.files);
+      _newFiles.clear();
+      _deletedFiles.clear();
+
+      Navigator.pop(context);
+
+      // Mostrar pop-up de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Tu recuerdo ha sido actualizado",
+        message: "Gracias por compartir un momento más de tu historia",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              (_memoryContainerKey.currentState as dynamic)?.setEditMode(false);
+              Navigator.pop(context, _originalMemory);
+            },
+          ),
+        ],
+      );
     } catch (e) {
+      Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating memory: $e'),
+            content: Text('Error al guardar: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -311,7 +371,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }*/
+  }
 
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
@@ -476,7 +536,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                         Expanded(
                           child: PrimaryButton(
                             text: "Guardar",
-                            onPressed: _saveChanges,
+                            onPressed: widget.memorialId != null ? _createMemory : _saveChanges,
                           ),
                         ),
                       ],
