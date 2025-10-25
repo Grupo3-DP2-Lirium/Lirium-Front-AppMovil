@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../components/painters/improvement_line_painter.dart';
+import 'package:flutter_frontend/presentation/components/painters/improvement_line_painter.dart';
 import 'image_result_screen.dart';
 
 /// Pantalla que muestra la animación de mejora de imagen

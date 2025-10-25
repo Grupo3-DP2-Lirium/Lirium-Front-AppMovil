@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/improve_picture.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/improve_picture.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UploadPicturesAndVideos extends StatefulWidget {

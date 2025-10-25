@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/large_width_button.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/memorial_data/questions.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/select_questions.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/memorial_data/questions.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/select_questions.dart';
 
 class SelectCategory extends StatefulWidget {
   final String memorialId;

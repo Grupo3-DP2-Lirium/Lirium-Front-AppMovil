@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../components/buttons/answer_button.dart';
+import 'package:flutter_frontend/presentation/components/buttons/answer_button.dart';
 
 /// Pantalla para responder una pregunta específica con múltiples opciones
 class QuestionAnswerScreen extends StatelessWidget {
