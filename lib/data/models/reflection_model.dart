@@ -179,20 +179,66 @@ class ReflectionFile {
     'downloadUrl': downloadUrl,
   };
 
-  bool get isImage => fileType.toLowerCase().contains('image') || 
-                     fileType.toLowerCase().contains('jpg') || 
-                     fileType.toLowerCase().contains('png') || 
-                     fileType.toLowerCase().contains('jpeg');
+  bool get isImage {
+    final type = fileType.toLowerCase();
+    final name = fileName.toLowerCase();
+    final originalNameLower = originalName.toLowerCase();
+    
+    return type.contains('image') || 
+           type.contains('jpg') || 
+           type.contains('png') || 
+           type.contains('jpeg') ||
+           name.endsWith('.jpg') ||
+           name.endsWith('.jpeg') ||
+           name.endsWith('.png') ||
+           name.endsWith('.gif') ||
+           name.endsWith('.bmp') ||
+           name.endsWith('.webp') ||
+           originalNameLower.endsWith('.jpg') ||
+           originalNameLower.endsWith('.jpeg') ||
+           originalNameLower.endsWith('.png') ||
+           originalNameLower.endsWith('.gif') ||
+           originalNameLower.endsWith('.bmp') ||
+           originalNameLower.endsWith('.webp');
+  }
   
-  bool get isAudio => fileType.toLowerCase().contains('audio') || 
-                     fileType.toLowerCase().contains('mp3') || 
-                     fileType.toLowerCase().contains('m4a') || 
-                     fileType.toLowerCase().contains('wav');
+  bool get isAudio {
+    final type = fileType.toLowerCase();
+    final name = fileName.toLowerCase();
+    final originalNameLower = originalName.toLowerCase();
+    
+    return type.contains('audio') || 
+           type.contains('mp3') || 
+           type.contains('m4a') || 
+           type.contains('wav') ||
+           name.endsWith('.mp3') ||
+           name.endsWith('.m4a') ||
+           name.endsWith('.wav') ||
+           name.endsWith('.aac') ||
+           originalNameLower.endsWith('.mp3') ||
+           originalNameLower.endsWith('.m4a') ||
+           originalNameLower.endsWith('.wav') ||
+           originalNameLower.endsWith('.aac');
+  }
   
-  bool get isVideo => fileType.toLowerCase().contains('video') || 
-                     fileType.toLowerCase().contains('mp4') || 
-                     fileType.toLowerCase().contains('mov') || 
-                     fileType.toLowerCase().contains('avi');
+  bool get isVideo {
+    final type = fileType.toLowerCase();
+    final name = fileName.toLowerCase();
+    final originalNameLower = originalName.toLowerCase();
+    
+    return type.contains('video') || 
+           type.contains('mp4') || 
+           type.contains('mov') || 
+           type.contains('avi') ||
+           name.endsWith('.mp4') ||
+           name.endsWith('.mov') ||
+           name.endsWith('.avi') ||
+           name.endsWith('.mkv') ||
+           originalNameLower.endsWith('.mp4') ||
+           originalNameLower.endsWith('.mov') ||
+           originalNameLower.endsWith('.avi') ||
+           originalNameLower.endsWith('.mkv');
+  }
 
   // Getter para obtener el tipo como enum (para compatibilidad)
   ReflectionFileType get type {

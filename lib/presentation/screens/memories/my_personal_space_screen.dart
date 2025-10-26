@@ -256,11 +256,20 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final hasMedia = reflection.attachedFiles.isNotEmpty;
+    
+    // Debug logging
+    print('Reflection ${reflection.title} has ${reflection.attachedFiles.length} files:');
+    for (final file in reflection.attachedFiles) {
+      print('  File: ${file.fileName}, Type: ${file.fileType}, IsImage: ${file.isImage}, URL: ${file.downloadUrl}');
+    }
+    
     final firstImageFile = reflection.attachedFiles
         .where((f) => f.isImage)
         .isNotEmpty 
         ? reflection.attachedFiles.firstWhere((f) => f.isImage) 
         : null;
+        
+    print('FirstImageFile: ${firstImageFile?.fileName ?? 'null'}');
 
     return Card(
       color: Colors.white,
