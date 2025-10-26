@@ -62,7 +62,8 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                             MaterialPageRoute(
                               builder: (_) => MemoryDetailScreen(
                                 memory: null,
-                                mode: MemoryMode.edit, // modo creación
+                                mode: MemoryMode.create,
+                                memorialId: widget.memorialId,
                               ),
                             ),
                           );

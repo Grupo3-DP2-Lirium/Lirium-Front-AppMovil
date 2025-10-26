@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
@@ -12,9 +13,8 @@ class MemoryFormulario extends StatefulWidget {
   final bool isEditing;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
-  final TextEditingController mesController;
-  final TextEditingController ahoController;
-  final TextEditingController locationController;
+  final DateController photoDateController;
+  final LocationController locationController;
 
   const MemoryFormulario({
     super.key,
@@ -22,8 +22,7 @@ class MemoryFormulario extends StatefulWidget {
     required this.isEditing,
     required this.titleController,
     required this.descriptionController,
-    required this.mesController,
-    required this.ahoController,
+    required this.photoDateController,
     required this.locationController,
   });
 
@@ -32,11 +31,44 @@ class MemoryFormulario extends StatefulWidget {
 }
 
 class _MemoryFormularioState extends State<MemoryFormulario> {
-  LatLng? _pickedLocation;
+  late TextEditingController _monthController;
+  late TextEditingController _yearController;
+
+  final List<String> _monthNames = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
 
   @override
   void initState() {
     super.initState();
+
+    final currentDate = widget.photoDateController.date;
+    _monthController = TextEditingController(
+      text: currentDate != null ? _monthNames[currentDate.month - 1] : '',
+    );
+
+    _yearController = TextEditingController(
+      text: currentDate != null ? currentDate.year.toString() : '',
+    );
+
+    _monthController.addListener(_updatePhotoDateFromDropdowns);
+    _yearController.addListener(_updatePhotoDateFromDropdowns);
+  }
+
+  void _updatePhotoDateFromDropdowns() {
+    final monthText = _monthController.text.trim();
+    final yearText = _yearController.text.trim();
+
+    // Si no hay nada seleccionado aún, no hacemos nada
+    if (monthText.isEmpty || yearText.isEmpty) return;
+
+    final monthIndex = _monthNames.indexOf(monthText) + 1;
+    final year = int.tryParse(yearText);
+    if (monthIndex <= 0 || year == null) return;
+
+    final currentDay = widget.photoDateController.date?.day ?? 1;
+    widget.photoDateController.setDate(DateTime(year, monthIndex, currentDay));
   }
 
   // ------------------- Metadata -------------------
@@ -68,8 +100,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
               Expanded(
                 child: AppDropdownField(
                   header: 'Mes',
-                  controller: widget.mesController,
-                  options: ["Enero", "Febrero", "Marzo", "Abril"],
+                  controller: _monthController,
+                  options: _monthNames,
                   enable: widget.isEditing,
                 ),
               ),
@@ -77,8 +109,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
               Expanded(
                 child: AppDropdownField(
                   header: 'Año',
-                  controller: widget.ahoController,
-                  options: ["2000", "2001", "2002", "2003"],
+                  controller: _yearController,
+                  options: List.generate(50, (i) => (DateTime.now().year - i).toString()),
                   enable: widget.isEditing,
                 ),
               ),
@@ -93,59 +125,52 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
             onTap: () async {
               LatLng initialLatLng = LatLng(-12.0464, -77.0428); // default Lima
 
-            if (widget.locationController.text.isNotEmpty) {
-              // Hacer geocoding de la ciudad guardada
-              final city = widget.locationController.text;
-              final url = Uri.parse(
-                  'https://nominatim.openstreetmap.org/search?q=$city&format=json&limit=1');
-              final response = await http.get(url, headers: {'User-Agent': 'FlutterApp'});
-              if (response.statusCode == 200) {
-                final results = json.decode(response.body);
-                if (results.isNotEmpty) {
-                  final lat = double.parse(results[0]['lat']);
-                  final lon = double.parse(results[0]['lon']);
-                  initialLatLng = LatLng(lat, lon);
-                }
+              if (widget.locationController.isValid) {
+                initialLatLng = LatLng(
+                  widget.locationController.latitude!,
+                  widget.locationController.longitude!,
+                );
               }
-            }
 
-            final selected = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => _MapSelectScreen(
-                  initialLocation: initialLatLng,
+              final selected = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _MapSelectScreen(initialLocation: initialLatLng),
                 ),
-              ),
-            );
+              );
 
-            if (selected != null && selected is String) {
-              setState(() {
-                widget.locationController.text = selected;
-              });
-            }
-          },
-          child: AbsorbPointer(
-            child: TextFormField(
-              controller: widget.locationController,
-              style: TextStyle(color: Colors.grey),
-              decoration: InputDecoration(
-                labelText: "Ubicación",
-                suffixIcon: const Icon(Icons.location_on, color: Colors.redAccent),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+              if (selected != null && selected is Map<String, dynamic>) {
+                setState(() {
+                  widget.locationController.setLocation(
+                    address: selected['address'],
+                    lat: selected['latitude'],
+                    lon: selected['longitude'],
+                  );
+                });
+              }
+            },
+            child: AbsorbPointer(
+              child: TextFormField(
+                controller: widget.locationController,
+                style: TextStyle(color: Colors.grey),
+                decoration: InputDecoration(
+                  labelText: "Ubicación",
+                  suffixIcon: const Icon(Icons.location_on, color: Colors.redAccent),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
                 ),
               ),
             ),
-          ),
           ),
         ),
       ],
@@ -344,12 +369,12 @@ class _MapSelectScreenState extends State<_MapSelectScreen> {
                             onTap: () {
                               final lat = double.parse(place['lat']);
                               final lon = double.parse(place['lon']);
+                              final displayName = place['display_name'];
                               setState(() {
                                 _picked = LatLng(lat, lon);
                                 _mapController.move(_picked, 13);
                                 _searchController.text = displayName;
                                 _searchResults = [];
-                                Navigator.pop(context, displayName);
                               });
                             },
                           );
@@ -365,28 +390,41 @@ class _MapSelectScreenState extends State<_MapSelectScreen> {
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.check),
         onPressed: () async {
-          // Reverse geocoding: obtener ciudad desde lat/lng
-          final url = Uri.parse(
-              'https://nominatim.openstreetmap.org/reverse?lat=${_picked.latitude}&lon=${_picked.longitude}&format=json&addressdetails=1');
-          final response = await http.get(url, headers: {'User-Agent': 'FlutterApp'});
-          String cityName = '';
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
-            final address = data['address'] ?? {};
-            // Lista de posibles keys
-            final keys = ['city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state'];
-            for (var key in keys) {
-              if (address.containsKey(key)) {
-                cityName = address[key];
-                break;
+          String cityName = _searchController.text.isNotEmpty
+              ? _searchController.text // usa el texto seleccionado (ej. PUCP)
+              : '';
+
+          // Si no hay texto, usar reverse geocoding
+          if (cityName.isEmpty) {
+            final url = Uri.parse(
+              'https://nominatim.openstreetmap.org/reverse?lat=${_picked.latitude}&lon=${_picked.longitude}&format=json&addressdetails=1',
+            );
+            final response = await http.get(url, headers: {'User-Agent': 'FlutterApp'});
+
+            if (response.statusCode == 200) {
+              final data = json.decode(response.body);
+              final address = data['address'] ?? {};
+              final keys = [
+                'city', 'town', 'village', 'hamlet', 'municipality', 'county', 'state'
+              ];
+              for (var key in keys) {
+                if (address.containsKey(key)) {
+                  cityName = address[key];
+                  break;
+                }
+              }
+              if (cityName.isEmpty) {
+                cityName =
+                '${_picked.latitude.toStringAsFixed(4)}, ${_picked.longitude.toStringAsFixed(4)}';
               }
             }
-            // Si nada se encontró, usar coordenadas
-            if (cityName.isEmpty) {
-              cityName = '${_picked.latitude.toStringAsFixed(4)}, ${_picked.longitude.toStringAsFixed(4)}';
-            }
           }
-          Navigator.pop(context, cityName);
+
+          Navigator.pop(context, {
+            'address': cityName,
+            'latitude': _picked.latitude,
+            'longitude': _picked.longitude,
+          });
         },
       ),
     );

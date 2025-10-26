@@ -8,12 +8,13 @@ import 'package:flutter_frontend/presentation/components/cards/header_memory.dar
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
 import '../../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
-// Modes: view or edit
-enum MemoryMode {view, edit}
+// Modes: view or edit or create
+enum MemoryMode {view, edit, create}
 
 class MemoryDetailScreen extends StatefulWidget {
   final Memory? memory; // Memory data (can be null for new memory)
@@ -37,9 +38,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   // Controllers for editing metadata and form
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _mesController;
-  late TextEditingController _ahoController;
-  late TextEditingController _locationController;
+  late DateController _photoController;
+  late LocationController _locationController;
 
   bool _isLoading = false;
   late Memory _originalMemory; // Original memory object (for reset)
@@ -138,9 +138,13 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
-    _mesController = TextEditingController(text: "");
-    _ahoController = TextEditingController(text: "");
-    _locationController = TextEditingController(text: _editableMemory.location ?? "");
+    _photoController = DateController(
+      date: _editableMemory.photoDate,
+    );
+    _locationController = LocationController(
+      latitude: _editableMemory.latitude,
+      longitude: _editableMemory.longitude,
+    );
   }
 
   @override
@@ -168,6 +172,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
+        "latitude": _locationController.latitude,
+        "longitude": _locationController.longitude,
+        "photoDate": _photoController.date?.toIso8601String(),
         "addTags": false,
       };
 
@@ -289,7 +296,10 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         memorialId: widget.memorialId!,
         type: MemoryOriginType.spontaneous,
         title: _titleController.text.trim(),
-        photoDate: DateTime.now(),
+        description: _descriptionController.text.trim(),
+        photoDate: _photoController.date!,
+        latitude: _locationController.latitude,
+        longitude:_locationController.longitude
       );
 
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
@@ -329,7 +339,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         );
       }).toList();
 
-      // Actualizar el memory original combinando los archivos restantes + nuevos
+      // Actualizar el memory original con los files nuevos
       _originalMemory = _originalMemory.copyWith(
         title: _editableMemory.title,
         description: _editableMemory.description,
@@ -346,7 +356,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       // Mostrar pop-up de éxito
       await appPopupButtonDefault(
         context: context,
-        title: "Tu recuerdo ha sido actualizado",
+        title: "Tu recuerdo ha sido creado",
         message: "Gracias por compartir un momento más de tu historia",
         buttons: [
           AppPopupButton(
@@ -363,7 +373,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar: $e'),
+            content: Text('Error al crear memoria: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -422,13 +432,19 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
     // Determine if the app is in edit mode
     final bool isEditMode = _mode == MemoryMode.edit;
+    final bool isCreateMode = _mode == MemoryMode.create;
+    final bool isViewMode = _mode == MemoryMode.view;
 
     double appBarHeight = screenHeight * 0.09;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
-        title: isEditMode ? "Vista Previa" : "Recuerdo", // Set title based on mode
+        title: isCreateMode
+            ? "Nuevo Recuerdo"
+            : isEditMode
+            ? "Vista Previa"
+            : "Recuerdo",
         onBack: () => Navigator.pop(context),
         appBarHeight: appBarHeight,
         showBackButton: true,
@@ -441,8 +457,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Display header and action menu (edit/delete) in view mode
-            if (!isEditMode)
+            // Display header and action menu in view mode
+            if (isViewMode)
               Padding(
                 padding: const EdgeInsets.all(0),
                 child: HeaderWithActions(
@@ -473,12 +489,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                 child: MemoryContainer(
                   key: _memoryContainerKey,
                   edit: isEditMode, // Pass edit mode flag to the container
+                  create: isCreateMode,
                   existingFiles: _existingFiles,
                   memory: _editableMemory,  // Current memory to display/edit
                   titleController: _titleController,
                   descriptionController: _descriptionController,
-                  mesController: _mesController,
-                  ahoController: _ahoController,
+                  photoDateController: _photoController,
                   locationController: _locationController,
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
@@ -536,7 +552,35 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                         Expanded(
                           child: PrimaryButton(
                             text: "Guardar",
-                            onPressed: widget.memorialId != null ? _createMemory : _saveChanges,
+                            onPressed: _saveChanges,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+            // Action button in create mode
+            if (isCreateMode)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.inactive, width: 1),
+                  ),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PrimaryButton(
+                            text: "Crear",
+                            onPressed: _createMemory,
                           ),
                         ),
                       ],
