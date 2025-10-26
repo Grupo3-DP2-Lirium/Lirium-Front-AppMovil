@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
 import 'package:flutter_frontend/presentation/screens/main/home_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/my_personal_space_screen.dart';
 import 'package:flutter_frontend/presentation/screens/onboarding/welcome_screen.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
