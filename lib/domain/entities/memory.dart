@@ -7,6 +7,8 @@ class Memory {
   final String description;
   final DateTime? photoDate;
   final String? location;
+  final double? latitude;
+  final double? longitude;
   final bool visible;
   final List<String> tags;
   final String? associatedQuestion;
@@ -21,6 +23,8 @@ class Memory {
     required this.description,
     required this.photoDate,
     required this.location,
+    this.latitude,
+    this.longitude,
     required this.visible,
     required this.tags,
     required this.associatedQuestion,
@@ -36,6 +40,8 @@ class Memory {
     String? description,
     DateTime? photoDate,
     String? location,
+    double? latitude,
+    double? longitude,
     bool? visible,
     List<String>? tags,
     String? associatedQuestion,
@@ -50,6 +56,8 @@ class Memory {
       description: description ?? this.description,
       photoDate: photoDate ?? this.photoDate,
       location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       visible: visible ?? this.visible,
       tags: tags ?? this.tags,
       associatedQuestion: associatedQuestion ?? this.associatedQuestion,

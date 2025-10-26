@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../components/buttons/primary_button.dart';
-import '../../components/buttons/secondary_button.dart';
-import '../main/main_navigation_screen.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
+import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
 import 'create_memory_select_type.dart';
 
 /// Pantalla de confirmación cuando una memoria es guardada exitosamente

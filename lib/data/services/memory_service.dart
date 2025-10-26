@@ -8,6 +8,9 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../models/memory_response.dart';
 import '../models/memory_create_request.dart';
+import '../models/memories_organized_response.dart';
+import '../models/memories_by_type_response.dart';
+import '../models/memory_lite_response.dart';
 
 class MemoryService {
   final http.Client _client;
@@ -210,6 +213,232 @@ class MemoryService {
       throw Exception(
         "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
       );
+    }
+  }
+
+  // Nuevos métodos para visualizar recuerdos organizados
+
+  Future<MemoriesOrganizedResponse> getMemoriesOrganized({
+    required String memorialId,
+    String filterType = 'all',
+    String sortBy = 'date',
+    String sortOrder = 'desc',
+    int page = 0,
+    int size = 20,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories/memorial/$memorialId/organized'
+      '?filterType=$filterType&sortBy=$sortBy&sortOrder=$sortOrder&page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final map = json.decode(res.body) as Map<String, dynamic>;
+      return MemoriesOrganizedResponse.fromJson(map);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<MemoriesByTypeResponse> getMemoriesByType({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/by-type/$memorialId');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final map = json.decode(res.body) as Map<String, dynamic>;
+      return MemoriesByTypeResponse.fromJson(map);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByTimeline({
+    required String memorialId,
+    String? year,
+    String? month,
+  }) async {
+    String url = '${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-timeline';
+    
+    List<String> queryParams = [];
+    if (year != null) queryParams.add('year=$year');
+    if (month != null) queryParams.add('month=$month');
+    
+    if (queryParams.isNotEmpty) {
+      url += '?${queryParams.join('&')}';
+    }
+
+    final uri = Uri.parse(url);
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByThemes({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-themes');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMemoriesByMoments({
+    required String memorialId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/memorial/$memorialId/by-moments');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json.decode(res.body) as Map<String, dynamic>;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  /// Obtiene memorias agrupadas por categoría y tipo
+  /// Retorna: Map<String, Map<String, List<MemoryLiteResponse>>>
+  /// Ejemplo: { "Infancia": { "image": [...], "video": [...] }, "Adolescencia": { ... } }
+  Future<Map<String, Map<String, List<MemoryLiteResponse>>>> getMemoriesGroupedByCategory({
+    required String memorialId,
+    int page = 0,
+    int size = 100,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories/grouped-by-category?memorialId=$memorialId&page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = json.decode(res.body) as Map<String, dynamic>;
+      return _parseGroupedMemories(data);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  /// Obtiene memorias agrupadas por momento y tipo
+  /// Retorna: Map<String, Map<String, List<MemoryLiteResponse>>>
+  /// Ejemplo: { "Primer día de escuela": { "image": [...], "video": [...] }, "Graduación": { ... } }
+  Future<Map<String, Map<String, List<MemoryLiteResponse>>>> getMemoriesGroupedByMoment({
+    required String memorialId,
+    int page = 0,
+    int size = 100,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories/grouped-by-moment?memorialId=$memorialId&page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = json.decode(res.body) as Map<String, dynamic>;
+      return _parseGroupedMemories(data);
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
+    }
+  }
+
+  /// Helper para parsear la estructura anidada de memorias agrupadas
+  Map<String, Map<String, List<MemoryLiteResponse>>> _parseGroupedMemories(
+    Map<String, dynamic> data,
+  ) {
+    final result = <String, Map<String, List<MemoryLiteResponse>>>{};
+
+    data.forEach((category, typeMap) {
+      if (typeMap is Map<String, dynamic>) {
+        final typeResult = <String, List<MemoryLiteResponse>>{};
+        
+        typeMap.forEach((type, memoriesList) {
+          if (memoriesList is List) {
+            typeResult[type] = memoriesList
+                .map((m) => MemoryLiteResponse.fromJson(m as Map<String, dynamic>))
+                .toList();
+          }
+        });
+        
+        result[category] = typeResult;
+      }
+    });
+
+    return result;
+  }
+
+  /// Obtiene memorias en formato timeline (línea de tiempo)
+  /// Retorna una lista de memorias ordenadas cronológicamente
+  Future<List<MemoryResponse>> getTimelineMemories({
+    required String memorialId,
+    int page = 0,
+    int size = 50,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConstants.baseUrl}/memories/timeline/$memorialId?page=$page&size=$size',
+    );
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: false),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final listJson = json.decode(res.body) as List<dynamic>;
+      return listJson
+          .map((e) => MemoryResponse.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada (401).');
+    } else {
+      throw Exception('Error ${res.statusCode}: ${res.body}');
     }
   }
 

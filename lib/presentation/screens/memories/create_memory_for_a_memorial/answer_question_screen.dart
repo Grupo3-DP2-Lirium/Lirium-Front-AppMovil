@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/screens/create_memory_for_a_memorial/memory_saved_screen.dart';
-import '../../../data/services/memory_service.dart';
-import '../../../data/models/memory_create_request.dart';
-import '../../../domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/data/models/memory_create_request.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/memory_saved_screen.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';

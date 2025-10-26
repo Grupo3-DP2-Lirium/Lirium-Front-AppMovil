@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../components/buttons/primary_button.dart';
-import '../../components/forms/app_text_field.dart';
+import 'package:flutter_frontend/data/models/memory_create_request.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/components.dart';
 import 'memory_success_screen.dart';
-import '../../../data/services/memory_service.dart';
-import '../../../data/models/memory_create_request.dart';
-import '../../../domain/enums/memory_origin_type.dart';
 
 /// Pantalla que muestra la imagen mejorada con campo de título
 class ImageResultScreen extends StatefulWidget {
