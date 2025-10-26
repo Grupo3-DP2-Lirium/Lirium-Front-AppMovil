@@ -46,6 +46,11 @@ dependencies:
   # Nuevas dependencias para la integración con Spring Boot
   provider: ^6.1.1
   shared_preferences: ^2.2.2
+  path_provider: ^2.1.4
+  # Para reproducción de audio
+  audioplayers: ^6.1.0
+  # Para selección de archivos de video
+  file_picker: ^8.1.2
   # Audio recording
   flutter_sound: ^9.2.13
   # Para visualizar videos y audios

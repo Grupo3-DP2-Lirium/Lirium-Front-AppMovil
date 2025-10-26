@@ -10,11 +10,14 @@ class MemoryResponse {
   final DateTime? photoDate;
   final String? location;
   final bool visible;
+  final double? longitude;
+  final double? latitude;
   final List<String> tags;
   final String? associatedQuestion;
   final List<FileResponse> files;
   final double? totalUsedSpace;
   final DateTime createdDate;
+  final DateTime? updateDate;
 
   MemoryResponse({
     required this.idMemory,
@@ -23,12 +26,15 @@ class MemoryResponse {
     required this.description,
     required this.photoDate,
     required this.location,
+    required this.longitude,
+    required this.latitude,
     required this.visible,
     required this.tags,
     required this.associatedQuestion,
     required this.files,
     required this.totalUsedSpace,
     required this.createdDate,
+    required this.updateDate
   });
 
   factory MemoryResponse.fromJson(Map<String, dynamic> j) => MemoryResponse(
@@ -38,6 +44,8 @@ class MemoryResponse {
     description: j['description'] ?? '',
     photoDate: j['photoDate'] != null ? DateTime.parse(j['photoDate']) : null,
     location: j['location'],
+    latitude: j['latitude'] != null ? (j['latitude'] as num).toDouble() : null,
+    longitude: j['longitude'] != null ? (j['longitude'] as num).toDouble() : null,
     visible: j['visible'] ?? true,
     tags: (j['tags'] as List?)?.cast<String>() ?? const [],
     associatedQuestion: j['associatedQuestion'],
@@ -46,6 +54,7 @@ class MemoryResponse {
         .toList(),
     totalUsedSpace: j['totalUsedSpace'] == null ? null : (j['totalUsedSpace'] as num).toDouble(),
     createdDate: DateTime.parse(j['createdDate']),
+    updateDate: j['updateDate'] != null ? DateTime.parse(j['updateDate']) : null,
   );
 
   List<FileResponse> get images =>
@@ -87,12 +96,15 @@ class MemoryResponse {
       description: description,
       photoDate: photoDate,
       location: location,
+      latitude: latitude,
+      longitude: longitude,
       visible: visible,
       tags: tags,
       associatedQuestion: associatedQuestion,
       files: files.map((f) => f.toEntity()).toList(),
       totalUsedSpace: totalUsedSpace,
       createdDate: createdDate,
+      updateDate: updateDate
     );
   }
 
@@ -104,6 +116,8 @@ class MemoryResponse {
       'description': description,
       'photoDate': photoDate?.toIso8601String(),
       'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
       'visible': visible,
       'tags': tags,
       'associatedQuestion': associatedQuestion,

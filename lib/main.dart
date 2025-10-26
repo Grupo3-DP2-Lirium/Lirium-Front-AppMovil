@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
 import 'package:flutter_frontend/presentation/screens/main/home_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/my_personal_space_screen.dart';
 import 'package:flutter_frontend/presentation/screens/onboarding/welcome_screen.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +22,7 @@ class RemoryApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MemorialProvider()),
+        ChangeNotifierProvider(create: (_) => MemoryProvider())
       ],
       child: MaterialApp(
         title: 'Remory',

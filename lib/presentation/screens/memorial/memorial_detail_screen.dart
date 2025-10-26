@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/visualize_memories_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';

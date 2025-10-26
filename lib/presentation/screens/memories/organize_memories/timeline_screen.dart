@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../components/components.dart';
-import '../../../data/models/memorial_response.dart';
-import '../../../data/models/memory_response.dart';
-import '../../../data/services/memory_service.dart';
+import '../../../components/components.dart';
+import '../../../../data/models/memorial_response.dart';
+import '../../../../data/models/memory_response.dart';
+import '../../../../data/services/memory_service.dart';
 
 // Typedef para compatibilidad
 typedef MemorialResponse = MemorialResponseModel;

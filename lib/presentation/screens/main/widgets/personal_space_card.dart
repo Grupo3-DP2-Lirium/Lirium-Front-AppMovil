@@ -25,7 +25,7 @@ class PersonalSpaceCard extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 14),
-            SizedBox(height: 42, child: SecondaryButton(text: 'Añadir una reflexión', textColor: const Color(0xFF6366F1), onPressed: onTap)),
+            SizedBox(height: 42, child: SecondaryButton(text: 'Ver mis reflexiones', textColor: const Color(0xFF6366F1), onPressed: onTap)),
           ],
         ),
       ),
