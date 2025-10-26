@@ -15,7 +15,6 @@ class ReflectionService {
     try {
       return await _apiService.getReflections();
     } catch (e) {
-      print('Error obteniendo reflexiones de API: $e');
       return [];
     }
   }
@@ -27,8 +26,6 @@ class ReflectionService {
       
       if (reflection.id.isEmpty || !isValidBackendId) {
         // Crear nueva reflexión - ID vacío o ID generado por frontend
-        print('🆕 Creando nueva reflexión (ID: ${reflection.id})');
-        
         final result = await _apiService.createReflection(
           title: reflection.title,
           content: reflection.content,
@@ -37,17 +34,9 @@ class ReflectionService {
           files: await _prepareFiles(reflection.attachedFiles),
         );
         
-        if (result != null) {
-          print('✅ Reflexión creada con UUID del backend: ${result.id}');
-          return result;
-        } else {
-          print('❌ Error creando reflexión');
-          return null;
-        }
+        return result;
       } else {
         // Actualizar reflexión existente - ID es un UUID válido del backend
-        print('📝 Actualizando reflexión existente (UUID: ${reflection.id})');
-        
         final result = await _apiService.updateReflection(
           id: reflection.id,
           title: reflection.title,
@@ -57,16 +46,9 @@ class ReflectionService {
           newFiles: await _prepareFiles(reflection.attachedFiles),
         );
         
-        if (result != null) {
-          print('✅ Reflexión actualizada exitosamente');
-          return result;
-        } else {
-          print('❌ Error actualizando reflexión');
-          return null;
-        }
+        return result;
       }
     } catch (e) {
-      print('❌ Error en saveReflection: $e');
       return null;
     }
   }
@@ -103,7 +85,6 @@ class ReflectionService {
     try {
       return await _apiService.deleteReflection(reflectionId);
     } catch (e) {
-      print('Error eliminando reflexión de API: $e');
       return false;
     }
   }
@@ -112,7 +93,6 @@ class ReflectionService {
     try {
       return await _apiService.getReflection(id);
     } catch (e) {
-      print('Error obteniendo reflexión de API: $e');
       return null;
     }
   }
@@ -185,7 +165,6 @@ class ReflectionService {
       final stats = await _apiService.getUserStats();
       return (stats?['totalUsedSpace'] as double?)?.toInt() ?? 0;
     } catch (e) {
-      print('Error obteniendo estadísticas de uso: $e');
       return 0;
     }
   }
@@ -234,7 +213,6 @@ class ReflectionService {
     try {
       return await _apiService.searchReflections(query: query);
     } catch (e) {
-      print('Error buscando reflexiones: $e');
       return [];
     }
   }
@@ -243,7 +221,6 @@ class ReflectionService {
     try {
       return await _apiService.getReflectionsByCategory(category: category);
     } catch (e) {
-      print('Error obteniendo reflexiones por categoría: $e');
       return [];
     }
   }

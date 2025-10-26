@@ -18,9 +18,6 @@ class ReflectionApiService {
         '${ApiConstants.reflections}?page=$page&size=$size',
       );
       
-      print('Get reflections response status: ${response.statusCode}');
-      print('Get reflections response body: ${response.body}');
-      
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
         
@@ -41,20 +38,16 @@ class ReflectionApiService {
           // Fallback: si es una lista directa
           reflectionsJson = responseData;
         } else {
-          print('Estructura de respuesta inesperada: ${responseData.runtimeType}');
           return [];
         }
         
         return reflectionsJson
             .map((json) => ReflectionModel.fromJson(json as Map<String, dynamic>))
             .toList();
-      } else {
-        print('Error obteniendo reflexiones: ${response.statusCode} - ${response.body}');
       }
       
       return [];
     } catch (e) {
-      print('Error obteniendo reflexiones: $e');
       return [];
     }
   }
@@ -71,7 +64,6 @@ class ReflectionApiService {
       
       return null;
     } catch (e) {
-      print('Error obteniendo reflexión $id: $e');
       return null;
     }
   }
@@ -104,8 +96,6 @@ class ReflectionApiService {
         'reflection': json.encode(reflectionData), // Enviar datos como JSON en campo 'reflection'
       };
       
-      print('Sending reflection data: ${json.encode(reflectionData)}'); // Debug
-      
       List<http.MultipartFile> multipartFiles = [];
       
       // Archivos multimedia
@@ -127,18 +117,13 @@ class ReflectionApiService {
         multipartFiles,
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         return ReflectionModel.fromJson(responseData);
       } else {
-        print('Error del servidor: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error creando reflexión: $e');
       return null;
     }
   }
@@ -178,8 +163,6 @@ class ReflectionApiService {
         'reflection': json.encode(reflectionData), // Datos como JSON
       };
       
-      print('Updating reflection data: ${json.encode(reflectionData)}'); // Debug
-      
       // Archivos a eliminar
       if (filesToDelete != null && filesToDelete.isNotEmpty) {
         fields['deleteFiles'] = json.encode(filesToDelete);
@@ -206,18 +189,13 @@ class ReflectionApiService {
         multipartFiles,
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         return ReflectionModel.fromJson(responseData);
       } else {
-        print('Error actualizando reflexión: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error actualizando reflexión: $e');
       return null;
     }
   }
@@ -228,7 +206,6 @@ class ReflectionApiService {
       final response = await _httpService.delete('${ApiConstants.reflections}/$id');
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('Error eliminando reflexión: $e');
       return false;
     }
   }
@@ -254,7 +231,6 @@ class ReflectionApiService {
       
       return [];
     } catch (e) {
-      print('Error buscando reflexiones: $e');
       return [];
     }
   }
@@ -271,7 +247,6 @@ class ReflectionApiService {
       
       return null;
     } catch (e) {
-      print('Error obteniendo estadísticas: $e');
       return null;
     }
   }
@@ -297,7 +272,6 @@ class ReflectionApiService {
       
       return [];
     } catch (e) {
-      print('Error obteniendo reflexiones por categoría: $e');
       return [];
     }
   }
@@ -309,7 +283,6 @@ class ReflectionApiService {
       final response = await _httpService.downloadFile(downloadUrl, fileName);
       return response; // Devuelve la ruta local del archivo descargado
     } catch (e) {
-      print('Error descargando archivo: $e');
       return null;
     }
   }
