@@ -1,89 +1,123 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/reflection_model.dart';
+import 'reflection_api_service.dart';
 
 class ReflectionService {
-  static const String _reflectionsKey = 'reflections';
-  static const String _storageUsageKey = 'storage_usage';
   static const int _maxStorageForFreeUsers = 100 * 1024 * 1024; // 100 MB en bytes
 
+  final ReflectionApiService _apiService = ReflectionApiService();
+  
   // Simulamos el tipo de usuario (en una app real vendría del backend)
-  UserType _userType = UserType.premium; // Cambiado a premium para testing
+  UserType _userType = UserType.premium;
 
   Future<List<ReflectionModel>> getAllReflections() async {
-    final prefs = await SharedPreferences.getInstance();
-    final reflectionsJson = prefs.getString(_reflectionsKey);
-    
-    if (reflectionsJson == null) return [];
-    
-    final List<dynamic> reflectionsList = jsonDecode(reflectionsJson);
-    return reflectionsList
-        .map((json) => ReflectionModel.fromJson(json))
-        .toList()
-      ..sort((a, b) => b.createdDate.compareTo(a.createdDate)); // Más recientes primero
-  }
-
-  Future<void> saveReflection(ReflectionModel reflection) async {
-    final reflections = await getAllReflections();
-    
-    // Verificar si es una edición o nueva reflexión
-    final existingIndex = reflections.indexWhere((r) => r.id == reflection.id);
-    if (existingIndex != -1) {
-      reflections[existingIndex] = reflection;
-    } else {
-      reflections.insert(0, reflection); // Agregar al principio
-    }
-    
-    await _saveReflectionsList(reflections);
-  }
-
-  Future<void> deleteReflection(String reflectionId) async {
-    final reflections = await getAllReflections();
-    
-    // Encontrar la reflexión para eliminar sus archivos
-    final reflection = reflections.firstWhere(
-      (r) => r.id == reflectionId,
-      orElse: () => throw Exception('Reflexión no encontrada'),
-    );
-    
-    // Eliminar archivos físicos
-    for (final file in reflection.attachedFiles) {
-      try {
-        final fileToDelete = File(file.path);
-        if (await fileToDelete.exists()) {
-          await fileToDelete.delete();
-        }
-      } catch (e) {
-        print('Error eliminando archivo: $e');
-      }
-    }
-    
-    // Eliminar de la lista
-    reflections.removeWhere((r) => r.id == reflectionId);
-    await _saveReflectionsList(reflections);
-    await _updateStorageUsage();
-  }
-
-  Future<ReflectionModel?> getReflectionById(String id) async {
-    final reflections = await getAllReflections();
     try {
-      return reflections.firstWhere((r) => r.id == id);
+      return await _apiService.getReflections();
     } catch (e) {
+      print('Error obteniendo reflexiones de API: $e');
+      return [];
+    }
+  }
+
+  Future<ReflectionModel?> saveReflection(ReflectionModel reflection) async {
+    try {
+      // Verificar si es un UUID válido del backend
+      bool isValidBackendId = _isValidUUID(reflection.id);
+      
+      if (reflection.id.isEmpty || !isValidBackendId) {
+        // Crear nueva reflexión - ID vacío o ID generado por frontend
+        print('🆕 Creando nueva reflexión (ID: ${reflection.id})');
+        
+        final result = await _apiService.createReflection(
+          title: reflection.title,
+          content: reflection.content,
+          latitude: reflection.latitude,
+          longitude: reflection.longitude,
+          files: await _prepareFiles(reflection.attachedFiles),
+        );
+        
+        if (result != null) {
+          print('✅ Reflexión creada con UUID del backend: ${result.id}');
+          return result;
+        } else {
+          print('❌ Error creando reflexión');
+          return null;
+        }
+      } else {
+        // Actualizar reflexión existente - ID es un UUID válido del backend
+        print('📝 Actualizando reflexión existente (UUID: ${reflection.id})');
+        
+        final result = await _apiService.updateReflection(
+          id: reflection.id,
+          title: reflection.title,
+          content: reflection.content,
+          latitude: reflection.latitude,
+          longitude: reflection.longitude,
+          newFiles: await _prepareFiles(reflection.attachedFiles),
+        );
+        
+        if (result != null) {
+          print('✅ Reflexión actualizada exitosamente');
+          return result;
+        } else {
+          print('❌ Error actualizando reflexión');
+          return null;
+        }
+      }
+    } catch (e) {
+      print('❌ Error en saveReflection: $e');
       return null;
     }
   }
 
-  Future<void> _saveReflectionsList(List<ReflectionModel> reflections) async {
-    final prefs = await SharedPreferences.getInstance();
-    final reflectionsJson = jsonEncode(
-      reflections.map((r) => r.toJson()).toList(),
+  // Método helper para verificar si un ID es un UUID válido
+  bool _isValidUUID(String id) {
+    if (id.isEmpty) return false;
+    
+    // Un UUID tiene el formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     );
-    await prefs.setString(_reflectionsKey, reflectionsJson);
+    
+    return uuidRegex.hasMatch(id);
   }
 
-  // Gestión de archivos y almacenamiento
+  // Preparar archivos para envío al backend
+  Future<List<File>> _prepareFiles(List<ReflectionFile> attachedFiles) async {
+    List<File> files = [];
+    
+    for (ReflectionFile reflectionFile in attachedFiles) {
+      if (reflectionFile.localPath != null && reflectionFile.localPath!.isNotEmpty) {
+        File file = File(reflectionFile.localPath!);
+        if (await file.exists()) {
+          files.add(file);
+        }
+      }
+    }
+    
+    return files;
+  }
+
+  Future<bool> deleteReflection(String reflectionId) async {
+    try {
+      return await _apiService.deleteReflection(reflectionId);
+    } catch (e) {
+      print('Error eliminando reflexión de API: $e');
+      return false;
+    }
+  }
+
+  Future<ReflectionModel?> getReflectionById(String id) async {
+    try {
+      return await _apiService.getReflection(id);
+    } catch (e) {
+      print('Error obteniendo reflexión de API: $e');
+      return null;
+    }
+  }
+
+  // Métodos para compatibilidad con archivos multimedia
   Future<String> getReflectionsDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
     final reflectionsDir = Directory('${appDir.path}/reflections');
@@ -97,19 +131,45 @@ class ReflectionService {
 
   Future<ReflectionFile> copyFileToReflectionsDirectory(File sourceFile, ReflectionFileType type) async {
     final reflectionsDir = await getReflectionsDirectory();
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${sourceFile.uri.pathSegments.last}';
+    final originalName = sourceFile.uri.pathSegments.last;
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_$originalName';
     final targetPath = '$reflectionsDir/$fileName';
     
     final copiedFile = await sourceFile.copy(targetPath);
     final fileSize = await copiedFile.length();
     
-    return ReflectionFile(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      path: targetPath,
-      name: sourceFile.uri.pathSegments.last,
-      type: type,
-      sizeInBytes: fileSize,
+    // Determinar el tipo MIME basado en la extensión
+    String fileType = _getFileTypeFromExtension(originalName);
+    
+    return ReflectionFile.fromLocalFile(
+      localPath: targetPath,
+      originalName: originalName,
+      fileType: fileType,
+      fileSize: fileSize,
     );
+  }
+  
+  String _getFileTypeFromExtension(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'mp3':
+        return 'audio/mp3';
+      case 'm4a':
+        return 'audio/m4a';
+      case 'wav':
+        return 'audio/wav';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/mov';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   // Verificaciones para usuarios gratuitos
@@ -121,22 +181,13 @@ class ReflectionService {
   }
 
   Future<int> getCurrentStorageUsage() async {
-    final reflections = await getAllReflections();
-    int totalSize = 0;
-    
-    for (final reflection in reflections) {
-      for (final file in reflection.attachedFiles) {
-        totalSize += file.sizeInBytes;
-      }
+    try {
+      final stats = await _apiService.getUserStats();
+      return (stats?['totalUsedSpace'] as double?)?.toInt() ?? 0;
+    } catch (e) {
+      print('Error obteniendo estadísticas de uso: $e');
+      return 0;
     }
-    
-    return totalSize;
-  }
-
-  Future<void> _updateStorageUsage() async {
-    final usage = await getCurrentStorageUsage();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_storageUsageKey, usage);
   }
 
   String formatStorageSize(int bytes) {
@@ -178,40 +229,27 @@ class ReflectionService {
     return '${months[date.month]} ${date.year}';
   }
 
-  // Método para generar datos de ejemplo (solo para testing)
-  Future<void> generateSampleData() async {
-    final sampleReflections = [
-      ReflectionModel(
-        id: '1',
-        title: 'Navidad con mi fam 2 años después',
-        content: 'Ha sido un año increíble lleno de aprendizajes y crecimiento personal. '
-            'Hoy celebramos la Navidad en familia después de tanto tiempo separados. '
-            'Es hermoso ver cómo todos hemos crecido y cambiado, pero el amor sigue siendo el mismo.',
-        createdDate: DateTime(2024, 12, 26),
-        attachedFiles: [],
-      ),
-      ReflectionModel(
-        id: '2',
-        title: '¿Cómo me siento hoy?',
-        content: 'Reflexionando sobre el día, me doy cuenta de que he estado más consciente '
-            'de mis emociones. A veces es difícil expresar lo que siento, pero escribir '
-            'me ayuda a procesar y entender mejor mis pensamientos.',
-        createdDate: DateTime(2024, 12, 20),
-        attachedFiles: [],
-      ),
-      ReflectionModel(
-        id: '3',
-        title: 'Día de visita a la casa de mi infancia',
-        content: 'Volví al lugar donde crecí y fue una experiencia muy emotiva. '
-            'Los recuerdos vinieron como una avalancha, algunos dulces, otros amargos. '
-            'Pero todos han sido parte de mi historia y me han hecho quien soy hoy.',
-        createdDate: DateTime(2025, 1, 5),
-        attachedFiles: [],
-      ),
-    ];
-
-    for (final reflection in sampleReflections) {
-      await saveReflection(reflection);
+  // Métodos adicionales de la API
+  Future<List<ReflectionModel>> searchReflections(String query) async {
+    try {
+      return await _apiService.searchReflections(query: query);
+    } catch (e) {
+      print('Error buscando reflexiones: $e');
+      return [];
     }
+  }
+
+  Future<List<ReflectionModel>> getReflectionsByCategory(String category) async {
+    try {
+      return await _apiService.getReflectionsByCategory(category: category);
+    } catch (e) {
+      print('Error obteniendo reflexiones por categoría: $e');
+      return [];
+    }
+  }
+
+  // Método público para verificar si una reflexión se puede editar
+  bool canEditReflection(ReflectionModel reflection) {
+    return _isValidUUID(reflection.id);
   }
 }

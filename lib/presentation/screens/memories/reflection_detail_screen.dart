@@ -37,6 +37,17 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   }
 
   void _navigateToEdit() async {
+    // Verificar si la reflexión tiene un UUID válido del backend
+    if (!_isValidUUID(_reflection.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Esta reflexión debe ser guardada en el servidor primero'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -96,7 +107,11 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
       } else {
         // Reproducir nuevo audio
         await _audioPlayer.stop();
-        await _audioPlayer.play(DeviceFileSource(audio.path));
+        if (audio.localPath != null) {
+          await _audioPlayer.play(DeviceFileSource(audio.localPath!));
+        } else if (audio.downloadUrl.isNotEmpty) {
+          await _audioPlayer.play(UrlSource(audio.downloadUrl));
+        }
         setState(() {
           _isPlayingAudio = true;
           _currentlyPlayingAudioId = audio.id;
@@ -331,19 +346,41 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
       onTap: () => _showImageFullscreen(imageFile),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(imageFile.path),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: 200,
-              color: Colors.grey.shade200,
-              child: const Center(
-                child: Icon(Icons.broken_image, size: 48),
+        child: imageFile.localPath != null
+          ? Image.file(
+              File(imageFile.localPath!),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 200,
+                  color: Colors.grey.shade200,
+                  child: const Center(
+                    child: Icon(Icons.broken_image, size: 48),
+                  ),
+                );
+              },
+            )
+          : imageFile.downloadUrl.isNotEmpty
+            ? Image.network(
+                imageFile.downloadUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 200,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 48),
+                    ),
+                  );
+                },
+              )
+            : Container(
+                height: 200,
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: Icon(Icons.image, size: 48),
+                ),
               ),
-            );
-          },
-        ),
       ),
     );
   }
@@ -353,16 +390,32 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
       onTap: () => _showImageFullscreen(imageFile),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(imageFile.path),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Colors.grey.shade200,
-              child: const Icon(Icons.broken_image),
-            );
-          },
-        ),
+        child: imageFile.localPath != null
+          ? Image.file(
+              File(imageFile.localPath!),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.broken_image),
+                );
+              },
+            )
+          : imageFile.downloadUrl.isNotEmpty
+            ? Image.network(
+                imageFile.downloadUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.broken_image),
+                  );
+                },
+              )
+            : Container(
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.image),
+              ),
       ),
     );
   }
@@ -450,12 +503,12 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  audio.name,
+                  audio.originalName,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  service.formatStorageSize(audio.sizeInBytes),
+                  service.formatStorageSize(audio.fileSize.toInt()),
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 12,
@@ -498,12 +551,12 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  video.name,
+                  video.originalName,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  service.formatStorageSize(video.sizeInBytes),
+                  service.formatStorageSize(video.fileSize.toInt()),
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 12,
@@ -533,7 +586,11 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
           ),
           body: Center(
             child: InteractiveViewer(
-              child: Image.file(File(imageFile.path)),
+              child: imageFile.localPath != null
+                ? Image.file(File(imageFile.localPath!))
+                : imageFile.downloadUrl.isNotEmpty
+                  ? Image.network(imageFile.downloadUrl)
+                  : const Icon(Icons.image, size: 100),
             ),
           ),
         ),
@@ -551,7 +608,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
             backgroundColor: Colors.transparent,
             iconTheme: const IconThemeData(color: Colors.white),
             title: Text(
-              videoFile.name,
+              videoFile.originalName,
               style: const TextStyle(color: Colors.white),
             ),
           ),
@@ -574,7 +631,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Archivo: ${videoFile.name}',
+                  'Archivo: ${videoFile.originalName}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
                     fontSize: 14,
@@ -610,5 +667,17 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     final year = date.year;
     
     return '$weekday, $day de $month de $year';
+  }
+
+  // Método helper para verificar si un ID es un UUID válido
+  bool _isValidUUID(String id) {
+    if (id.isEmpty) return false;
+    
+    // Un UUID tiene el formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    );
+    
+    return uuidRegex.hasMatch(id);
   }
 }

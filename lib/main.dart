@@ -61,7 +61,7 @@ class RemoryApp extends StatelessWidget {
           Locale('es'),
           Locale('en'),
         ],
-        home: const MyPersonalSpaceScreen(),
+        home: const LoginScreen(),
         routes: {
           '/memorials': (_) => const MemorialsScreen(),
         },

@@ -103,4 +103,73 @@ class HttpService {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  // Método para enviar formularios multipart (archivos)
+  Future<http.Response> postMultipart(String endpoint, Map<String, String> fields, List<http.MultipartFile> files) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(endpoint));
+      
+      // Agregar headers de autenticación
+      attachAuthToMultipart(request);
+      
+      // Agregar campos
+      request.fields.addAll(fields);
+      
+      // Agregar archivos
+      request.files.addAll(files);
+
+      final streamedResponse = await request.send().timeout(
+        Duration(milliseconds: AppConfig.connectionTimeout),
+      );
+
+      return await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      throw Exception('Error de conexión multipart: $e');
+    }
+  }
+
+  // Método para PUT con formularios multipart
+  Future<http.Response> putMultipart(String endpoint, Map<String, String> fields, List<http.MultipartFile> files) async {
+    try {
+      final request = http.MultipartRequest('PUT', Uri.parse(endpoint));
+      
+      // Agregar headers de autenticación
+      attachAuthToMultipart(request);
+      
+      // Agregar campos
+      request.fields.addAll(fields);
+      
+      // Agregar archivos
+      request.files.addAll(files);
+
+      final streamedResponse = await request.send().timeout(
+        Duration(milliseconds: AppConfig.connectionTimeout),
+      );
+
+      return await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      throw Exception('Error de conexión multipart: $e');
+    }
+  }
+
+  // Método para descargar archivos
+  Future<String?> downloadFile(String url, String fileName) async {
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: authHeaders(includeJson: false),
+      ).timeout(Duration(milliseconds: AppConfig.connectionTimeout));
+
+      if (response.statusCode == 200) {
+        // Aquí podrías guardar el archivo en el dispositivo
+        // Por ahora solo retornamos la URL ya que la descarga real
+        // requiere manejo de archivos específico del dispositivo
+        return url;
+      }
+      
+      return null;
+    } catch (e) {
+      throw Exception('Error descargando archivo: $e');
+    }
+  }
 }

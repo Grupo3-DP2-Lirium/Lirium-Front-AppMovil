@@ -29,4 +29,9 @@ class ApiConstants {
 
   // Endpoints de memorias
   static String get memories => '$baseUrl/memories';
+
+  // Endpoints de reflexiones
+  static String get reflections => '$baseUrl/reflections';
+  static String get reflectionSearch => '$baseUrl/reflections/search';
+  static String get reflectionStats => '$baseUrl/reflections/stats';
 }

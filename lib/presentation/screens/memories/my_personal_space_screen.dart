@@ -134,15 +134,14 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
-                        // Botón de datos de ejemplo solo para testing
+                        // Botón para refrescar reflexiones desde API
                         TextButton.icon(
                           onPressed: () async {
-                            await _reflectionService.generateSampleData();
                             _refreshReflections();
                           },
-                          icon: Icon(Icons.data_saver_on, color: Colors.blue.shade600),
+                          icon: Icon(Icons.refresh, color: Colors.blue.shade600),
                           label: Text(
-                            'Generar datos de ejemplo',
+                            'Refrescar reflexiones',
                             style: TextStyle(color: Colors.blue.shade600),
                           ),
                         ),
@@ -285,18 +284,38 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
                   borderRadius: BorderRadius.circular(8),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.file(
-                      File(firstImageFile.path),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: Icon(Icons.broken_image, size: 32),
+                    child: firstImageFile.localPath != null 
+                      ? Image.file(
+                          File(firstImageFile.localPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child: Icon(Icons.broken_image, size: 32),
+                              ),
+                            );
+                          },
+                        )
+                      : firstImageFile.downloadUrl.isNotEmpty
+                        ? Image.network(
+                            firstImageFile.downloadUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, size: 32),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: Icon(Icons.image, size: 32),
+                            ),
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
                 const SizedBox(height: 12),

@@ -314,7 +314,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
     try {
       final reflection = ReflectionModel(
-        id: widget.editingReflection?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.editingReflection?.id ?? '',
         title: title,
         content: content,
         createdDate: widget.editingReflection?.createdDate ?? DateTime.now(),
@@ -392,11 +392,14 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   }
 
   void _showSuccessDialog() {
+    final isEditing = widget.editingReflection != null;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¡Éxito!'),
-        content: const Text('Tu reflexión ha sido creada con éxito'),
+        content: Text(isEditing 
+            ? 'Tu reflexión ha sido actualizada con éxito'
+            : 'Tu reflexión ha sido creada con éxito'),
         actions: [
           FilledButton(
             onPressed: () {
@@ -630,16 +633,32 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
               width: double.infinity,
               height: double.infinity,
               child: file.isImage
-                  ? Image.file(
-                      File(file.path),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image),
-                        );
-                      },
-                    )
+                  ? (file.localPath != null
+                      ? Image.file(
+                          File(file.localPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image),
+                            );
+                          },
+                        )
+                      : file.downloadUrl.isNotEmpty
+                        ? Image.network(
+                            file.downloadUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.broken_image),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image),
+                          ))
                   : Container(
                       color: file.isAudio 
                           ? Colors.blue.shade50 

@@ -1,34 +1,99 @@
 class ReflectionModel {
   final String id;
+  final String type;
   final String title;
   final String content;
-  final DateTime createdDate;
+  final DateTime? photoDate;
+  final String? location;
+  final double? latitude;
+  final double? longitude;
+  final bool visible;
+  final List<String> tags;
+  final String? associatedQuestion;
   final List<ReflectionFile> attachedFiles;
+  final double? totalUsedSpace;
+  final DateTime createdDate;
+  final List<String> categorias;
+  final List<String> momentos;
+  final bool esLineaTiempo;
 
   ReflectionModel({
-    required this.id,
+    this.id = '',
+    this.type = 'REFLECTION',
     required this.title,
     required this.content,
-    required this.createdDate,
+    this.photoDate,
+    this.location,
+    this.latitude,
+    this.longitude,
+    this.visible = true,
+    this.tags = const [],
+    this.associatedQuestion,
     this.attachedFiles = const [],
+    this.totalUsedSpace,
+    required this.createdDate,
+    this.categorias = const [],
+    this.momentos = const [],
+    this.esLineaTiempo = false,
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
+  // Para crear reflexión (request al backend)
+  Map<String, dynamic> toCreateJson() => {
+    'type': type,
     'title': title,
-    'content': content,
-    'createdDate': createdDate.toIso8601String(),
-    'attachedFiles': attachedFiles.map((f) => f.toJson()).toList(),
+    'description': content,
+    'photoDate': photoDate?.toIso8601String().split('T').first ?? DateTime.now().toIso8601String().split('T').first,
+    'location': location,
+    'latitude': latitude,
+    'longitude': longitude,
+    'visible': visible,
+    'tags': tags,
+    'associatedQuestion': associatedQuestion,
+    'esLineaTiempo': esLineaTiempo,
   };
 
+  // Para actualizar reflexión (request al backend)
+  Map<String, dynamic> toUpdateJson() => {
+    'idMemory': id,
+    'title': title,
+    'description': content,
+    'photoDate': photoDate?.toIso8601String().split('T').first ?? DateTime.now().toIso8601String().split('T').first,
+    'location': location,
+    'latitude': latitude,
+    'longitude': longitude,
+    'visible': visible,
+    'tags': tags,
+    'associatedQuestion': associatedQuestion,
+    'esLineaTiempo': esLineaTiempo,
+  };
+
+  // Desde respuesta del backend
   factory ReflectionModel.fromJson(Map<String, dynamic> json) => ReflectionModel(
-    id: json['id'],
-    title: json['title'],
-    content: json['content'],
-    createdDate: DateTime.parse(json['createdDate']),
-    attachedFiles: (json['attachedFiles'] as List?)
-        ?.map((f) => ReflectionFile.fromJson(f))
-        .toList() ?? [],
+    id: json['idMemory'] ?? json['id'] ?? '',
+    type: json['type'] ?? 'REFLECTION',
+    title: json['title'] ?? '',
+    content: json['description'] ?? json['content'] ?? '',
+    photoDate: json['photoDate'] != null 
+        ? DateTime.tryParse(json['photoDate']) 
+        : null,
+    location: json['location'], // Puede ser null
+    latitude: json['latitude']?.toDouble(),
+    longitude: json['longitude']?.toDouble(),
+    visible: json['visible'] ?? true,
+    tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
+    associatedQuestion: json['associatedQuestion'], // Puede ser null
+    attachedFiles: json['files'] != null 
+        ? (json['files'] as List<dynamic>)
+            .map((file) => ReflectionFile.fromJson(file))
+            .toList()
+        : [],
+    totalUsedSpace: json['totalUsedSpace']?.toDouble(),
+    createdDate: json['createdDate'] != null 
+        ? DateTime.tryParse(json['createdDate']) ?? DateTime.now()
+        : DateTime.now(),
+    categorias: json['categorias'] != null ? List<String>.from(json['categorias']) : [],
+    momentos: json['momentos'] != null ? List<String>.from(json['momentos']) : [],
+    esLineaTiempo: json['esLineaTiempo'] ?? false,
   );
 
   ReflectionModel copyWith({
@@ -43,46 +108,99 @@ class ReflectionModel {
     content: content ?? this.content,
     createdDate: createdDate ?? this.createdDate,
     attachedFiles: attachedFiles ?? this.attachedFiles,
+    type: type,
+    photoDate: photoDate,
+    location: location,
+    latitude: latitude,
+    longitude: longitude,
+    visible: visible,
+    tags: tags,
+    associatedQuestion: associatedQuestion,
+    totalUsedSpace: totalUsedSpace,
+    categorias: categorias,
+    momentos: momentos,
+    esLineaTiempo: esLineaTiempo,
   );
 }
 
 class ReflectionFile {
   final String id;
-  final String path;
-  final String name;
-  final ReflectionFileType type;
-  final int sizeInBytes;
+  final String fileName;
+  final String originalName;
+  final String fileType;
+  final int fileSize;
+  final String downloadUrl;
+  final String? localPath; // Para archivos locales antes de subir
 
   ReflectionFile({
     required this.id,
-    required this.path,
-    required this.name,
-    required this.type,
-    required this.sizeInBytes,
+    required this.fileName,
+    required this.originalName,
+    required this.fileType,
+    required this.fileSize,
+    required this.downloadUrl,
+    this.localPath,
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'path': path,
-    'name': name,
-    'type': type.toString(),
-    'sizeInBytes': sizeInBytes,
-  };
-
+  // Factory desde respuesta del backend
   factory ReflectionFile.fromJson(Map<String, dynamic> json) => ReflectionFile(
-    id: json['id'],
-    path: json['path'],
-    name: json['name'],
-    type: ReflectionFileType.values.firstWhere(
-      (e) => e.toString() == json['type'],
-      orElse: () => ReflectionFileType.image,
-    ),
-    sizeInBytes: json['sizeInBytes'],
+    id: json['idFile'] ?? json['id'] ?? '',
+    fileName: json['fileName'] ?? '',
+    originalName: json['originalFileName'] ?? json['originalName'] ?? json['name'] ?? '',
+    fileType: json['fileType'] ?? json['mimeType'] ?? '',
+    fileSize: (json['fileSize'] is double) 
+        ? (json['fileSize'] * 1024 * 1024).round() // Convertir MB a bytes
+        : (json['fileSize'] ?? 0),
+    downloadUrl: json['fileUrl'] ?? json['downloadUrl'] ?? '',
   );
 
-  bool get isImage => type == ReflectionFileType.image;
-  bool get isAudio => type == ReflectionFileType.audio;
-  bool get isVideo => type == ReflectionFileType.video;
+  // Factory para archivos locales (antes de subir)
+  factory ReflectionFile.fromLocalFile({
+    required String localPath,
+    required String originalName,
+    required String fileType,
+    required int fileSize,
+  }) => ReflectionFile(
+    id: ''  ,
+    fileName: originalName,
+    originalName: originalName,
+    fileType: fileType,
+    fileSize: fileSize,
+    downloadUrl: '',
+    localPath: localPath,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'idFile': id,
+    'fileName': fileName,
+    'originalName': originalName,
+    'fileType': fileType,
+    'fileSize': fileSize,
+    'downloadUrl': downloadUrl,
+  };
+
+  bool get isImage => fileType.toLowerCase().contains('image') || 
+                     fileType.toLowerCase().contains('jpg') || 
+                     fileType.toLowerCase().contains('png') || 
+                     fileType.toLowerCase().contains('jpeg');
+  
+  bool get isAudio => fileType.toLowerCase().contains('audio') || 
+                     fileType.toLowerCase().contains('mp3') || 
+                     fileType.toLowerCase().contains('m4a') || 
+                     fileType.toLowerCase().contains('wav');
+  
+  bool get isVideo => fileType.toLowerCase().contains('video') || 
+                     fileType.toLowerCase().contains('mp4') || 
+                     fileType.toLowerCase().contains('mov') || 
+                     fileType.toLowerCase().contains('avi');
+
+  // Getter para obtener el tipo como enum (para compatibilidad)
+  ReflectionFileType get type {
+    if (isImage) return ReflectionFileType.image;
+    if (isAudio) return ReflectionFileType.audio;
+    if (isVideo) return ReflectionFileType.video;
+    return ReflectionFileType.image; // default
+  }
 }
 
 enum ReflectionFileType {
