@@ -12,6 +12,8 @@ import 'package:flutter_frontend/presentation/screens/memorial/memorial_grid.dar
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
+import '../memories/personal_space/personal_space_screen.dart';
+import '../memories/personal_space/new_personal_memory_screen.dart';
 import '../memories/my_personal_space_screen.dart';
 import '../memories/new_reflection_screen.dart';
 

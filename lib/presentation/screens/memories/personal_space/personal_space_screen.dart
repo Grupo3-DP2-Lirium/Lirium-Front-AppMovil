@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memory_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_form_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/new_personal_memory_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/new_personal_memory_screen.dart';
 //import '../../components/cards/memory_card.dart';
-import '../../components/cards/memory_personal_card.dart';
+import '../../../components/cards/memory_personal_card.dart';
 
 //import '../../utils/file_url_helper.dart'; // Importar el helper
 

@@ -12,6 +12,8 @@ class MemoryCreateRequest {
   final String? associatedQuestion;
   final int? questionId;
   final int? answerId;
+  final double? latitude;
+  final double? longitude;
 
   MemoryCreateRequest({
     required this.memorialId,
@@ -20,6 +22,8 @@ class MemoryCreateRequest {
     this.description,
     required this.photoDate,
     this.location,
+    this.latitude,
+    this.longitude,
     this.visible = true,
     this.tags = const [],
     this.associatedQuestion,
@@ -35,6 +39,8 @@ class MemoryCreateRequest {
       'description': description,
       'photoDate': photoDate.toIso8601String().split('T')[0], // Format as LocalDate
       'location': location,
+      "latitude": latitude,
+      "longitude": longitude,
       'visible': visible,
       'tags': tags,
       'associatedQuestion': associatedQuestion,

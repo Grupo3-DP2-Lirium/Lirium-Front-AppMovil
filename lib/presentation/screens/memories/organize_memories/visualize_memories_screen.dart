@@ -3,10 +3,10 @@ import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/presentation/components/memory_card.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memories_by_type_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memories_by_category_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/memories_by_moment_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/timeline_memories_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/memories_by_type_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/memories_by_category_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/memories_by_moment_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/timeline_memories_screen.dart';
 
 // Typedef para compatibilidad
 typedef MemorialResponse = MemorialResponseModel;

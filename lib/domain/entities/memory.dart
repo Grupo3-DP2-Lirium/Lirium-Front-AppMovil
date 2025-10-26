@@ -15,6 +15,7 @@ class Memory {
   final List<File> files;
   final double? totalUsedSpace;
   final DateTime createdDate;
+  final DateTime? updateDate;
 
   Memory({
     required this.id,
@@ -31,6 +32,7 @@ class Memory {
     required this.files,
     required this.totalUsedSpace,
     required this.createdDate,
+    required this.updateDate
   });
 
   Memory copyWith({
@@ -48,6 +50,7 @@ class Memory {
     List<File>? files,
     double? totalUsedSpace,
     DateTime? createdDate,
+    DateTime? updateDate
   }) {
     return Memory(
       id: id ?? this.id,
@@ -64,6 +67,7 @@ class Memory {
       files: files ?? this.files,
       totalUsedSpace: totalUsedSpace ?? this.totalUsedSpace,
       createdDate: createdDate ?? this.createdDate,
+      updateDate: updateDate ?? this.updateDate,
     );
   }
 

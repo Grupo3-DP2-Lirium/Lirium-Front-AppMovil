@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/visualize_memories_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:flutter_frontend/data/models/file_response.dart';
 import '../../../data/services/memory_service.dart';

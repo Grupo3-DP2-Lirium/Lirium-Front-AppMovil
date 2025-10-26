@@ -32,7 +32,7 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
     _titleController.dispose();
     super.dispose();
   }
-
+  // Save Changes
   Future<void> _saveMemory() async {
     if (_titleController.text.trim().isEmpty) {
       _showError('Por favor ingresa un título');

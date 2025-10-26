@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/fields_widget.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/files_preview_widget.dart';
 import 'package:flutter_sound/flutter_sound.dart';
@@ -16,11 +17,11 @@ class MemoryContainer extends StatefulWidget {
   final Memory memory;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
-  final TextEditingController mesController;
-  final TextEditingController ahoController;
-  final TextEditingController locationController;
+  final DateController photoDateController;
+  final LocationController locationController;
   final double screenHeight;
   final bool edit;
+  final bool create;
   final List<domain.File>? existingFiles;
   final void Function(String action, [int? index, domain.File? file])? onFileChanged;
 
@@ -29,11 +30,11 @@ class MemoryContainer extends StatefulWidget {
     required this.memory,
     required this.titleController,
     required this.descriptionController,
-    required this.mesController,
-    required this.ahoController,
+    required this.photoDateController,
     required this.locationController,
     required this.screenHeight,
     this.edit = false,
+    this.create = false,
     this.onFileChanged,
     this.existingFiles,
   });
@@ -49,6 +50,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   int _currentFileIndex = 0;
   final Map<Key, VideoPlayerController> _videoControllers = {}; // Mapping of video controllers for video files
   bool _isEditing = false; // Tracks widget mode
+  bool _isCreating = false;
   late final bool _hadOriginalFiles;
 
   // Method to switch edit mode without recreating the widget
@@ -90,6 +92,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     super.initState();
     _localFiles = List.from(widget.existingFiles ?? []); // Initialize with existing files or empty list
     _isEditing = widget.edit;
+    _isCreating = widget.create;
     _initRecorder(); // Initialize audio recorder
     _hadOriginalFiles = (widget.existingFiles?.isNotEmpty ?? false);
   }
@@ -145,7 +148,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             PreviewWidget(
               localFiles: _localFiles,
               currentFileIndex: _currentFileIndex,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               deleteFile: _deleteFile,
               editFile: _editFile,
               showAddOptions: _showAddOptions,
@@ -154,11 +157,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             ),
             MemoryFormulario(
               memory: widget.memory,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
-              mesController: widget.mesController,
-              ahoController: widget.ahoController,
+              photoDateController: widget.photoDateController,
               locationController: widget.locationController,
             ),
           ],
@@ -166,8 +168,8 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       );
     }
 
-    // Caso: no hay archivos
-    if (_localFiles.isEmpty && _hadOriginalFiles) {
+    // Caso: no hay archivos o está creando una nueva Memoria
+    if ((_localFiles.isEmpty && _hadOriginalFiles)||widget.create) {
       // Mostrar PreviewWidget vacío + botón añadir
       return SingleChildScrollView(
         child: Column(
@@ -176,7 +178,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             PreviewWidget(
               localFiles: _localFiles, // lista vacía
               currentFileIndex: _currentFileIndex,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               deleteFile: _deleteFile,
               editFile: _editFile,
               showAddOptions: _showAddOptions,
@@ -185,11 +187,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             ),
             MemoryFormulario(
               memory: widget.memory,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
-              mesController: widget.mesController,
-              ahoController: widget.ahoController,
+              photoDateController: widget.photoDateController,
               locationController: widget.locationController,
             ),
           ],

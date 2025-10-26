@@ -1,26 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
 import 'package:flutter_frontend/presentation/components/buttons/pop_menu_button.dart';
 import 'package:flutter_frontend/presentation/components/cards/header_memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memories_grid_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
-import '../../../domain/entities/memory.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:provider/provider.dart';
+import '../../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
-// Modes: view or edit
-enum MemoryMode {view, edit}
+// Modes: view or edit or create
+enum MemoryMode {view, edit, create}
 
 class MemoryDetailScreen extends StatefulWidget {
   final Memory? memory; // Memory data (can be null for new memory)
   final MemoryMode mode; // Current screen mode (view or edit)
+  final String? memorialId;
 
   const MemoryDetailScreen({
     super.key,
     required this.memory,
     this.mode = MemoryMode.view, // Default mode is view
+    this.memorialId,
   });
 
   @override
@@ -33,9 +41,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   // Controllers for editing metadata and form
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _mesController;
-  late TextEditingController _ahoController;
-  late TextEditingController _locationController;
+  late DateController _photoController;
+  late LocationController _locationController;
 
   bool _isLoading = false;
   late Memory _originalMemory; // Original memory object (for reset)
@@ -93,6 +100,23 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _titleController.text = _originalMemory.title;
     _descriptionController.text = _originalMemory.description;
 
+    if (_originalMemory.photoDate != null) {
+      _photoController.setDate(_originalMemory.photoDate!);
+    } else {
+      _photoController.clear();
+    }
+
+    if (_originalMemory.latitude != null && _originalMemory.longitude != null) {
+      _locationController.setLocation(
+        address: _originalMemory.location ?? '',
+        lat: _originalMemory.latitude!,
+        lon: _originalMemory.longitude!,
+      );
+      _locationController.fetchAddressFromLatLon();
+    } else {
+      _locationController.clear();
+    }
+
     setState(() => _mode = MemoryMode.view);
   }
 
@@ -126,6 +150,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         files: [],
         totalUsedSpace: 0,
         createdDate: DateTime.now(),
+        updateDate: null,
       );
       _editableMemory = _originalMemory.copyWith();
     }
@@ -134,9 +159,13 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
     _descriptionController = TextEditingController(text: _editableMemory.description);
-    _mesController = TextEditingController(text: "");
-    _ahoController = TextEditingController(text: "");
-    _locationController = TextEditingController(text: _editableMemory.location ?? "");
+    _photoController = DateController(
+      date: _editableMemory.photoDate,
+    );
+    _locationController = LocationController(
+      latitude: _editableMemory.latitude,
+      longitude: _editableMemory.longitude,
+    );
   }
 
   @override
@@ -152,6 +181,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // Pop-up de Cargando
     appPopupButtonDefault(
       context: context,
       title: "",
@@ -164,6 +194,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       final memoryJson = {
         "title": _titleController.text.trim(),
         "description": _descriptionController.text.trim(),
+        "latitude": _locationController.latitude,
+        "longitude": _locationController.longitude,
+        "photoDate": _photoController.date?.toIso8601String(),
         "addTags": false,
       };
 
@@ -192,6 +225,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _editableMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
       );
 
       // Convertir archivos nuevos a File completos
@@ -233,6 +269,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _originalMemory = _originalMemory.copyWith(
         title: _editableMemory.title,
         description: _editableMemory.description,
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
         files: [...remainingExistingFiles, ...newFilesAsMemoryFiles],
       );
 
@@ -268,7 +307,6 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           ),
         );
       }
-      // Imprimir el stack trace completo para mejor diagnóstico
       print('Error al guardar: $e');
       print(stackTrace);
     } finally {
@@ -277,33 +315,113 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Create a new memory (Create mode)
-  /*Future<void> _createMemory() async {
+  Future<void> _createMemory() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // Mostrar popup de carga
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
     try {
-      /*final memoryJson = {
-        "title": _titleController.text.trim(),
-        "description": _descriptionController.text.trim(),
-        "addTags": _addTags,
-      };*/
+      final request = MemoryCreateRequest(
+        memorialId: widget.memorialId!,
+        type: MemoryOriginType.spontaneous,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        photoDate: _photoController.date!,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
+      );
 
-      //final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
+      final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
 
-      // IMPLEMENTAR
-      /*await _service.createMemory(
-        memoryJson: memoryJson,
+      final createdMemory = await _service.createMemory(
+        request: request,
         files: filesToUpload,
-      );*/
+      );
 
-      if (mounted) {
-        Navigator.pop(context, true); // Go back to list
-      }
+      print("📦 Memory creada con ID: ${createdMemory.idMemory}");
+
+      // Construir archivos locales
+      final newFilesAsMemoryFiles = _newFiles.map((f) {
+        final ext = f.path.split('.').last.toLowerCase();
+        String type;
+        String mimeType;
+        if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
+          type = 'image';
+          mimeType = 'image/$ext';
+        } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
+          type = 'video';
+          mimeType = 'video/$ext';
+        } else if (['mp3', 'm4a', 'wav', 'aac', 'ogg'].contains(ext)) {
+          type = 'audio';
+          mimeType = 'audio/$ext';
+        } else {
+          type = 'file';
+          mimeType = 'application/octet-stream';
+        }
+        return File(
+          id: "",
+          name: f.path.split('/').last,
+          originalName: f.path.split('/').last,
+          type: type,
+          mimeType: mimeType,
+          size: 0,
+          url: f.path,
+          uploadedDate: DateTime.now(),
+        );
+      }).toList();
+
+      // Actualizar el memory original con los files nuevos
+      _originalMemory = _originalMemory.copyWith(
+        id: createdMemory.idMemory,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        files: newFilesAsMemoryFiles,
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
+      );
+
+      // Actualizar provider
+      final provider = Provider.of<MemoryProvider>(context, listen: false);
+      provider.agregarMemoria(_originalMemory);
+
+      // Limpiar estado local
+      _existingFiles = List.from(_originalMemory.files);
+      _newFiles.clear();
+      _deletedFiles.clear();
+
+      Navigator.pop(context); // Cerrar popup de carga
+
+      // Mostrar popup de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Tu recuerdo ha sido creado",
+        message: "Gracias por compartir un momento más de tu historia",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cerrar el popup
+              Navigator.pop(context); // retrocede al grid
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      );
     } catch (e) {
+      Navigator.pop(context); // Cerrar popup de carga si falla
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating memory: $e'),
+            content: Text('Error al crear memoria: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -311,7 +429,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }*/
+  }
 
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
@@ -362,13 +480,19 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
     // Determine if the app is in edit mode
     final bool isEditMode = _mode == MemoryMode.edit;
+    final bool isCreateMode = _mode == MemoryMode.create;
+    final bool isViewMode = _mode == MemoryMode.view;
 
     double appBarHeight = screenHeight * 0.09;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
-        title: isEditMode ? "Vista Previa" : "Recuerdo", // Set title based on mode
+        title: isCreateMode
+            ? "Nuevo Recuerdo"
+            : isEditMode
+            ? "Vista Previa"
+            : "Recuerdo",
         onBack: () => Navigator.pop(context),
         appBarHeight: appBarHeight,
         showBackButton: true,
@@ -381,8 +505,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Display header and action menu (edit/delete) in view mode
-            if (!isEditMode)
+            // Display header and action menu in view mode
+            if (isViewMode)
               Padding(
                 padding: const EdgeInsets.all(0),
                 child: HeaderWithActions(
@@ -413,12 +537,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                 child: MemoryContainer(
                   key: _memoryContainerKey,
                   edit: isEditMode, // Pass edit mode flag to the container
+                  create: isCreateMode,
                   existingFiles: _existingFiles,
                   memory: _editableMemory,  // Current memory to display/edit
                   titleController: _titleController,
                   descriptionController: _descriptionController,
-                  mesController: _mesController,
-                  ahoController: _ahoController,
+                  photoDateController: _photoController,
                   locationController: _locationController,
                   screenHeight: screenHeight,
                   onFileChanged: (action, [index, file]) {
@@ -477,6 +601,34 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                           child: PrimaryButton(
                             text: "Guardar",
                             onPressed: _saveChanges,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+            // Action button in create mode
+            if (isCreateMode)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.inactive, width: 1),
+                  ),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PrimaryButton(
+                            text: "Crear",
+                            onPressed: _createMemory,
                           ),
                         ),
                       ],
