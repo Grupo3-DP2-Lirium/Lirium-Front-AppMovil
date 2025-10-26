@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
-import '../data/models/memorial_response.dart';
-import '../data/services/http_service.dart';
 
 class MemorialProvider extends ChangeNotifier {
-  final _api = HttpService();
-
   final _service = MemorialService();
 
   List<Memorial> _misMemoriales = [];
@@ -31,6 +27,13 @@ class MemorialProvider extends ChangeNotifier {
 
   Future<void> cargarMisMemoriales({bool force = false}) async {
     print('DEBUG: cargarMisMemoriales called - force: $force, _cargandoMis: $_cargandoMis, _loadedMis: $_loadedMis');
+    
+    // Si force=true, resetear el flag para forzar recarga
+    if (force) {
+      _loadedMis = false;
+      print('DEBUG: Force reload - resetting _loadedMis');
+    }
+    
     if (_cargandoMis || (_loadedMis && !force)) {
       print('DEBUG: cargarMisMemoriales skipped - already loading or loaded');
       return;
@@ -51,6 +54,13 @@ class MemorialProvider extends ChangeNotifier {
 
   Future<void> cargarColaborativos({bool force = false}) async {
     print('DEBUG: cargarColaborativos called - force: $force, _cargandoColab: $_cargandoColab, _loadedColab: $_loadedColab');
+    
+    // Si force=true, resetear el flag para forzar recarga
+    if (force) {
+      _loadedColab = false;
+      print('DEBUG: Force reload - resetting _loadedColab');
+    }
+    
     if (_cargandoColab || (_loadedColab && !force)) {
       print('DEBUG: cargarColaborativos skipped - already loading or loaded');
       return;

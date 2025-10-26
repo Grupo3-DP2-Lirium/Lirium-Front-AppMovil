@@ -1,12 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import '../../components/components.dart';
-import '../../components/navigation/tab_bar.dart';
 import 'package:provider/provider.dart';
 
 
@@ -94,33 +91,39 @@ class _ProfilesScreenState extends State<ProfilesScreen>
       return const Center(child: Text("No tienes memoriales aún"));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.misMemoriales.length,
-      itemBuilder: (context, index) {
-        final m = provider.misMemoriales[index];
-        return ProfileCard(
-          name: m.name,
-          description: m.description,
-          profilePhotoBase64: m.profilePhotoBase64,
-          profilePhotoUrl: m.profilePhotoUrl,
-          isShared: m.isCollaborative,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MemorialDetailScreen(
-                  memorialId: m.idMemorial,
-                  name: m.name,
-                  description: m.description,
-                  coverUrl: null,
-                  avatarUrl: m.profilePhotoBase64,
-                ),
-              ),
-            );
-          },
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Forzar recarga completa
+        await provider.cargarMisMemoriales(force: true);
       },
+      color: const Color(0xFF6366F1), // Color del spinner
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: provider.misMemoriales.length,
+        itemBuilder: (context, index) {
+          final m = provider.misMemoriales[index];
+          return ProfileCard(
+            name: m.name,
+            description: m.description,
+            profilePhotoBase64: m.profilePhotoBase64,
+            profilePhotoUrl: m.profilePhotoUrl,
+            isShared: m.isCollaborative,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemorialDetailScreen(
+                    memorialId: m.idMemorial,
+                  ),
+                ),
+              ).then((_) {
+                // Recargar la lista cuando regrese
+                provider.cargarMisMemoriales(force: true);
+              });
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -135,33 +138,39 @@ class _ProfilesScreenState extends State<ProfilesScreen>
       return const Center(child: Text("No tienes colaboraciones aún"));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.colaborativos.length,
-      itemBuilder: (context, index) {
-        final m = provider.colaborativos[index];
-        return ProfileCard(
-          name: m.name,
-          description: m.description,
-          profilePhotoBase64: m.profilePhotoBase64,
-          profilePhotoUrl: m.profilePhotoUrl,
-          isShared: m.isCollaborative,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MemorialDetailScreen(
-                  memorialId: m.idMemorial,
-                  name: m.name,
-                  description: m.description,
-                  coverUrl: null,
-                  avatarUrl: m.profilePhotoBase64,
-                ),
-              ),
-            );
-          },
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Forzar recarga completa
+        await provider.cargarColaborativos(force: true);
       },
+      color: const Color(0xFF6366F1), // Color del spinner
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: provider.colaborativos.length,
+        itemBuilder: (context, index) {
+          final m = provider.colaborativos[index];
+          return ProfileCard(
+            name: m.name,
+            description: m.description,
+            profilePhotoBase64: m.profilePhotoBase64,
+            profilePhotoUrl: m.profilePhotoUrl,
+            isShared: m.isCollaborative,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemorialDetailScreen(
+                    memorialId: m.idMemorial,
+                  ),
+                ),
+              ).then((_) {
+                // Recargar la lista cuando regrese
+                provider.cargarColaborativos(force: true);
+              });
+            },
+          );
+        },
+      ),
     );
   }
 
