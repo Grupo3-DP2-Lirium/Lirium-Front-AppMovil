@@ -54,6 +54,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
 
     _monthController.addListener(_updatePhotoDateFromDropdowns);
     _yearController.addListener(_updatePhotoDateFromDropdowns);
+    _setLocationFromLatLon();
   }
 
   void _updatePhotoDateFromDropdowns() {
@@ -69,6 +70,40 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
 
     final currentDay = widget.photoDateController.date?.day ?? 1;
     widget.photoDateController.setDate(DateTime(year, monthIndex, currentDay));
+  }
+
+  Future<void> _setLocationFromLatLon() async {
+    final lat = widget.locationController.latitude;
+    final lon = widget.locationController.longitude;
+
+    if (lat != null && lon != null) {
+      try {
+        final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1',
+        );
+        final response = await http.get(url, headers: {'User-Agent': 'FlutterApp'});
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final address = data['address'] ?? {};
+          // Buscamos un nombre de ciudad, pueblo, municipio, etc.
+          String cityName = address['city'] ??
+              address['town'] ??
+              address['village'] ??
+              address['hamlet'] ??
+              address['municipality'] ??
+              address['county'] ??
+              address['state'] ??
+              ''; // Si no hay, queda vacío
+          if (cityName.isNotEmpty) {
+            setState(() {
+              widget.locationController.text = cityName;
+            });
+          }
+        }
+      } catch (e) {
+        print('Error al obtener el nombre del lugar: $e');
+      }
+    }
   }
 
   // ------------------- Metadata -------------------
@@ -122,7 +157,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: GestureDetector(
-            onTap: () async {
+            onTap: widget.isEditing
+                ? () async {
               LatLng initialLatLng = LatLng(-12.0464, -77.0428); // default Lima
 
               if (widget.locationController.isValid) {
@@ -148,7 +184,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                   );
                 });
               }
-            },
+            }: null,
+
             child: AbsorbPointer(
               child: TextFormField(
                 controller: widget.locationController,
@@ -156,6 +193,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                 decoration: InputDecoration(
                   labelText: "Ubicación",
                   suffixIcon: const Icon(Icons.location_on, color: Colors.redAccent),
+                  filled: true,
+                  fillColor: widget.isEditing ? Colors.white : Colors.grey[50], // fondo gris
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey[300]!),

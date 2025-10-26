@@ -98,6 +98,7 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
           controller: widget.controller,
           label: widget.header,
           floatingLabel: true,
+          enabled: widget.enable!,
           suffixIcon: const Icon(Icons.arrow_drop_down),
           validator: widget.validator,
         ),

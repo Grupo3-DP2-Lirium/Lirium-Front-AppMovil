@@ -187,6 +187,8 @@ class _MemoryCardState extends State<MemoryCard> {
   }
 
   Widget _buildGridContent() {
+    final DateTime? dateToShow = widget.memory.createdDate;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -210,11 +212,12 @@ class _MemoryCardState extends State<MemoryCard> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        if (widget.memory.photoDate != null) ...[
+
+        if (dateToShow != null) ...[
           const SizedBox(height: 4),
           Text(
-            _formatDate(widget.memory.photoDate!),
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          _formatDate(dateToShow),
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
       ],

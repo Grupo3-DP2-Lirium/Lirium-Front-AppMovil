@@ -8,8 +8,11 @@ import 'package:flutter_frontend/presentation/components/cards/header_memory.dar
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memories_grid_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../../domain/entities/memory.dart';
 import 'dart:io' as io;
 
@@ -97,6 +100,23 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     _titleController.text = _originalMemory.title;
     _descriptionController.text = _originalMemory.description;
 
+    if (_originalMemory.photoDate != null) {
+      _photoController.setDate(_originalMemory.photoDate!);
+    } else {
+      _photoController.clear();
+    }
+
+    if (_originalMemory.latitude != null && _originalMemory.longitude != null) {
+      _locationController.setLocation(
+        address: _originalMemory.location ?? '',
+        lat: _originalMemory.latitude!,
+        lon: _originalMemory.longitude!,
+      );
+      _locationController.fetchAddressFromLatLon();
+    } else {
+      _locationController.clear();
+    }
+
     setState(() => _mode = MemoryMode.view);
   }
 
@@ -130,6 +150,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         files: [],
         totalUsedSpace: 0,
         createdDate: DateTime.now(),
+        updateDate: null,
       );
       _editableMemory = _originalMemory.copyWith();
     }
@@ -160,6 +181,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // Pop-up de Cargando
     appPopupButtonDefault(
       context: context,
       title: "",
@@ -203,6 +225,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _editableMemory = _editableMemory.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
       );
 
       // Convertir archivos nuevos a File completos
@@ -244,6 +269,9 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _originalMemory = _originalMemory.copyWith(
         title: _editableMemory.title,
         description: _editableMemory.description,
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
         files: [...remainingExistingFiles, ...newFilesAsMemoryFiles],
       );
 
@@ -291,6 +319,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
+    // Mostrar popup de carga
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
     try {
       final request = MemoryCreateRequest(
         memorialId: widget.memorialId!,
@@ -299,17 +336,19 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         description: _descriptionController.text.trim(),
         photoDate: _photoController.date!,
         latitude: _locationController.latitude,
-        longitude:_locationController.longitude
+        longitude: _locationController.longitude,
       );
 
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
 
-      await _service.createMemory(
+      final createdMemory = await _service.createMemory(
         request: request,
         files: filesToUpload,
       );
 
-      // Convertir archivos nuevos a File completos
+      print("📦 Memory creada con ID: ${createdMemory.idMemory}");
+
+      // Construir archivos locales
       final newFilesAsMemoryFiles = _newFiles.map((f) {
         final ext = f.path.split('.').last.toLowerCase();
         String type;
@@ -341,19 +380,27 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
       // Actualizar el memory original con los files nuevos
       _originalMemory = _originalMemory.copyWith(
-        title: _editableMemory.title,
-        description: _editableMemory.description,
+        id: createdMemory.idMemory,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
         files: newFilesAsMemoryFiles,
+        photoDate: _photoController.date,
+        latitude: _locationController.latitude,
+        longitude: _locationController.longitude,
       );
 
-      // Limpiar listas temporales de edición
+      // Actualizar provider
+      final provider = Provider.of<MemoryProvider>(context, listen: false);
+      provider.agregarMemoria(_originalMemory);
+
+      // Limpiar estado local
       _existingFiles = List.from(_originalMemory.files);
       _newFiles.clear();
       _deletedFiles.clear();
 
-      Navigator.pop(context);
+      Navigator.pop(context); // Cerrar popup de carga
 
-      // Mostrar pop-up de éxito
+      // Mostrar popup de éxito
       await appPopupButtonDefault(
         context: context,
         title: "Tu recuerdo ha sido creado",
@@ -362,14 +409,15 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           AppPopupButton(
             text: "Continuar",
             onPressed: () {
-              (_memoryContainerKey.currentState as dynamic)?.setEditMode(false);
-              Navigator.pop(context, _originalMemory);
+              Navigator.pop(context); // cerrar el popup
+              Navigator.pop(context); // retrocede al grid
+              Navigator.pop(context);
             },
           ),
         ],
       );
     } catch (e) {
-      Navigator.pop(context);
+      Navigator.pop(context); // Cerrar popup de carga si falla
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
