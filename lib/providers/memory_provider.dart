@@ -83,4 +83,10 @@ class MemoryProvider extends ChangeNotifier {
     _loaded = false;
     await cargarMisMemorias(force: true);
   }
+
+  void eliminarMemoria(String id) {
+    _misMemorias.removeWhere((m) => m.id == id);
+    _memoriasFiltradas.removeWhere((m) => m.id == id);
+    notifyListeners();
+  }
 }

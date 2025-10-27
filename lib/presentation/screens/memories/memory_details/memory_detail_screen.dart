@@ -158,7 +158,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     // Initialize lists with current memory data
     _existingFiles = List.from(_editableMemory.files);
     _titleController = TextEditingController(text: _editableMemory.title);
-    _descriptionController = TextEditingController(text: _editableMemory.description);
+    _descriptionController =
+        TextEditingController(text: _editableMemory.description);
     _photoController = DateController(
       date: _editableMemory.photoDate,
     );
@@ -232,7 +233,10 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
       // Convertir archivos nuevos a File completos
       final newFilesAsMemoryFiles = _newFiles.map((f) {
-        final ext = f.path.split('.').last.toLowerCase();
+        final ext = f.path
+            .split('.')
+            .last
+            .toLowerCase();
         String type;
         String mimeType;
         if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
@@ -250,8 +254,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         }
         return File(
           id: "",
-          name: f.path.split('/').last,
-          originalName: f.path.split('/').last,
+          name: f.path
+              .split('/')
+              .last,
+          originalName: f.path
+              .split('/')
+              .last,
           type: type,
           mimeType: mimeType,
           size: 0,
@@ -292,7 +300,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
             text: "Continuar",
             onPressed: () {
               (_memoryContainerKey.currentState as dynamic)?.setEditMode(false);
-              Navigator.pop(context, _originalMemory); // Devuelve el memory actualizado
+              Navigator.pop(
+                  context, _originalMemory); // Devuelve el memory actualizado
             },
           ),
         ],
@@ -350,7 +359,10 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
       // Construir archivos locales
       final newFilesAsMemoryFiles = _newFiles.map((f) {
-        final ext = f.path.split('.').last.toLowerCase();
+        final ext = f.path
+            .split('.')
+            .last
+            .toLowerCase();
         String type;
         String mimeType;
         if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
@@ -368,8 +380,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         }
         return File(
           id: "",
-          name: f.path.split('/').last,
-          originalName: f.path.split('/').last,
+          name: f.path
+              .split('/')
+              .last,
+          originalName: f.path
+              .split('/')
+              .last,
           type: type,
           mimeType: mimeType,
           size: 0,
@@ -433,52 +449,54 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
-    await appPopupButtonDefault(
-      context: context,
-      title: '¿Eliminar este Recuerdo?',
-      message: 'Esta acción no se puede deshacer',
-      buttons: [
-        AppPopupButton(
-          text: 'Cancelar',
-          onPressed: () {
-            // No hace nada, solo cierra el popup
-          },
-        ),
-        AppPopupButton(
-          text: 'Eliminar',
-          onPressed: () async {
-            // Primero cerrar el diálogo de confirmación
-            Navigator.pop(context);
-            
-            // Mostrar indicador de carga
-            setState(() => _isLoading = true);
-            
-            try {
-              // Llamar al servicio para eliminar la memoria
-              await _service.deleteMemory(widget.memory!.id);
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
 
-              if (mounted) {
-                setState(() => _isLoading = false);
-                print('🗑️ Memoria eliminada exitosamente, cerrando pantalla con result=true');
-                // Cerrar la pantalla de detalles y devolver true
-                Navigator.pop(context, true);
-              }
-            } catch (e) {
-              if (mounted) {
-                setState(() => _isLoading = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error al eliminar: $e'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
-            }
-          },
-        ),
-      ],
+    // Mostrar popup de carga
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true, // Hacerlo con el indicador de carga
     );
+
+    try {
+      // Llamar al servicio para eliminar la memoria del backend
+      await _service.deleteMemory(widget.memory!.id);
+
+      // Actualizar el provider para eliminar la memoria localmente
+      final provider = Provider.of<MemoryProvider>(context, listen: false);
+      provider.eliminarMemoria(widget.memory!.id);
+      print('Memorias restantes: ${provider.misMemorias.length}');
+
+      print("📦 Lista de memorias después de la eliminación:");
+      for (var m in provider.misMemorias) {
+        print("📝 ${m.title} - ${m.id}");
+      }
+
+      // Mostrar mensaje de éxito y cerrar pantalla
+      if (mounted) {
+        setState(() => _isLoading = false);
+        print('🗑️ Memoria eliminada exitosamente, cerrando pantalla con result=true');
+
+        Navigator.pop(context); // Cerrar el popup de carga
+        Navigator.pop(context, true); // Cerrar la pantalla de detalles y devolver true
+      }
+    } catch (e) {
+      // Manejo de errores, si algo salió mal
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context); // Cerrar el popup de carga
+      }
+    }
   }
 
   @override

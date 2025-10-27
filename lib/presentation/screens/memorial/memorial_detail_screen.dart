@@ -1764,7 +1764,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
       if (mounted) {
         Navigator.pop(context);
       }
-
+      //ELIMINAR DEL PROVIDER DE MEMORIES
       // Mostrar mensaje de error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -118,32 +118,8 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             );
             
             final prov = context.read<MemoryProvider>();
-            
-            print('🔙 Regresando de MemoryDetailScreen con result: $result');
-            
-            // Si result es true, significa que se eliminó la memoria
-            if (result == true) {
-              print('✅ Memoria eliminada, recargando lista...');
-              
-              // Recargar la lista forzando la actualización
-              await prov.cargarMisMemorias(force: true);
-              
-              print('✅ Lista recargada, mostrando SnackBar...');
-              
-              // Mostrar mensaje de éxito después de recargar
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Memoria eliminada correctamente'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-                print('✅ SnackBar mostrado');
-              }
-            } 
-            // Si result es un Memory, se actualizó
-            else if (result is Memory) {
+
+            if (result is Memory) {
               print('📝 Memoria actualizada');
               prov.actualizarMemoria(index, result);
             }
