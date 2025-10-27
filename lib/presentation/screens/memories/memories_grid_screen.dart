@@ -45,30 +45,37 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         appBarHeight: appBarHeight,
         onBack: () {},
       ),
-      body: Column(
-        children: [
-          // Barra de búsqueda
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: AppSearchBar(
-              hintText: 'Buscar recuerdos...',
-              onChanged: (text) {
-                prov.filtrarMemorias(text);
-              },
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          // Recargar las memorias forzando la actualización
+          await prov.cargarMisMemorias(force: true);
+        },
+        child: Column(
+          children: [
+            // Barra de búsqueda
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: AppSearchBar(
+                hintText: 'Buscar recuerdos...',
+                onChanged: (text) {
+                  prov.filtrarMemorias(text);
+                },
+              ),
             ),
-          ),
 
-          // Grid memories
-          Expanded(
-            child: prov.cargando
-                ? const Center(child: CircularProgressIndicator())
-                : prov.error != null
-                ? Center(child: Text('Error: ${prov.error}'))
-                : memoriesToShow.isEmpty
-                ? const Center(child: Text('No memories found'))
-                : _buildGridView(memoriesToShow),
-          ),
-        ],
+            // Grid memories
+            Expanded(
+              child: prov.cargando
+                  ? const Center(child: CircularProgressIndicator())
+                  : prov.error != null
+                  ? Center(child: Text('Error: ${prov.error}'))
+                  : memoriesToShow.isEmpty
+                  ? const Center(child: Text('No memories found'))
+                  : _buildGridView(memoriesToShow),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -103,15 +110,42 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
           memory: memory,
           isGridView: true,
           onTap: () async {
-            final updatedMemory = await Navigator.push<Memory>(
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => MemoryDetailScreen(memory: memory),
               ),
             );
-            if (updatedMemory != null) {
-              final prov = context.read<MemoryProvider>();
-              prov.actualizarMemoria(index, updatedMemory);
+            
+            final prov = context.read<MemoryProvider>();
+            
+            print('🔙 Regresando de MemoryDetailScreen con result: $result');
+            
+            // Si result es true, significa que se eliminó la memoria
+            if (result == true) {
+              print('✅ Memoria eliminada, recargando lista...');
+              
+              // Recargar la lista forzando la actualización
+              await prov.cargarMisMemorias(force: true);
+              
+              print('✅ Lista recargada, mostrando SnackBar...');
+              
+              // Mostrar mensaje de éxito después de recargar
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Memoria eliminada correctamente'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+                print('✅ SnackBar mostrado');
+              }
+            } 
+            // Si result es un Memory, se actualizó
+            else if (result is Memory) {
+              print('📝 Memoria actualizada');
+              prov.actualizarMemoria(index, result);
             }
           },
         );

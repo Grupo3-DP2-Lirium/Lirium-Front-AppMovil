@@ -63,10 +63,6 @@ class MemorialCreatedScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => MemorialDetailScreen(
                       memorialId: memorial.idMemorial,
-                      name: memorial.name,
-                      description: memorial.description,
-                      coverUrl: memorial.profilePhotoBase64,
-                      avatarUrl: memorial.profilePhotoBase64,
                     ),
                   ),
                 );

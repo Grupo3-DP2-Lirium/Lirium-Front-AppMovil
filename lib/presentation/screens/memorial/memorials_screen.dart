@@ -150,12 +150,16 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
                           MaterialPageRoute(
                             builder: (_) => MemorialDetailScreen(
                               memorialId: m.idMemorial,
-                              name: m.name,
-                              description: m.description,
-                              avatarUrl: m.profilePhotoUrl ?? m.profilePhotoBase64,
                             ),
                           ),
-                        ),
+                        ).then((_) {
+                          // Recargar la lista cuando regrese
+                          if (isMis) {
+                            prov.cargarMisMemoriales(force: true);
+                          } else {
+                            prov.cargarColaborativos(force: true);
+                          }
+                        }),
                       );
                     },
                   );
@@ -175,7 +179,6 @@ class _SegmentedTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(

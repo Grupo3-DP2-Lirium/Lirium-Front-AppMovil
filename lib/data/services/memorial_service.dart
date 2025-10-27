@@ -109,4 +109,58 @@ class MemorialService {
        //  Memorial(id: '3', name: 'BRACO'),
       ];
   }
+
+  /// Obtener un memorial por ID
+  Future<MemorialResponseModel> getMemorialById(String memorialId) async {
+    print('DEBUG: getMemorialById($memorialId) called');
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId");
+    print('DEBUG: Making request to: $uri');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(),
+    );
+
+    print('DEBUG: getMemorialById response - Status: ${res.statusCode}, Body: ${res.body}');
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> jsonMap = jsonDecode(res.body);
+      return MemorialResponseModel.fromJson(jsonMap);
+    } else {
+      throw Exception(
+        "Error obteniendo memorial: ${res.statusCode} ${res.body}",
+      );
+    }
+  }
+
+  /// Actualizar un memorial con o sin imagen
+  Future<Memorial> updateMemorial(
+      String memorialId,
+      MemorialRequestModel request,
+      String? imagePath,
+      ) async {
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId");
+    print('DEBUG: updateMemorial($memorialId) called');
+    print('DEBUG: Making request to: $uri');
+
+    final requestMultipart = http.MultipartRequest("PUT", uri)
+      ..headers.addAll(_http.authHeaders(includeJson: true))
+      ..fields['memorial'] = jsonEncode(request.toJson());
+
+    if (imagePath != null) {
+      requestMultipart.files.add(await http.MultipartFile.fromPath("file", imagePath));
+    }
+
+    final streamedResponse = await requestMultipart.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print('DEBUG: updateMemorial response - Status: ${response.statusCode}, Body: ${response.body}');
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final jsonMap = jsonDecode(response.body);
+      return MemorialResponseModel.fromJson(jsonMap).toEntity();
+    } else {
+      throw Exception(
+          "Error actualizando memorial: ${response.statusCode} ${response.body}"
+      );
+    }
+  }
 }

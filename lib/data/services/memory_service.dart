@@ -442,4 +442,31 @@ class MemoryService {
     }
   }
 
+  /// Elimina una memoria por su ID
+  Future<void> deleteMemory(String memoryId) async {
+    print('DEBUG: deleteMemory($memoryId) called');
+    final uri = Uri.parse("${ApiConstants.baseUrl}/memories/$memoryId");
+    print('DEBUG: Making DELETE request to: $uri');
+
+    final res = await _client.delete(
+      uri,
+      headers: _http.authHeaders(),
+    );
+
+    print('DEBUG: deleteMemory response - Status: ${res.statusCode}');
+    
+    if (res.statusCode == 200 || res.statusCode == 204) {
+      print('DEBUG: Memory deleted successfully');
+      return;
+    } else if (res.statusCode == 401) {
+      throw Exception('Sesión expirada. Por favor, inicia sesión nuevamente.');
+    } else if (res.statusCode == 403) {
+      throw Exception('No tienes permisos para eliminar esta memoria.');
+    } else if (res.statusCode == 404) {
+      throw Exception('La memoria no existe o ya fue eliminada.');
+    } else {
+      throw Exception('Error al eliminar memoria: ${res.statusCode} ${res.body}');
+    }
+  }
+
 }

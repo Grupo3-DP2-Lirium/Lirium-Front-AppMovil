@@ -75,7 +75,7 @@ class MemorialResponseModel {
       description: description,
       gender: gender,
       relation: relation,
-      birthDate: parseBirth(birthDate),
+      birthDate: birthDate.isNotEmpty ? DateTime.tryParse(birthDate) : null, // ✅ Manejo seguro de null
       isCollaborative: isCollaborative,
       isJournal: isJournal,
       createdDate: createdDate,

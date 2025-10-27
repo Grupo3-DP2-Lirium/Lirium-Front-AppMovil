@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:flutter_frontend/data/models/file_response.dart';
+import 'package:flutter_frontend/data/services/memorial_service.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
 
@@ -13,18 +15,10 @@ enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
-  final String name;
-  final String? description;
-  final String? coverUrl;
-  final String? avatarUrl;
 
   const MemorialDetailScreen({
     super.key,
     required this.memorialId,
-    required this.name,
-    this.description,
-    this.coverUrl,
-    this.avatarUrl,
   });
 
   @override
@@ -35,6 +29,15 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final MemoryService _memoriesService = MemoryService();
+  final MemorialService _memorialService = MemorialService();
+  
+  // Datos del memorial (cargados dinámicamente)
+  String? name;
+  String? description;
+  String? coverUrl;
+  String? avatarUrl;
+  bool isLoadingMemorial = true;
+  String? memorialErrorMessage;
   
   // Estado para las memorias
   List<MemoryResponse> memories = [];
@@ -51,6 +54,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _loadMemorialData();
     _loadMemories();
   }
 
@@ -62,15 +66,40 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   int selectedTab = 0;
 
+  /// Carga los datos del memorial desde el backend
+  Future<void> _loadMemorialData() async {
+    try {
+      setState(() {
+        isLoadingMemorial = true;
+        memorialErrorMessage = null;
+      });
+
+      final memorial = await _memorialService.getMemorialById(widget.memorialId);
+
+      setState(() {
+        name = memorial.name;
+        description = memorial.description;
+        avatarUrl = memorial.profilePhoto?.fileUrl;
+        // coverUrl se puede agregar si el backend lo proporciona
+        isLoadingMemorial = false;
+      });
+    } catch (e) {
+      setState(() {
+        memorialErrorMessage = 'Error al cargar el memorial: $e';
+        isLoadingMemorial = false;
+      });
+    }
+  }
+
   ImageProvider _getAvatarImage() {
-    if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       // Verificar si es una imagen en base64
-      if (widget.avatarUrl!.startsWith('data:image') || widget.avatarUrl!.length > 500) {
+      if (avatarUrl!.startsWith('data:image') || avatarUrl!.length > 500) {
         try {
           // Si empieza con data:image, extraer solo la parte base64
-          final base64String = widget.avatarUrl!.contains(',') 
-              ? widget.avatarUrl!.split(',').last 
-              : widget.avatarUrl!;
+          final base64String = avatarUrl!.contains(',') 
+              ? avatarUrl!.split(',').last 
+              : avatarUrl!;
           return MemoryImage(base64Decode(base64String));
         } catch (e) {
           print('Error decoding base64 image: $e');
@@ -78,7 +107,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         }
       } else {
         // Es una URL normal
-        return NetworkImage(widget.avatarUrl!);
+        return NetworkImage(avatarUrl!);
       }
     } else {
       // Usar imagen por defecto
@@ -87,19 +116,19 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   }
 
   ImageProvider _getCoverImage() {
-    if (widget.coverUrl == null || widget.coverUrl!.isEmpty) {
+    if (coverUrl == null || coverUrl!.isEmpty) {
       return const NetworkImage(
         'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800',
       );
     }
 
-    if (widget.coverUrl!.startsWith('data:image')) {
-      final base64Str = widget.coverUrl!.split(',').last;
+    if (coverUrl!.startsWith('data:image')) {
+      final base64Str = coverUrl!.split(',').last;
       final bytes = base64Decode(base64Str);
       return MemoryImage(bytes);
     }
 
-    return NetworkImage(widget.coverUrl!);
+    return NetworkImage(coverUrl!);
   }
 
   /// Carga las memorias del memorial desde el backend
@@ -135,6 +164,60 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Si está cargando el memorial, mostrar indicador
+    if (isLoadingMemorial) {
+      return Scaffold(
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF6366F1),
+          ),
+        ),
+      );
+    }
+
+    // Si hay error cargando el memorial
+    if (memorialErrorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  memorialErrorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _loadMemorialData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                  ),
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -193,7 +276,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
               ),
               child: IconButton(
                 icon: const Icon(Icons.settings, color: Colors.white),
-                onPressed: () {},
+                onPressed: () {
+                  _showMemorialOptionsMenu(context);
+                },
               ),
             ),
           ),
@@ -219,8 +304,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
                     // Name
                     Text(
-                      widget.name,
-                      style: TextStyle(
+                      name ?? 'Cargando...',
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.5,
@@ -254,9 +339,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                                     builder: (context) => VisualizeMemoriesScreen(
                                       memorial: MemorialResponseModel(
                                         idMemorial: widget.memorialId,
-                                        name: widget.name,
+                                        name: name ?? '',
                                         nickname: '',
-                                        description: widget.description ?? '',
+                                        description: description ?? '',
                                         gender: '',
                                         relation: '',
                                         birthDate: '',
@@ -265,14 +350,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                                         userId: '',
                                         createdDate: DateTime.now(),
                                         updatedDate: DateTime.now(),
-                                        profilePhoto: widget.avatarUrl != null 
+                                        profilePhoto: avatarUrl != null 
                                             ? FileResponse(
                                                 idFile: '',
                                                 fileName: 'profile.jpg',
                                                 originalFileName: 'profile.jpg',
                                                 fileType: 'image',
                                                 mimeType: 'image/jpeg',
-                                                fileUrl: widget.avatarUrl!,
+                                                fileUrl: avatarUrl!,
                                                 fileSize: 0.0,
                                                 uploadedDate: DateTime.now(),
                                               )
@@ -321,7 +406,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     const SizedBox(height: 20),
 
                     // Quote Card
-                    if (widget.description != null && widget.description!.isNotEmpty)
+                    if (description != null && description!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
@@ -331,7 +416,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: Text(
-                            widget.description!,
+                            description!,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.white,
@@ -558,9 +643,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.more_vert,
-                  color: Colors.grey[600],
+                IconButton(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: () {
+                    _showMemoryOptionsMenu(context, memory.idMemory);
+                  },
                 ),
               ],
             ),
@@ -1287,6 +1377,351 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
       return {for (final e in entries) e.key: e.value};
     }
     return map;
+  }
+
+  /// Muestra el menú de opciones del memorial (Editar/Eliminar)
+  void _showMemorialOptionsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barra superior indicadora
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // Título
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Opciones del memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                
+                const Divider(),
+                
+                // Opción: Editar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Color(0xFF6366F1),
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Editar memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Modificar información del memorial',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navegar a la pantalla de edición
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditMemorialScreen(
+                          memorialId: widget.memorialId,
+                        ),
+                      ),
+                    ).then((value) {
+                      // Si se editó correctamente, recargar los datos
+                      if (value == true) {
+                        _loadMemorialData(); // 🔄 Recarga los datos actualizados
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Los cambios se guardaron correctamente'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    });
+                  },
+                ),
+                
+                const Divider(height: 1),
+                
+                // Opción: Eliminar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Eliminar memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Esta acción no se puede deshacer',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implementar lógica de eliminar
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Función de eliminar en desarrollo'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Muestra el menú de opciones para una memoria individual
+  void _showMemoryOptionsMenu(BuildContext context, String memoryId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barra superior decorativa
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // Título
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Opciones de memoria',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Opción: Eliminar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Eliminar memoria',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Esta acción no se puede deshacer',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteMemory(memoryId);
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Elimina una memoria del memorial
+  Future<void> _deleteMemory(String memoryId) async {
+    // Mostrar diálogo de confirmación
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            '¿Eliminar memoria?',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: const Text(
+            'Esta acción no se puede deshacer. La memoria se eliminará permanentemente.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Si el usuario canceló, no hacer nada
+    if (confirm != true) return;
+
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF6366F1),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Llamar al servicio para eliminar la memoria
+      await _memoriesService.deleteMemory(memoryId);
+
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Recargar las memorias
+      currentPage = 0;
+      await _loadMemories();
+
+      // Mostrar mensaje de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Memoria eliminada correctamente'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Mostrar mensaje de error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar la memoria: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
 
