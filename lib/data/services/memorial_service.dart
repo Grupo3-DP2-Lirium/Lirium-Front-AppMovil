@@ -163,4 +163,26 @@ class MemorialService {
       );
     }
   }
+
+  /// Eliminar un memorial por ID
+  Future<void> deleteMemorial(String memorialId) async {
+    print('DEBUG: deleteMemorial($memorialId) called');
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId");
+    print('DEBUG: Making DELETE request to: $uri');
+
+    final res = await _client.delete(
+      uri,
+      headers: _http.authHeaders(), // incluye token
+    );
+
+    print('DEBUG: deleteMemorial response - Status: ${res.statusCode}, Body: ${res.body}');
+    if (res.statusCode == 200 || res.statusCode == 204) {
+      print('DEBUG: Memorial $memorialId deleted successfully');
+    } else {
+      throw Exception(
+        "Error eliminando memorial: ${res.statusCode} ${res.body}",
+      );
+    }
+  }
+
 }

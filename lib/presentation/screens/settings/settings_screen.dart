@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/auth_storage.dart';
@@ -188,10 +190,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           SettingItem(
-            icon: Icons.storage,
-            title: 'Almacenamiento',
-            subtitle: 'Gestionar espacio usado',
-            onTap: () {},
+            icon: Icons.monetization_on,
+            title: 'Plan Lirium',
+            subtitle: 'Gestiona tu plan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubscriptionPlanDetailsScreen(
+                    usedStorageGB: 300,
+                    totalStorageGB: 500,
+                    currentPlan: "Plan Pro",
+                  ),
+                ),
+              );
+            },
+          ),
+          SettingItem(
+            icon: Icons.monetization_on,
+            title: 'Se Premium',
+            subtitle: 'Adquiere tu plan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GetPremiumScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
           const Text(
