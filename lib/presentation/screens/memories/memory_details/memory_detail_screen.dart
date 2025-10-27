@@ -447,24 +447,33 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         AppPopupButton(
           text: 'Eliminar',
           onPressed: () async {
+            // Primero cerrar el diálogo de confirmación
+            Navigator.pop(context);
+            
+            // Mostrar indicador de carga
             setState(() => _isLoading = true);
+            
             try {
-              // Implementar el metodo de deleteMemory
+              // Llamar al servicio para eliminar la memoria
+              await _service.deleteMemory(widget.memory!.id);
 
               if (mounted) {
-                Navigator.pop(context, true); // Indica que se eliminó la memoria
+                setState(() => _isLoading = false);
+                print('🗑️ Memoria eliminada exitosamente, cerrando pantalla con result=true');
+                // Cerrar la pantalla de detalles y devolver true
+                Navigator.pop(context, true);
               }
             } catch (e) {
               if (mounted) {
+                setState(() => _isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Error al eliminar: $e'),
                     backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
                   ),
                 );
               }
-            } finally {
-              if (mounted) setState(() => _isLoading = false);
             }
           },
         ),
