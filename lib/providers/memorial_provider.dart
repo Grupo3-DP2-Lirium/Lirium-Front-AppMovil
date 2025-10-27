@@ -86,5 +86,17 @@ class MemorialProvider extends ChangeNotifier {
       cargarColaborativos(force: true),
     ]);
   }
+
+  /// Agrega un nuevo memorial al inicio de la lista de misMemoriales
+  void agregarMemorial(Memorial memorial) {
+    _misMemoriales.insert(0, memorial);
+    notifyListeners();
+  }
+
+  void eliminarMemorial(String id) {
+    _misMemoriales.removeWhere((m) => m.idMemorial == id);
+    _colaborativos.removeWhere((m) => m.idMemorial == id);
+    notifyListeners();
+  }
 }
 

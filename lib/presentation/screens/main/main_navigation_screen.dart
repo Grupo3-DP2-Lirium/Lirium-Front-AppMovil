@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import '../memories/organize_memories/timeline_screen.dart';
-import '../profiles/profiles_screen.dart';
+import '../memorial/profiles_screen.dart';
 import '../memories/memories_grid_screen.dart';
 import '../chat/chat_screen.dart';
 import '../settings/settings_screen.dart';

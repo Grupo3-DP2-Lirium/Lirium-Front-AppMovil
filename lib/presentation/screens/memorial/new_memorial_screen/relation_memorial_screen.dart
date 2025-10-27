@@ -34,7 +34,7 @@ class _NewMemorialRelationScreenState extends State<NewMemorialRelationScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, // <--- importante
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Parte superior: título, subtítulo y botones de selección
             Column(
