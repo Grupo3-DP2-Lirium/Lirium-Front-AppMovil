@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
+import 'package:share_plus/share_plus.dart';
 
 // Modos de organización de galería (HU19)
 enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
@@ -1379,7 +1381,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     return map;
   }
 
-  /// Muestra el menú de opciones del memorial (Editar/Eliminar)
+  /// Muestra el menú de opciones del memorial (Editar/Compartir/Eliminar)
   void _showMemorialOptionsMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1474,6 +1476,42 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         );
                       }
                     });
+                  },
+                ),
+                
+                const Divider(height: 1),
+                
+                // Opción: Compartir
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.share,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Compartir memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Generar enlace público para compartir',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _shareMemorial();
                   },
                 ),
                 
@@ -1722,6 +1760,176 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         );
       }
     }
+  }
+
+  /// Comparte el memorial generando un enlace público
+  Future<void> _shareMemorial() async {
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF6366F1),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Llamar al servicio para obtener el enlace de compartir
+      final shareLinkResponse = await _memorialService.shareMemorial(widget.memorialId);
+
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Mostrar diálogo con opciones para compartir
+      if (mounted) {
+        _showShareDialog(shareLinkResponse.shareUrl);
+      }
+    } catch (e) {
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Mostrar mensaje de error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar enlace: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Muestra el diálogo con el enlace para compartir
+  void _showShareDialog(String shareUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.share,
+                  color: Colors.green,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Compartir Memorial',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Comparte este enlace para que otros puedan ver este memorial:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        shareUrl,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontFamily: 'monospace',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      color: const Color(0xFF6366F1),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: shareUrl));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enlace copiado al portapapeles'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      tooltip: 'Copiar enlace',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cerrar',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                // Usar share_plus para compartir el enlace
+                Share.share(
+                  'Mira este memorial en Lirium: $shareUrl',
+                  subject: 'Memorial en Lirium',
+                );
+              },
+              icon: const Icon(Icons.share, size: 18),
+              label: const Text('Compartir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 

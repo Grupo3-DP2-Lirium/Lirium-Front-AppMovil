@@ -4,6 +4,7 @@ import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
 import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
+import 'package:flutter_frontend/data/models/share_link_response.dart';
 import 'package:http/http.dart' as http;
 
 class MemorialService {
@@ -21,12 +22,6 @@ class MemorialService {
       String? imagePath,
       ) async {
     final uri = Uri.parse("$baseUrl/memorials/create");
-
-    // Hacemos un GET para obtener los headers con token
-    final res = await _client.get(
-      uri,
-      headers: _http.authHeaders(includeJson: false),
-    );
 
     final requestMultipart = http.MultipartRequest("POST", uri)
       ..headers.addAll(_http.authHeaders(includeJson: true)) // ahora Authorization + Accept JSON
@@ -160,6 +155,28 @@ class MemorialService {
     } else {
       throw Exception(
           "Error actualizando memorial: ${response.statusCode} ${response.body}"
+      );
+    }
+  }
+
+  /// Generar enlace de compartir para un memorial
+  Future<ShareLinkResponse> shareMemorial(String memorialId) async {
+    print('DEBUG: shareMemorial($memorialId) called');
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId/share");
+    print('DEBUG: Making request to: $uri');
+
+    final res = await _client.post(
+      uri,
+      headers: _http.authHeaders(),
+    );
+
+    print('DEBUG: shareMemorial response - Status: ${res.statusCode}, Body: ${res.body}');
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final Map<String, dynamic> jsonMap = jsonDecode(res.body);
+      return ShareLinkResponse.fromJson(jsonMap);
+    } else {
+      throw Exception(
+        "Error generando enlace compartido: ${res.statusCode} ${res.body}",
       );
     }
   }
