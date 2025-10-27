@@ -1478,7 +1478,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 ),
                 
                 const Divider(height: 1),
-                
+
                 // Opción: Eliminar
                 ListTile(
                   leading: Container(
@@ -1508,18 +1508,47 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                       color: Colors.grey[600],
                     ),
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implementar lógica de eliminar
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Función de eliminar en desarrollo'),
-                        duration: Duration(seconds: 2),
+                  onTap: () async {
+                    Navigator.pop(context); // cierra el menú
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Confirmar eliminación'),
+                        content: const Text('¿Estás seguro de que quieres eliminar este memorial?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
                       ),
                     );
+
+                    if (confirmed ?? false) {
+                      try {
+                        await MemorialService().deleteMemorial(widget.memorialId);
+
+                        // Retroceder primero
+                        Navigator.pop(context);
+
+                        // Mostrar SnackBar usando el context actual de la pantalla anterior
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Memorial eliminado correctamente')),
+                        );
+
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error al eliminar: $e')),
+                        );
+                      }
+                    }
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
               ],
             ),
