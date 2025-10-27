@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
 
@@ -159,6 +162,66 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         errorMessage = 'Error al cargar las memorias: $e';
         isLoadingMemories = false;
       });
+    }
+  }
+
+  Future<void> _deleteMemorial(BuildContext context, String memorialId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro de que quieres eliminar este memorial?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (!(confirmed ?? false)) return;
+
+    // Mostrar loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await MemorialService().deleteMemorial(memorialId);
+
+      // Actualizar provider
+      final provider = Provider.of<MemorialProvider>(context, listen: false);
+      provider.eliminarMemorial(memorialId);
+
+      Navigator.pop(context);
+
+      // Mostrar popup de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Memorial eliminado",
+        message: "El memorial ha sido eliminado correctamente",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cierra el popup
+              Navigator.pop(context); // retrocede a la pantalla anterior
+            },
+          ),
+        ],
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al eliminar: $e')),
+      );
     }
   }
 
@@ -1508,45 +1571,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                       color: Colors.grey[600],
                     ),
                   ),
-                  onTap: () async {
-                    Navigator.pop(context); // cierra el menú
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Confirmar eliminación'),
-                        content: const Text('¿Estás seguro de que quieres eliminar este memorial?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirmed ?? false) {
-                      try {
-                        await MemorialService().deleteMemorial(widget.memorialId);
-
-                        // Retroceder primero
-                        Navigator.pop(context);
-
-                        // Mostrar SnackBar usando el context actual de la pantalla anterior
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Memorial eliminado correctamente')),
-                        );
-
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error al eliminar: $e')),
-                        );
-                      }
-                    }
-                  },
+                  onTap: () async => _deleteMemorial(context, widget.memorialId),
                 ),
 
                 const SizedBox(height: 16),

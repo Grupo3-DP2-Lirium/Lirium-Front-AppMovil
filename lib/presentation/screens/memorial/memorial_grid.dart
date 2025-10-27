@@ -51,9 +51,6 @@ class MemorialGrid extends StatelessWidget {
   });
 
   ImageProvider _imageOf(Memorial m) {
-    if (m.profilePhotoBase64 != null && m.profilePhotoBase64!.isNotEmpty) {
-      return MemoryImage(base64Decode(m.profilePhotoBase64!));
-    }
     if (m.profilePhotoUrl != null && m.profilePhotoUrl!.isNotEmpty) {
       return NetworkImage(m.profilePhotoUrl!);
     }
@@ -69,10 +66,10 @@ class MemorialGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,           // 3 por fila como en el mock
+        crossAxisCount: 3,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.78,      // espacio para el nombre
+        childAspectRatio: 0.78,
       ),
       itemBuilder: (context, i) {
         final m = memorials[i];

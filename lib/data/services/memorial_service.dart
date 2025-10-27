@@ -18,34 +18,43 @@ class MemorialService {
   /// Crear un memorial con o sin imagen
   Future<Memorial> createMemorial(
       MemorialRequestModel request,
-      String? imagePath,
-      ) async {
+      String? imagePath, {
+        void Function(bool isLoading)? onLoading,
+      }) async {
     final uri = Uri.parse("$baseUrl/memorials/create");
 
-    // Hacemos un GET para obtener los headers con token
-    final res = await _client.get(
-      uri,
-      headers: _http.authHeaders(includeJson: false),
-    );
+    // Indicar que empieza la carga
+    onLoading?.call(true);
 
-    final requestMultipart = http.MultipartRequest("POST", uri)
-      ..headers.addAll(_http.authHeaders(includeJson: true)) // ahora Authorization + Accept JSON
-      ..fields['memorial'] = jsonEncode(request.toJson());
-
-    if (imagePath != null) {
-      requestMultipart.files.add(await http.MultipartFile.fromPath("file", imagePath));
-    }
-
-    final streamedResponse = await requestMultipart.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonMap = jsonDecode(response.body);
-      return MemorialResponseModel.fromJson(jsonMap).toEntity();
-    } else {
-      throw Exception(
-          "Error creando memorial: ${response.statusCode} ${response.body}"
+    try {
+      // GET previo para obtener headers con token
+      final res = await _client.get(
+        uri,
+        headers: _http.authHeaders(includeJson: false),
       );
+
+      final requestMultipart = http.MultipartRequest("POST", uri)
+        ..headers.addAll(_http.authHeaders(includeJson: true))
+        ..fields['memorial'] = jsonEncode(request.toJson());
+
+      if (imagePath != null) {
+        requestMultipart.files.add(await http.MultipartFile.fromPath("file", imagePath));
+      }
+
+      final streamedResponse = await requestMultipart.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonMap = jsonDecode(response.body);
+        return MemorialResponseModel.fromJson(jsonMap).toEntity();
+      } else {
+        throw Exception(
+            "Error creando memorial: ${response.statusCode} ${response.body}"
+        );
+      }
+    } finally {
+      // Indicar que terminó la carga
+      onLoading?.call(false);
     }
   }
 

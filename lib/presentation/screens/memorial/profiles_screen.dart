@@ -47,7 +47,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         showBackButton: false,
         appBarHeight: appBarHeight,
         tabs: const [
-          Tab(text: 'Mis Perfiles'),
+          Tab(text: 'Mis Memoriales'),
           Tab(text: 'Colaboraciones'),
         ],
       ),
