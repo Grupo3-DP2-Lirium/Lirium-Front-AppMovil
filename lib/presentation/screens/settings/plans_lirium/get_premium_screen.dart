@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/paypal_web_view.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/premium_tab_selector.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -19,51 +20,55 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
   Future<void> _subscribe() async {
     final plan = plans[selectedPlanIndex];
-
-    // Extraemos solo la parte numérica del precio
-    final amount = isMonthly
+    final planAmount = isMonthly
         ? plan['monthly']!.split('USD ').last.replaceAll(RegExp(r'[^\d.]'), '')
         : plan['annual']!.split('USD ').last.replaceAll(RegExp(r'[^\d.]'), '');
 
-    print('Monto a pagar: $amount');
-
     try {
-      // 1) Crear orden en backend
-      print('Llamando a: ${ApiConstants.baseUrl}/paypal/create-order con amount: $amount');
-      final createResponse = await http.post(
+      // 1️⃣ Crear orden en tu backend
+      final createOrderResponse = await http.post(
         Uri.parse('${ApiConstants.baseUrl}/paypal/create-order'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'amount': amount, 'simulateFail': false}),
-      );
-
-      final createData = jsonDecode(createResponse.body);
-      final orderId = createData['raw']['id'];
-
-      // 2) Capturar orden en backend
-      final captureResponse = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/paypal/capture-order'),
-        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'orderId': orderId,
-          'userId': 123, // tu id de usuario real
+          'amount': planAmount,
           'simulateFail': false,
         }),
       );
 
-      final captureData = jsonDecode(captureResponse.body);
+      if (createOrderResponse.statusCode != 200) {
+        throw Exception('Error creando orden');
+      }
 
-      if (captureData['status'] == 'captured') {
+      final orderData = jsonDecode(createOrderResponse.body);
+      final approvalLink = orderData['approvalLink'];
+
+      if (approvalLink == null || approvalLink.isEmpty) {
+        throw Exception('No se obtuvo approvalLink de PayPal');
+      }
+
+      // 2️⃣ Abrir WebView para que el usuario apruebe el pago
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PayPalWebViewScreen(url: approvalLink),
+        ),
+      );
+
+      // 3️⃣ Resultado del pago
+      if (result == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('¡Suscripción activada!')),
+          const SnackBar(content: Text('✅ Pago completado con éxito')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al procesar el pago')),
+          const SnackBar(content: Text('❌ Pago cancelado o fallido')),
         );
       }
+
     } catch (e) {
+      print('Error en suscripción: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de conexión: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
