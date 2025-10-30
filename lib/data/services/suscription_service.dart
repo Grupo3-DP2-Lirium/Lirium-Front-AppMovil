@@ -1,60 +1,80 @@
 import 'dart:convert';
 import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/data/services/subscription_response.dart';
 import 'package:http/http.dart' as http;
 
-Future<Map<String, dynamic>> createPayPalOrder({
-  required String amount,
-  bool simulateFail = false,
-}) async {
-  final uri = Uri.parse("${ApiConstants.baseUrl}/paypal/create-order");
+class PayPalService {
+  final http.Client _client;
+  final HttpService _http;
+  final String baseUrl = ApiConstants.baseUrl;
 
-  final req = http.MultipartRequest('POST', uri);
+  PayPalService({http.Client? client})
+      : _client = client ?? http.Client(),
+        _http = HttpService();
 
-  // Headers
-  req.headers['Accept'] = 'application/json';
-  req.headers['Content-Type'] = 'application/json';
+  /// Crear orden de PayPal
+  Future<Map<String, dynamic>> createPayPalOrder({
+    required double amount,
+    bool simulateFail = false,
+    void Function(bool isLoading)? onLoading,
+  }) async {
+    final uri = Uri.parse("$baseUrl/paypal/create-order");
+    onLoading?.call(true);
 
-  // Agregar body como campo JSON
-  req.fields['body'] = jsonEncode({'amount': amount, 'simulateFail': simulateFail});
+    try {
+      final response = await _client.post(
+        uri,
+        headers: _http.authHeaders(includeJson: true),
+        body: jsonEncode({
+          'amount': amount,
+          'simulateFail': simulateFail,
+        }),
+      );
 
-  // Enviar
-  final streamed = await req.send();
-  final resp = await http.Response.fromStream(streamed);
-
-  if (resp.statusCode == 200) {
-    return jsonDecode(resp.body) as Map<String, dynamic>;
-  } else {
-    throw Exception(
-      "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
-    );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+            "Error creando orden PayPal: ${response.statusCode} ${response.body}");
+      }
+    } finally {
+      onLoading?.call(false);
+    }
   }
-}
 
-Future<Map<String, dynamic>> capturePayPalOrder({
-  required String orderId,
-  required int userId,
-  bool simulateFail = false,
-}) async {
-  final uri = Uri.parse("${ApiConstants.baseUrl}/paypal/capture-order");
-  final req = http.MultipartRequest('POST', uri);
+  /// Capturar orden de PayPal
+  Future<Map<String, dynamic>> capturePayPalOrder({
+    required String orderId,
+    required String planId,
+    required String frequency, // "MONTHLY" o "YEARLY"
+    bool simulateFail = false,
+    void Function(bool isLoading)? onLoading,
+  }) async {
+    final uri = Uri.parse("$baseUrl/paypal/capture-order");
+    onLoading?.call(true);
 
-  req.headers['Accept'] = 'application/json';
-  req.headers['Content-Type'] = 'application/json';
+    try {
+      final response = await _client.post(
+        uri,
+        headers: _http.authHeaders(includeJson: true),
+        body: jsonEncode({
+          'orderId': orderId,
+          'planId': planId,
+          'frequency': frequency,
+          'simulateFail': simulateFail,
+        }),
+      );
 
-  req.fields['body'] = jsonEncode({
-    'orderId': orderId,
-    'userId': userId,
-    'simulateFail': simulateFail,
-  });
-
-  final streamed = await req.send();
-  final resp = await http.Response.fromStream(streamed);
-
-  if (resp.statusCode == 200) {
-    return jsonDecode(resp.body) as Map<String, dynamic>;
-  } else {
-    throw Exception(
-      "Error ${resp.statusCode}: ${resp.body.isEmpty ? 'sin cuerpo' : resp.body}",
-    );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+            "Error capturando orden PayPal: ${response.statusCode} ${response.body}");
+      }
+    } finally {
+      onLoading?.call(false);
+    }
   }
+
 }

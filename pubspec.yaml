@@ -66,7 +66,7 @@ dependencies:
   cached_network_image: ^3.4.1
   url_launcher: ^6.2.1
   chewie: ^1.7.4
-
+  webview_flutter: ^4.13.0
 
 
 dev_dependencies:
