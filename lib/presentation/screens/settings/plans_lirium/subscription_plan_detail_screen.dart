@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/subscription_response.dart';
 import 'package:flutter_frontend/data/services/suscription_service.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_service.dart';
 import 'package:intl/intl.dart';
 
@@ -143,35 +146,31 @@ class _SubscriptionPlanDetailsScreenState
 
                   // Botón cambiar plan
                   Center(
-                    child: ElevatedButton.icon(
+                    child: PrimaryButton(
+                      text: "Cambiar de plan",
+                      color: AppColors.primary2,
                       onPressed: () {
-                        // Abrir pantalla de cambio de plan
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const GetPremiumScreen(),
+                          ),
+                        );
                       },
-                      icon: const Icon(Icons.swap_horiz),
-                      label: const Text("Cambiar de plan"),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
-                        textStyle: const TextStyle(fontSize: 16),
-                      ),
-                    ),
+                      icon: Icons.swap_horiz, // si tu PrimaryButton lo acepta
+                    )
                   ),
+
                   const SizedBox(height: 16),
 
                   // Botón cancelar suscripción
                   Center(
-                    child: ElevatedButton.icon(
+                    child: PrimaryButton(
+                      text: "Cancelar plan",
                       onPressed: () {
-                        // Cancelar suscripción → volver a plan Free
+                        // Abrir pantalla de cambio de plan
                       },
-                      icon: const Icon(Icons.cancel),
-                      label: const Text("Volver al Plan Gratuito"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade400,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
-                        textStyle: const TextStyle(fontSize: 16),
-                      ),
+                      icon: Icons.cancel, // si tu PrimaryButton permite icon
                     ),
                   ),
                 ],
