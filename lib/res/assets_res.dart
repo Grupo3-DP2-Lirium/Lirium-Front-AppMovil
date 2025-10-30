@@ -8,4 +8,5 @@ class AssetsRes {
 
   static const String PROJECT_NAME = 'flutter_frontend';
   static const String PROJECT_VERSION = '1.0.0+1';
+  static const String LIRIUM_ICON = 'assets/images/lirium_icon.png';
 }
