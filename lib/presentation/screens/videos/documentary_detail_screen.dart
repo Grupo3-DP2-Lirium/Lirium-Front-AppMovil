@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/documentary_model.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/videos/video_player_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -414,18 +415,24 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
     return Column(
       children: [
         PrimaryButton(
-          text: 'Ver Video',
+          text: 'Reproducir Video',
           icon: Icons.play_circle_filled,
           isFullWidth: true,
           onPressed: () => _openVideo(_documentary!.videoUrl!),
         ),
         const SizedBox(height: 12),
-        PrimaryButton(
-          text: 'Descargar',
-          icon: Icons.download,
-          isFullWidth: true,
-          color: Colors.green,
+        OutlinedButton.icon(
           onPressed: () => _downloadVideo(_documentary!.videoUrl!),
+          icon: const Icon(Icons.download),
+          label: const Text('Descargar'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            side: const BorderSide(color: Color(0xFF6366F1)),
+            foregroundColor: const Color(0xFF6366F1),
+          ),
         ),
       ],
     );
@@ -470,41 +477,37 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
   }
 
   Future<void> _openVideo(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo abrir el video'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoPlayerScreen(
+          videoUrl: url,
+          title: _documentary!.title,
+        ),
+      ),
+    );
   }
 
   Future<void> _downloadVideo(String url) async {
-    // En dispositivos móviles, simplemente abrimos la URL
-    // El navegador se encargará de la descarga
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Iniciando descarga...'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Abriendo navegador para descargar...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo iniciar la descarga'),
+          SnackBar(
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
