@@ -5,6 +5,9 @@ import 'package:flutter_frontend/presentation/screens/videos/video_player_screen
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
+
 
 class DocumentaryDetailScreen extends StatefulWidget {
   final String documentaryId;
@@ -421,19 +424,18 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
           onPressed: () => _openVideo(_documentary!.videoUrl!),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => _downloadVideo(_documentary!.videoUrl!),
-          icon: const Icon(Icons.download),
-          label: const Text('Descargar'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            side: const BorderSide(color: Color(0xFF6366F1)),
-            foregroundColor: const Color(0xFF6366F1),
+        SizedBox(
+          width: double.infinity,   // full-width
+          //icon: Icons.download,
+          height: 52,               // opcional: iguala la altura del primario (ajusta si usas otra)
+          child: SecondaryButton(
+            text: 'Descargar',
+            isOutlined: true,
+            textColor: AppColors.primary,
+            onPressed: () => _downloadVideo(_documentary!.videoUrl!),
           ),
         ),
+
       ],
     );
   }

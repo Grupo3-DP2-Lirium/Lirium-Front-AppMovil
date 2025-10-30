@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/documentary_request.dart';
 import 'package:flutter_frontend/data/models/music_track_model.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class CreateDocumentaryScreen extends StatefulWidget {
   const CreateDocumentaryScreen({super.key});
@@ -17,6 +19,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   String? _selectedMemorialId;
   int _durationPerMemory = 5;
@@ -24,6 +27,8 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
   String _selectedStyle = 'warm';
   String _selectedResolution = '720p';
   bool _isLoading = false;
+  bool _isPlaying = false;
+  String? _currentPlayingTrack;
 
   @override
   void initState() {
@@ -38,6 +43,14 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
 
       // Cargar catálogo de música
       context.read<DocumentaryProvider>().loadMusicCatalog();
+    });
+
+    // Escuchar cambios de estado del reproductor
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        _isPlaying = false;
+        _currentPlayingTrack = null;
+      });
     });
   }
 
@@ -55,7 +68,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
         elevation: 0,
       ),
       body: memorialProvider.cargandoMis
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -93,6 +106,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  ),
                   filled: true,
                   fillColor: Colors.grey[50],
                 ),
@@ -122,6 +139,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
                   hintText: 'Describe brevemente este documental...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
@@ -195,19 +216,19 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                    Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'La generación puede tomar varios minutos. Te notificaremos cuando esté listo.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blue[700],
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -251,9 +272,13 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
         filled: true,
         fillColor: Colors.grey[50],
-        prefixIcon: const Icon(Icons.person_outline),
+        prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
       ),
       hint: const Text('Selecciona un memorial'),
       items: provider.misMemoriales.map((memorial) {
@@ -300,10 +325,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.grey[100],
+            color: isSelected ? AppColors.primary : Colors.grey[100],
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? const Color(0xFF6366F1) : Colors.grey[300]!,
+              color: isSelected ? AppColors.primary : Colors.grey[300]!,
             ),
           ),
           child: Text(
@@ -324,7 +349,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -346,7 +371,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
     return Column(
       children: [
         // Opción "Sin música"
-        _buildMusicOption(null, 'Sin música', 'Documental sin fondo musical'),
+        _buildMusicOption(null, 'Sin música', 'Documental sin fondo musical', null),
         const SizedBox(height: 8),
 
         // Lista de música
@@ -357,6 +382,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
               track.id,
               track.name,
               '${track.description} • ${track.duration}',
+              track.id, // URL del track para reproducir
             ),
           );
         }).toList(),
@@ -364,8 +390,9 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
     );
   }
 
-  Widget _buildMusicOption(String? trackId, String name, String subtitle) {
+  Widget _buildMusicOption(String? trackId, String name, String subtitle, String? previewUrl) {
     final isSelected = _selectedMusic == trackId;
+    final isPlayingThis = _isPlaying && _currentPlayingTrack == trackId;
 
     return GestureDetector(
       onTap: () {
@@ -376,10 +403,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.grey[50],
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -387,7 +414,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
           children: [
             Icon(
               trackId == null ? Icons.music_off : Icons.music_note,
-              color: isSelected ? const Color(0xFF6366F1) : Colors.grey[600],
+              color: isSelected ? AppColors.primary : Colors.grey[600],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -398,7 +425,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
                     name,
                     style: TextStyle(
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? const Color(0xFF6366F1) : Colors.black87,
+                      color: isSelected ? AppColors.primary : Colors.black87,
                     ),
                   ),
                   Text(
@@ -411,12 +438,83 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
                 ],
               ),
             ),
+            // Botón de preview (solo si no es "Sin música")
+            if (trackId != null) ...[
+              IconButton(
+                icon: Icon(
+                  isPlayingThis ? Icons.stop_circle : Icons.play_circle,
+                  color: isSelected ? AppColors.primary : Colors.grey[600],
+                  size: 32,
+                ),
+                onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+              ),
+            ],
+            if (isSelected && trackId != null)
+              const SizedBox(width: 8),
             if (isSelected)
-              const Icon(Icons.check_circle, color: Color(0xFF6366F1)),
+              Icon(Icons.check_circle, color: AppColors.primary),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _toggleMusicPreview(String trackId, String? url) async {
+    // Si está reproduciendo esta canción, detener
+    if (_isPlaying && _currentPlayingTrack == trackId) {
+      await _audioPlayer.stop();
+      setState(() {
+        _isPlaying = false;
+        _currentPlayingTrack = null;
+      });
+      return;
+    }
+
+    // Si está reproduciendo otra canción, detener primero
+    if (_isPlaying) {
+      await _audioPlayer.stop();
+    }
+
+    // Reproducir la nueva canción
+    if (url != null) {
+      try {
+        // Aquí deberías usar la URL completa del archivo de música en Azure
+        // Por ahora, como ejemplo usamos una URL de prueba
+        // await _audioPlayer.play(UrlSource(url));
+
+        // TEMPORAL: Mostrar mensaje
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reproduciendo: $trackId'),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        setState(() {
+          _isPlaying = true;
+          _currentPlayingTrack = trackId;
+        });
+
+        // Simular reproducción de 3 segundos
+        await Future.delayed(const Duration(seconds: 3));
+
+        if (_currentPlayingTrack == trackId) {
+          setState(() {
+            _isPlaying = false;
+            _currentPlayingTrack = null;
+          });
+        }
+      } catch (e) {
+        print('ERROR playing music: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al reproducir música'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStyleSelector() {
@@ -443,10 +541,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1) : Colors.grey[100],
+          color: isSelected ? AppColors.primary : Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
           ),
         ),
         child: Row(
@@ -495,10 +593,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF6366F1) : Colors.grey[100],
+            color: isSelected ? AppColors.primary : Colors.grey[100],
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? const Color(0xFF6366F1) : Colors.grey[300]!,
+              color: isSelected ? AppColors.primary : Colors.grey[300]!,
             ),
           ),
           child: Text(
@@ -516,6 +614,15 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
 
   Future<void> _createDocumentary() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Detener música si está sonando
+    if (_isPlaying) {
+      await _audioPlayer.stop();
+      setState(() {
+        _isPlaying = false;
+        _currentPlayingTrack = null;
+      });
+    }
 
     setState(() {
       _isLoading = true;
@@ -565,6 +672,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 }
