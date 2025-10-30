@@ -200,7 +200,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   builder: (context) => SubscriptionPlanDetailsScreen(
                     usedStorageGB: 300,
                     totalStorageGB: 500,
-                    currentPlan: "Plan Pro",
                   ),
                 ),
               );
