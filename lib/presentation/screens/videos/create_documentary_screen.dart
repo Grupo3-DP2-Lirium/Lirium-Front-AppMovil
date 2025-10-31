@@ -35,22 +35,32 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Cargar memoriales si no están cargados
       final memorialProvider = context.read<MemorialProvider>();
       if (!memorialProvider.loadedMis) {
         memorialProvider.cargarMisMemoriales();
       }
 
-      // Cargar catálogo de música
       context.read<DocumentaryProvider>().loadMusicCatalog();
     });
 
-    // Escuchar cambios de estado del reproductor
+    // Escuchar eventos del reproductor
     _audioPlayer.onPlayerComplete.listen((event) {
-      setState(() {
-        _isPlaying = false;
-        _currentPlayingTrack = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _currentPlayingTrack = null;
+        });
+      }
+    });
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      print('DEBUG: Player state changed: $state');
+      if (mounted && state == PlayerState.stopped) {
+        setState(() {
+          _isPlaying = false;
+          _currentPlayingTrack = null;
+        });
+      }
     });
   }
 
@@ -438,15 +448,23 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
                 ],
               ),
             ),
-            // Botón de preview (solo si no es "Sin música")
+            // Botón de preview con animación
             if (trackId != null) ...[
-              IconButton(
-                icon: Icon(
-                  isPlayingThis ? Icons.stop_circle : Icons.play_circle,
-                  color: isSelected ? AppColors.primary : Colors.grey[600],
-                  size: 32,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isPlayingThis
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.transparent,
                 ),
-                onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+                child: IconButton(
+                  icon: Icon(
+                    isPlayingThis ? Icons.stop_circle : Icons.play_circle,
+                    color: isSelected ? AppColors.primary : Colors.grey[600],
+                    size: 32,
+                  ),
+                  onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+                ),
               ),
             ],
             if (isSelected && trackId != null)
@@ -476,43 +494,56 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
     }
 
     // Reproducir la nueva canción
-    if (url != null) {
+    if (trackId != null) {
       try {
-        // Aquí deberías usar la URL completa del archivo de música en Azure
-        // Por ahora, como ejemplo usamos una URL de prueba
-        // await _audioPlayer.play(UrlSource(url));
+        // Construir URL completa de Azure Blob Storage
+        // El trackId viene como: "music/emotional-piano.mp3"
+        final String baseAzureUrl = 'https://stliriumfiles.blob.core.windows.net/lirium-files';
+        final String fullUrl = '$baseAzureUrl/$trackId';
 
-        // TEMPORAL: Mostrar mensaje
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Reproduciendo: $trackId'),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        print('DEBUG: Playing music from: $fullUrl');
 
         setState(() {
           _isPlaying = true;
           _currentPlayingTrack = trackId;
         });
 
-        // Simular reproducción de 3 segundos
-        await Future.delayed(const Duration(seconds: 3));
+        // Reproducir desde URL de Azure
+        await _audioPlayer.play(UrlSource(fullUrl));
 
-        if (_currentPlayingTrack == trackId) {
-          setState(() {
-            _isPlaying = false;
-            _currentPlayingTrack = null;
-          });
-        }
-      } catch (e) {
-        print('ERROR playing music: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al reproducir música'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.music_note, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Reproduciendo preview de música'),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
           ),
         );
+
+      } catch (e) {
+        print('ERROR playing music: $e');
+
+        setState(() {
+          _isPlaying = false;
+          _currentPlayingTrack = null;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error al reproducir música'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
