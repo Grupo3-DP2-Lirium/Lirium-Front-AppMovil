@@ -34,4 +34,9 @@ class ApiConstants {
   static String get reflections => '$baseUrl/reflections';
   static String get reflectionSearch => '$baseUrl/reflections/search';
   static String get reflectionStats => '$baseUrl/reflections/stats';
+
+  // Endpoints de documentales
+  static String get documentaries => '$baseUrl/documentaries';
+  static String get myDocumentaries => '$baseUrl/documentaries/my-documentaries';
+  static String get musicCatalog => '$baseUrl/documentaries/music-catalog';
 }
