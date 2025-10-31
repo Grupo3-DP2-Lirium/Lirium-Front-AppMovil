@@ -11,27 +11,61 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationService _notificationService = NotificationService();
+  final ScrollController _scrollController = ScrollController();
+  
   List<AppNotification> _notifications = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   String? _errorMessage;
+  
+  // ✅ Para paginación
+  int _currentPage = 0;
+  final int _pageSize = 20;
+  bool _hasMoreData = true;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _scrollController.addListener(_onScroll);
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// ✅ Detectar cuando llega al final para cargar más
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent * 0.9) {
+      if (!_isLoadingMore && _hasMoreData) {
+        _loadMoreNotifications();
+      }
+    }
+  }
+
+  /// ✅ Carga inicial
   Future<void> _loadNotifications() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _currentPage = 0;
+      _hasMoreData = true;
     });
 
     try {
       final notifications = await _notificationService.getNotifications();
+      final sortedNotifications = _sortNotifications(notifications);
+      
       setState(() {
-        _notifications = notifications;
+        _notifications = sortedNotifications;
         _isLoading = false;
+        
+        if (notifications.length < _pageSize) {
+          _hasMoreData = false;
+        }
       });
     } catch (e) {
       setState(() {
@@ -41,35 +75,69 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// ✅ Cargar más notificaciones (simulado - adaptar si backend soporta paginación)
+  Future<void> _loadMoreNotifications() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+    
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Si tu backend NO soporta paginación, simplemente no hagas nada
+    // Este código es para cuando implementes paginación en backend
+    
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    setState(() {
+      _isLoadingMore = false;
+      _hasMoreData = false; // Por ahora, desactivar
+    });
+  }
+
+  /// ✅ Ordena: NO LEÍDAS primero, luego por fecha descendente
+  List<AppNotification> _sortNotifications(List<AppNotification> notifications) {
+    final unread = notifications.where((n) => !n.isRead).toList();
+    final read = notifications.where((n) => n.isRead).toList();
+    
+    // Ordenar cada grupo por fecha (más reciente primero)
+    unread.sort((a, b) => b.createdDate.compareTo(a.createdDate));
+    read.sort((a, b) => b.createdDate.compareTo(a.createdDate));
+    
+    return [...unread, ...read];
+  }
+
+  /// ✅ Marca como leída - SOLUCIÓN: Recarga desde backend
   Future<void> _markAsRead(AppNotification notification) async {
     if (notification.isRead) return;
 
     try {
+      // Enviar al backend PRIMERO
       await _notificationService.markAsRead(notification.idNotification!);
-      setState(() {
-        final index = _notifications.indexWhere(
-          (n) => n.idNotification == notification.idNotification,
-        );
-        if (index != -1) {
-          _notifications[index] = notification.copyWith(
-            isRead: true,
-            readDate: DateTime.now(),
-          );
-        }
-      });
+      
+      // Luego recargar TODO desde backend para evitar inconsistencias
+      await _loadNotifications();
     } catch (e) {
-      print('Error marking as read: $e');
+      print('❌ Error marking as read: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al marcar como leída'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
   Future<void> _markAllAsRead() async {
     try {
+      // Enviar al backend
       await _notificationService.markAllAsRead();
-      setState(() {
-        _notifications = _notifications.map((n) {
-          return n.copyWith(isRead: true, readDate: DateTime.now());
-        }).toList();
-      });
+      
+      // Recargar desde backend
+      await _loadNotifications();
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -118,11 +186,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         await _notificationService.deleteNotification(
           notification.idNotification!,
         );
-        setState(() {
-          _notifications.removeWhere(
-            (n) => n.idNotification == notification.idNotification,
-          );
-        });
+        
+        // Recargar desde backend
+        await _loadNotifications();
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -147,21 +213,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _handleNotificationTap(AppNotification notification) {
-    // Marcar como leída
     _markAsRead(notification);
 
-    // Navegar según el tipo de notificación
     switch (notification.type) {
       case NotificationType.REMINDER:
-        // TODO: Navegar a detalles del recordatorio
         print('Navigate to reminder: ${notification.relatedEntityId}');
         break;
       case NotificationType.COMMENT:
-        // TODO: Navegar al memorial con el comentario
         print('Navigate to memorial: ${notification.relatedEntityId}');
         break;
       case NotificationType.LIKE:
-        // TODO: Navegar a la memoria que recibió like
         break;
       default:
         break;
@@ -179,7 +240,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.MEMORIAL_SHARED:
         return Icons.share;
       case NotificationType.SYSTEM:
-        return Icons.info;
+        return Icons.info_outline;
     }
   }
 
@@ -198,48 +259,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  /// ✅ Formatea el tiempo transcurrido de forma inteligente
   String _formatTimeAgo(DateTime dateTime) {
-  // ✅ CRÍTICO: El backend envía UTC, convertir a hora local del dispositivo
-  final localTime = dateTime.toLocal();
-  final now = DateTime.now();
-  final difference = now.difference(localTime);
-  
-  // DEBUG
-  print('🕐 Date from backend (UTC): $dateTime');
-  print('🕐 Converted to local: $localTime');
-  print('🕐 Now: $now');
-  print('🕐 Difference: ${difference.inMinutes} minutes');
-  
-  if (difference.isNegative) {
-    return 'Ahora'; // Si la fecha es futura por alguna razón
+    final localTime = dateTime.toLocal();
+    final now = DateTime.now();
+    final difference = now.difference(localTime);
+    
+    if (difference.isNegative || difference.inSeconds < 60) {
+      return 'Ahora';
+    } else if (difference.inMinutes < 2) {
+      return 'Hace 1 minuto';
+    } else if (difference.inMinutes < 60) {
+      return 'Hace ${difference.inMinutes} minutos';
+    } else if (difference.inHours < 2) {
+      return 'Hace 1 hora';
+    } else if (difference.inHours < 24) {
+      return 'Hace ${difference.inHours} horas';
+    } else if (difference.inDays < 2) {
+      return 'Ayer';
+    } else if (difference.inDays < 7) {
+      return 'Hace ${difference.inDays} días';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return weeks == 1 ? 'Hace 1 semana' : 'Hace $weeks semanas';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return months == 1 ? 'Hace 1 mes' : 'Hace $months meses';
+    } else {
+      final years = (difference.inDays / 365).floor();
+      return years == 1 ? 'Hace 1 año' : 'Hace $years años';
+    }
   }
-  
-  if (difference.inSeconds < 60) {
-    return 'Ahora';
-  } else if (difference.inMinutes < 2) {
-    return 'Hace 1 minuto';
-  } else if (difference.inMinutes < 60) {
-    return 'Hace ${difference.inMinutes} minutos';
-  } else if (difference.inHours < 2) {
-    return 'Hace 1 hora';
-  } else if (difference.inHours < 24) {
-    return 'Hace ${difference.inHours} horas';
-  } else if (difference.inDays < 2) {
-    return 'Ayer';
-  } else if (difference.inDays < 7) {
-    return 'Hace ${difference.inDays} días';
-  } else if (difference.inDays < 30) {
-    final weeks = (difference.inDays / 7).floor();
-    return weeks == 1 ? 'Hace 1 semana' : 'Hace $weeks semanas';
-  } else if (difference.inDays < 365) {
-    final months = (difference.inDays / 30).floor();
-    return months == 1 ? 'Hace 1 mes' : 'Hace $months meses';
-  } else {
-    final years = (difference.inDays / 365).floor();
-    return years == 1 ? 'Hace 1 año' : 'Hace $years años';
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -248,112 +297,128 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      title: const Text(
-        'Notificaciones',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Notificaciones',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ),
-      iconTheme: const IconThemeData(color: Colors.black),
-      actions: [
-        // ✅ SOLO mostrar botón si hay notificaciones no leídas
-        if (unreadCount > 0 && !_isLoading)
-          TextButton(
-            onPressed: _markAllAsRead,
-            child: const Text(
-              'Marcar todas',
-              style: TextStyle(
-                color: Color(0xFF6366F1),
-                fontSize: 13,
+        iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          if (unreadCount > 0 && !_isLoading)
+            TextButton(
+              onPressed: _markAllAsRead,
+              child: const Text(
+                'Marcar todas',
+                style: TextStyle(
+                  color: Color(0xFF6366F1),
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
-      ],
-    ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _loadNotifications,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                          ),
-                          child: const Text('Reintentar'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+              ? _buildErrorState()
               : _notifications.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_none,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No tienes notificaciones',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Cuando recibas notificaciones, aparecerán aquí',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
+                  ? _buildEmptyState()
                   : RefreshIndicator(
                       onRefresh: _loadNotifications,
                       child: ListView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.all(16),
-                        itemCount: _notifications.length,
+                        itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index == _notifications.length) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
                           final notification = _notifications[index];
                           return _buildNotificationCard(notification);
                         },
                       ),
                     ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadNotifications,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+              ),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_none,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No tienes notificaciones',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Cuando recibas notificaciones, aparecerán aquí',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -407,7 +472,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icono
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -421,7 +485,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Contenido
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,7 +521,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           fontSize: 14,
                           color: Colors.grey[700],
                         ),
-                        maxLines: 2,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
