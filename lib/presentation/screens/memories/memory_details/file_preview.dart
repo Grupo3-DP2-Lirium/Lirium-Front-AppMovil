@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/full_screen_image.dart';
 import 'package:video_player/video_player.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -146,12 +147,28 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
 
   // ------------------------ IMAGEN ------------------------
   Widget _buildImageWidget() {
-    if (widget.url.isEmpty) return _buildPlaceholder("Cargando video...");
+    if (widget.url.isEmpty) return _buildPlaceholder("Cargando imagen...");
 
     return Stack(
       children: [
-        Positioned.fill(child: _buildImage(widget.url)),
-        if (widget.onEdit != null) Positioned(top: 8, right: 8, child: _buildEditButton()),
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FullScreenMediaViewer(
+                    url: widget.url,
+                    type: "image",
+                  ),
+                ),
+              );
+            },
+            child: _buildImage(widget.url),
+          ),
+        ),
+        if (widget.onEdit != null)
+          Positioned(top: 8, right: 8, child: _buildEditButton()),
       ],
     );
   }
@@ -178,8 +195,20 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
     if (_videoController == null || !_videoController!.value.isInitialized) {
       return _buildPlaceholder("Cargando video...");
     }
+    return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FullScreenMediaViewer(
+                url: widget.url,
+                type: "video",
+              ),
+            ),
+          );
+        },
 
-    return AspectRatio(
+    child: AspectRatio(
       aspectRatio: _videoController!.value.aspectRatio,
       child: Stack(
         alignment: Alignment.bottomCenter,
@@ -208,19 +237,20 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
                   size: 64,
                   color: Colors.white,
                 ),
-                onPressed: () {
-                  setState(() {
-                    _videoController!.value.isPlaying
-                        ? _videoController!.pause()
-                        : _videoController!.play();
-                  });
-                },
-              ),
-          ),
-          if (widget.onEdit != null)
-            Positioned(top: 8, right: 8, child: _buildEditButton()),
-        ],
-      ),
+                  onPressed: () {
+                    setState(() {
+                      _videoController!.value.isPlaying
+                          ? _videoController!.pause()
+                          : _videoController!.play();
+                    });
+                  },
+                ),
+            ),
+            if (widget.onEdit != null)
+              Positioned(top: 8, right: 8, child: _buildEditButton()),
+          ],
+        ),
+      )
     );
   }
 

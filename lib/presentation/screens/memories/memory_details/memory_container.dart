@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/fields_widget.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/files_preview_widget.dart';
 import 'package:flutter_sound/flutter_sound.dart';
@@ -16,11 +17,11 @@ class MemoryContainer extends StatefulWidget {
   final Memory memory;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
-  final TextEditingController mesController;
-  final TextEditingController ahoController;
-  final TextEditingController locationController;
+  final DateController photoDateController;
+  final LocationController locationController;
   final double screenHeight;
   final bool edit;
+  final bool create;
   final List<domain.File>? existingFiles;
   final void Function(String action, [int? index, domain.File? file])? onFileChanged;
 
@@ -29,11 +30,11 @@ class MemoryContainer extends StatefulWidget {
     required this.memory,
     required this.titleController,
     required this.descriptionController,
-    required this.mesController,
-    required this.ahoController,
+    required this.photoDateController,
     required this.locationController,
     required this.screenHeight,
     this.edit = false,
+    this.create = false,
     this.onFileChanged,
     this.existingFiles,
   });
@@ -49,6 +50,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   int _currentFileIndex = 0;
   final Map<Key, VideoPlayerController> _videoControllers = {}; // Mapping of video controllers for video files
   bool _isEditing = false; // Tracks widget mode
+  bool _isCreating = false;
   late final bool _hadOriginalFiles;
 
   // Method to switch edit mode without recreating the widget
@@ -90,6 +92,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     super.initState();
     _localFiles = List.from(widget.existingFiles ?? []); // Initialize with existing files or empty list
     _isEditing = widget.edit;
+    _isCreating = widget.create;
     _initRecorder(); // Initialize audio recorder
     _hadOriginalFiles = (widget.existingFiles?.isNotEmpty ?? false);
   }
@@ -119,6 +122,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   // Dispose the recorder when the widget is disposed to clean up resources
   @override
   void dispose() {
+    for (var controller in _videoControllers.values) {
+      controller.dispose();
+    }
+    _videoControllers.clear();
     _recorder.closeRecorder();
     super.dispose();
   }
@@ -141,7 +148,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             PreviewWidget(
               localFiles: _localFiles,
               currentFileIndex: _currentFileIndex,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               deleteFile: _deleteFile,
               editFile: _editFile,
               showAddOptions: _showAddOptions,
@@ -150,11 +157,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             ),
             MemoryFormulario(
               memory: widget.memory,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
-              mesController: widget.mesController,
-              ahoController: widget.ahoController,
+              photoDateController: widget.photoDateController,
               locationController: widget.locationController,
             ),
           ],
@@ -162,8 +168,8 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       );
     }
 
-    // Caso: no hay archivos
-    if (_localFiles.isEmpty && _hadOriginalFiles) {
+    // Caso: no hay archivos o está creando una nueva Memoria
+    if ((_localFiles.isEmpty && _hadOriginalFiles)||widget.create) {
       // Mostrar PreviewWidget vacío + botón añadir
       return SingleChildScrollView(
         child: Column(
@@ -172,7 +178,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             PreviewWidget(
               localFiles: _localFiles, // lista vacía
               currentFileIndex: _currentFileIndex,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               deleteFile: _deleteFile,
               editFile: _editFile,
               showAddOptions: _showAddOptions,
@@ -181,11 +187,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
             ),
             MemoryFormulario(
               memory: widget.memory,
-              isEditing: _isEditing,
+              isEditing: _isEditing || _isCreating,
               titleController: widget.titleController,
               descriptionController: widget.descriptionController,
-              mesController: widget.mesController,
-              ahoController: widget.ahoController,
+              photoDateController: widget.photoDateController,
               locationController: widget.locationController,
             ),
           ],
@@ -311,14 +316,25 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       if (type == "audio") {
         final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
         if (existingIndex != -1) {
+          // Si ya hay un audio, reemplazarlo
+          final oldAudio = _localFiles[existingIndex];
+
+          // Notificar que se elimina el anterior
+          widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+          // Reemplazarlo por el nuevo audio
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
           return;
         }
       }
 
-      // Si no, agregarlo normalmente
+      // Agregar nuevo archivo
       _localFiles.add(newFile);
+
+      // Actualizar índice al nuevo archivo
+      _currentFileIndex = _localFiles.length - 1;
+
       widget.onFileChanged?.call("add", null, newFile);
     });
   }
@@ -329,10 +345,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     if (picked == null) return;
 
     final file = File(picked.path);
-    final exists = await file.exists();
-    if (!exists) {
-      return;
-    }
+    if (!await file.exists()) return;
 
     final newFile = domain.File(
       id: "",
@@ -346,28 +359,26 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     );
 
     setState(() {
-      if (index != null && index < _localFiles.length) {
-        // Actualizar archivo existente
-        _localFiles[index] = newFile;
-        widget.onFileChanged?.call("update", index, newFile);
-      } else if (type == "audio") {
-        // Si ya hay un audio, reemplazarlo
-        final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
-        if (existingIndex != -1) {
-          _localFiles[existingIndex] = newFile;
-          widget.onFileChanged?.call("update", existingIndex, newFile);
-        } else {
-          // No hay audio previo, agregar
-          _localFiles.add(newFile);
-          widget.onFileChanged?.call("add", null, newFile);
-        }
+      // Buscar si ya hay un audio
+      final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+
+      if (existingIndex != -1) {
+        final oldAudio = _localFiles[existingIndex];
+
+        // Notificar que se elimina el anterior (para que el padre lo borre del backend)
+        widget.onFileChanged?.call("delete", existingIndex, oldAudio);
+
+        // Reemplazarlo por el nuevo audio
+        _localFiles[existingIndex] = newFile;
+        widget.onFileChanged?.call("update", existingIndex, newFile);
+
       } else {
-        // Otros tipos (imagen/video) se agregan
+        // Si por alguna razón no existía, simplemente agregarlo
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
       }
-    });
 
+    });
   }
 
   // ------------------- Selector de imagen/video/audio -------------------

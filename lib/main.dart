@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
 import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
+import 'package:flutter_frontend/presentation/screens/main/home_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/my_personal_space_screen.dart';
+import 'package:flutter_frontend/presentation/screens/onboarding/welcome_screen.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'providers/memorial_provider.dart';
 import 'presentation/screens/memorial/memorials_screen.dart';
+import 'package:flutter_frontend/providers/documentary_provider.dart';
+
+void main() {
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -115,6 +122,8 @@ class _RemoryAppState extends State<RemoryApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MemorialProvider()),
+        ChangeNotifierProvider(create: (_) => MemoryProvider()),
+        ChangeNotifierProvider(create: (_) => DocumentaryProvider())
       ],
       child: MaterialApp(
         title: 'Remory',

@@ -1,25 +1,31 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/format_type_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/theme_detail_screen.dart';
+import 'package:flutter_frontend/data/models/memorial_response.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
+import 'package:flutter_frontend/data/models/memory_lite_response.dart';
+import 'package:flutter_frontend/data/models/memories_by_type_response.dart';
+import 'package:flutter_frontend/data/services/memorial_service.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
 
+// Modos de organización de galería (HU19)
+enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
-  final String name;
-  final String? description;
-  final String? coverUrl;
-  final String? avatarUrl;
 
   const MemorialDetailScreen({
     super.key,
     required this.memorialId,
-    required this.name,
-    this.description,
-    this.coverUrl,
-    this.avatarUrl,
   });
 
   @override
@@ -30,6 +36,15 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   final MemoryService _memoriesService = MemoryService();
+  final MemorialService _memorialService = MemorialService();
+  
+  // Datos del memorial (cargados dinámicamente)
+  String? name;
+  String? description;
+  String? coverUrl;
+  String? avatarUrl;
+  bool isLoadingMemorial = true;
+  String? memorialErrorMessage;
   
   // Estado para las memorias
   List<MemoryResponse> memories = [];
@@ -39,10 +54,26 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   final int pageSize = 10;
   bool hasMoreMemories = true;
 
+  // Organización de galería (HU19)
+  OrganizationMode _organizationMode = OrganizationMode.formato;
+  
+  // Estado para el nuevo diseño
+  bool _showOrganizeOptions = false;
+  String _selectedFilter = 'gallery';
+  int _selectedTopTab = 0; // 0: Galería, 1: Actividad Reciente, 2: Info
+  
+  // Datos para las diferentes vistas
+  Map<String, Map<String, List<MemoryLiteResponse>>> _memoriesByCategory = {};
+  Map<String, Map<String, List<MemoryLiteResponse>>> _memoriesByMoment = {};
+  List<MemoryResponse> _timelineMemories = [];
+  MemoriesByTypeResponse? _memoriesByType;
+  bool _isLoadingSpecialData = false;
+
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _loadMemorialData();
     _loadMemories();
   }
 
@@ -54,31 +85,69 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   int selectedTab = 0;
 
+  /// Carga los datos del memorial desde el backend
+  Future<void> _loadMemorialData() async {
+    try {
+      setState(() {
+        isLoadingMemorial = true;
+        memorialErrorMessage = null;
+      });
+
+      final memorial = await _memorialService.getMemorialById(widget.memorialId);
+
+      setState(() {
+        name = memorial.name;
+        description = memorial.description;
+        avatarUrl = memorial.profilePhoto?.fileUrl;
+        // coverUrl se puede agregar si el backend lo proporciona
+        isLoadingMemorial = false;
+      });
+    } catch (e) {
+      setState(() {
+        memorialErrorMessage = 'Error al cargar el memorial: $e';
+        isLoadingMemorial = false;
+      });
+    }
+  }
+
   ImageProvider _getAvatarImage() {
-    if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return MemoryImage(base64Decode(widget.avatarUrl!));
-    } else if (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty) {
-      return NetworkImage(widget.avatarUrl!);
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      // Verificar si es una imagen en base64
+      if (avatarUrl!.startsWith('data:image') || avatarUrl!.length > 500) {
+        try {
+          // Si empieza con data:image, extraer solo la parte base64
+          final base64String = avatarUrl!.contains(',') 
+              ? avatarUrl!.split(',').last 
+              : avatarUrl!;
+          return MemoryImage(base64Decode(base64String));
+        } catch (e) {
+          print('Error decoding base64 image: $e');
+          return const AssetImage('assets/images/CreaPerfil.png');
+        }
+      } else {
+        // Es una URL normal
+        return NetworkImage(avatarUrl!);
+      }
     } else {
-      // Usar un Container con ícono por defecto
-      return const AssetImage('assets/images/CreaPerfil.png'); // Usar uno de los assets existentes
+      // Usar imagen por defecto
+      return const AssetImage('assets/images/CreaPerfil.png');
     }
   }
 
   ImageProvider _getCoverImage() {
-    if (widget.coverUrl == null || widget.coverUrl!.isEmpty) {
+    if (coverUrl == null || coverUrl!.isEmpty) {
       return const NetworkImage(
         'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800',
       );
     }
 
-    if (widget.coverUrl!.startsWith('data:image')) {
-      final base64Str = widget.coverUrl!.split(',').last;
+    if (coverUrl!.startsWith('data:image')) {
+      final base64Str = coverUrl!.split(',').last;
       final bytes = base64Decode(base64Str);
       return MemoryImage(bytes);
     }
 
-    return NetworkImage(widget.coverUrl!);
+    return NetworkImage(coverUrl!);
   }
 
   /// Carga las memorias del memorial desde el backend
@@ -112,8 +181,122 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     }
   }
 
+  Future<void> _deleteMemorial(BuildContext context, String memorialId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro de que quieres eliminar este memorial?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (!(confirmed ?? false)) return;
+
+    // Mostrar loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await MemorialService().deleteMemorial(memorialId);
+
+      // Actualizar provider
+      final provider = Provider.of<MemorialProvider>(context, listen: false);
+      provider.eliminarMemorial(memorialId);
+
+      Navigator.pop(context);
+
+      // Mostrar popup de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Memorial eliminado",
+        message: "El memorial ha sido eliminado correctamente",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cierra el popup
+              Navigator.pop(context); // retrocede a la pantalla anterior
+            },
+          ),
+        ],
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al eliminar: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Si está cargando el memorial, mostrar indicador
+    if (isLoadingMemorial) {
+      return Scaffold(
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF6366F1),
+          ),
+        ),
+      );
+    }
+
+    // Si hay error cargando el memorial
+    if (memorialErrorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  memorialErrorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _loadMemorialData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                  ),
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -172,7 +355,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
               ),
               child: IconButton(
                 icon: const Icon(Icons.settings, color: Colors.white),
-                onPressed: () {},
+                onPressed: () {
+                  _showMemorialOptionsMenu(context);
+                },
               ),
             ),
           ),
@@ -191,125 +376,178 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   topRight: Radius.circular(30),
                 ),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 60),
+              child: Column(
+                children: [
+                  const SizedBox(height: 60),
 
-                    // Name
-                    Text(
-                      widget.name,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
+                  // Name
+                  Text(
+                    name ?? 'Cargando...',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 8),
 
-                    // Subtitle
-                    const Text(
-                      'Editado por 3 personas · Última actualización\nhace 2 días',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 13,
-                      ),
+                  // Subtitle
+                  const Text(
+                    'Familia',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 20),
-
-                    // Buttons Row
+                  ),
+                  
+                  // Description
+                  if (description != null && description!.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                side: const BorderSide(color: Color(0xEDD99293)),
-                              ),
-                              child: const Text(
-                                'Ver Memorial completo',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => CollaboratorsScreen(memorialId: widget.memorialId),
-                                ));
-                              },
-                              icon: const Icon(Icons.people, size: 18, color: Color(0xFF6366F1)),
-                              label: const Text('Colaboradores'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                side: const BorderSide(color: Color(0xFF6366F1)),
-                                foregroundColor: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        description!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                    // Quote Card
-                    if (widget.description != null && widget.description!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xEDD99293),
-                            borderRadius: BorderRadius.circular(15),
+                  // Top Navigation Tabs
+                  Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[300]!),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTopTab(Icons.grid_view, 'Galería', 0),
+                        _buildTopTab(Icons.access_time, 'Actividad Reciente', 1),
+                        _buildTopTab(Icons.info_outline, 'Info', 2),
+                      ],
+                    ),
+                  ),
+                  
+                  // Gallery Header
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Text(
+                          _getFilterTitle(),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Text(
-                            widget.description!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
+                        ),
+                        const Spacer(),
+                      ],
+                    ),
+                  ),
+                  
+                  // Organize Options Overlay
+                  if (_showOrganizeOptions)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: SingleChildScrollView(
+                          child: Container(
+                            decoration: BoxDecoration(
                               color: Colors.white,
-                              fontSize: 15,
-                              height: 1.5,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildOrganizeOption('Actividad Reciente', 'all', Icons.access_time, isFirst: true),
+                                _buildOrganizeOption('Galería', 'gallery', Icons.photo_library),
+                                _buildOrganizeOption('Tipo de formato', 'images', Icons.image),
+                                _buildOrganizeOption('Línea de tiempo', 'timeline', Icons.timeline),
+                                _buildOrganizeOption('Temáticas', 'themes', Icons.category, isLast: true),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                    const SizedBox(height: 24),
-
-                    // Tabs
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          _buildTab('Actividad reciente', 0),
-                          const SizedBox(width: 8),
-                          _buildTab('Añadir', 1),
-                          const SizedBox(width: 8),
-                          _buildTab('Organizar', 2),
-                        ],
-                      ),
+                    )
+                  else
+                    // Gallery Content
+                    Expanded(
+                      child: _buildGalleryContent(),
                     ),
-                    const SizedBox(height: 24),
 
-                    // Content based on selected tab
-                    if (selectedTab == 0) _buildActivityTab(),
-                    if (selectedTab == 1) _buildTimelineTab(),
-                    if (selectedTab == 2) _buildOrganizeTab(),
-
-                    const SizedBox(height: 30),
-                  ],
-                ),
+                  // Bottom Buttons
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _showOrganizeOptions = !_showOrganizeOptions;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              side: const BorderSide(color: Color(0xFFFF6B6B), width: 2),
+                            ),
+                            child: const Text(
+                              'Organizar',
+                              style: TextStyle(
+                                color: Color(0xFFFF6B6B),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // TODO: Implementar crear recuerdo
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Crear Recuerdo - Próximamente')),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF6B6B),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Crear Recuerdo',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -368,6 +606,911 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         ),
       ),
     );
+  }
+
+  Widget _buildOrganizeOption(String title, String key, IconData icon, {bool isFirst = false, bool isLast = false}) {
+    final isSelected = _selectedFilter == key;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = key;
+          _showOrganizeOptions = false;
+        });
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFB19CD9) : const Color(0xFFE1D5F0),
+          border: Border(
+            bottom: isLast ? BorderSide.none : const BorderSide(color: Colors.white, width: 1),
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: isFirst ? const Radius.circular(16) : Radius.zero,
+            topRight: isFirst ? const Radius.circular(16) : Radius.zero,
+            bottomLeft: isLast ? const Radius.circular(16) : Radius.zero,
+            bottomRight: isLast ? const Radius.circular(16) : Radius.zero,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopTab(IconData icon, String label, int index) {
+    final isSelected = _selectedTopTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTopTab = index;
+            _showOrganizeOptions = false; // Cerrar opciones al cambiar tab
+            
+            // Cambiar el filtro según el tab seleccionado
+            if (index == 0) {
+              _selectedFilter = 'gallery';
+            } else if (index == 1) {
+              _selectedFilter = 'all';
+            }
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isSelected ? const Color(0xFF6366F1) : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? const Color(0xFF6366F1) : Colors.grey,
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFF6366F1) : Colors.grey,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getFilterTitle() {
+    switch (_selectedFilter) {
+      case 'all':
+        return 'Actividad Reciente';
+      case 'gallery':
+        return 'Galería';
+      case 'images':
+        return 'Tipo de Formato';
+      case 'timeline':
+        return 'Línea de Tiempo';
+      case 'themes':
+        return 'Temáticas';
+      default:
+        return 'Galería';
+    }
+  }
+
+  Widget _buildGalleryContent() {
+    // Renderizar contenido según la selección
+    switch (_selectedFilter) {
+      case 'all':
+        return _buildActivityContent();
+      case 'gallery':
+        return _buildGalleryGridContent();
+      case 'images':
+        return _buildFormatTypeContent();
+      case 'timeline':
+        return _buildTimelineContent();
+      case 'themes':
+        return _buildThemesContent();
+      default:
+        return _buildGalleryGridContent();
+    }
+  }
+
+  Widget _buildGalleryGridContent() {
+    if (isLoadingMemories) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                currentPage = 0;
+                _loadMemories();
+              },
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (memories.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.photo_library_outlined,
+              size: 48,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No hay memorias para mostrar',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Filtrar memorias con imágenes para la galería
+    final memoriesWithImages = memories.where((memory) => 
+      memory.files.isNotEmpty && memory.files.any((file) => file.isImage)
+    ).toList();
+
+    if (memoriesWithImages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image_not_supported,
+              size: 48,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No hay imágenes para mostrar',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 1.0,
+        ),
+        itemCount: memoriesWithImages.length,
+        itemBuilder: (context, index) {
+          final memory = memoriesWithImages[index];
+          final imageFile = memory.files.firstWhere((file) => file.isImage);
+          
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  imageFile.downloadUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.image_not_supported, size: 32),
+                      ),
+                    );
+                  },
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: Text(
+                      memory.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildActivityContent() {
+    return _buildActivityTab();
+  }
+
+  Widget _buildFormatTypeContent() {
+    if (_memoriesByType == null) {
+      _loadMemoriesByType();
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isLoadingSpecialData) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final types = _memoriesByType!.memoriesByType;
+    
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: [
+          if (types.containsKey('image'))
+            _buildFormatTypeItem(
+              icon: Icons.photo_library,
+              title: 'Fotos',
+              count: '${types['image']!.length} recuerdos',
+              color: Colors.blue,
+            ),
+          const SizedBox(height: 12),
+          if (types.containsKey('video'))
+            _buildFormatTypeItem(
+              icon: Icons.videocam,
+              title: 'Videos',
+              count: '${types['video']!.length} recuerdos',
+              color: Colors.green,
+            ),
+          const SizedBox(height: 12),
+          if (types.containsKey('audio'))
+            _buildFormatTypeItem(
+              icon: Icons.audiotrack,
+              title: 'Audios',
+              count: '${types['audio']!.length} recuerdos',
+              color: Colors.red,
+            ),
+          const SizedBox(height: 12),
+          if (types.containsKey('document'))
+            _buildFormatTypeItem(
+              icon: Icons.description,
+              title: 'Documentos',
+              count: '${types['document']!.length} recuerdos',
+              color: Colors.orange,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormatTypeItem({
+    required IconData icon,
+    required String title,
+    required String count,
+    required Color color,
+  }) {
+    // Obtener la primera memoria del tipo para mostrar preview
+    String? previewUrl;
+    if (_memoriesByType != null) {
+      final typeKey = title.toLowerCase() == 'fotos' ? 'image' 
+          : title.toLowerCase() == 'videos' ? 'video'
+          : title.toLowerCase() == 'audios' ? 'audio'
+          : 'document';
+      
+      final memoriesOfType = _memoriesByType!.memoriesByType[typeKey];
+      if (memoriesOfType != null && memoriesOfType.isNotEmpty) {
+        final firstMemory = memoriesOfType.first;
+        if (firstMemory.files.isNotEmpty) {
+          previewUrl = firstMemory.files.first.downloadUrl;
+        }
+      }
+    }
+
+    return GestureDetector(
+      onTap: () {
+        // Navegar a la pantalla de detalle del tipo
+        final typeKey = title.toLowerCase() == 'fotos' ? 'image' 
+            : title.toLowerCase() == 'videos' ? 'video'
+            : title.toLowerCase() == 'audios' ? 'audio'
+            : 'document';
+        
+        if (_memoriesByType != null) {
+          final memoriesOfType = _memoriesByType!.memoriesByType[typeKey];
+          if (memoriesOfType != null && memoriesOfType.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FormatTypeDetailScreen(
+                  title: title,
+                  memories: memoriesOfType,
+                  color: color,
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Preview image o icono
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: previewUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        previewUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(icon, color: color, size: 32);
+                        },
+                      ),
+                    )
+                  : Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    count,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey[600],
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineContent() {
+    if (_timelineMemories.isEmpty) {
+      _loadTimelineMemories();
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isLoadingSpecialData) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: _timelineMemories.length,
+      itemBuilder: (context, index) {
+        final memory = _timelineMemories[index];
+        final date = memory.photoDate ?? memory.createdDate;
+        final isLast = index == _timelineMemories.length - 1;
+        final imageFile = memory.files.isNotEmpty && memory.files.any((f) => f.isImage)
+            ? memory.files.firstWhere((f) => f.isImage)
+            : null;
+        
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Timeline indicator (círculo y línea)
+              Column(
+                children: [
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B6B),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: 2,
+                        color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              
+              // Content
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Año y título
+                      Row(
+                        children: [
+                          Text(
+                            '${date.year}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFF6B6B),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '-',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              memory.title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Descripción
+                      if (memory.description.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          memory.description,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                      
+                      // Imagen
+                      if (imageFile != null) ...[
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.network(
+                              imageFile.downloadUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.image_not_supported,
+                                      size: 48,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemesContent() {
+    if (_memoriesByCategory.isEmpty) {
+      _loadMemoriesByCategory();
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isLoadingSpecialData) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: _memoriesByCategory.entries.map((entry) {
+          final category = entry.key;
+          final typeMap = entry.value;
+          int totalCount = 0;
+          for (var list in typeMap.values) {
+            totalCount += list.length;
+          }
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildThemeItem(
+              icon: _getCategoryIcon(category),
+              title: category,
+              count: '$totalCount recuerdos',
+              color: _getCategoryColor(category),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildThemeItem({
+    required IconData icon,
+    required String title,
+    required String count,
+    required Color color,
+  }) {
+    // Obtener preview image de la categoría
+    String? previewUrl;
+    if (_memoriesByCategory.containsKey(title)) {
+      final typeMap = _memoriesByCategory[title]!;
+      for (var memories in typeMap.values) {
+        if (memories.isNotEmpty && memories.first.firstFileUrl != null) {
+          previewUrl = memories.first.firstFileUrl;
+          break;
+        }
+      }
+    }
+
+    return GestureDetector(
+      onTap: () {
+        // Navegar a la pantalla de detalle de la temática
+        if (_memoriesByCategory.containsKey(title)) {
+          final typeMap = _memoriesByCategory[title]!;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ThemeDetailScreen(
+                title: title,
+                memoriesByType: typeMap,
+                color: color,
+                icon: icon,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: previewUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        previewUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(icon, color: color, size: 32);
+                        },
+                      ),
+                    )
+                  : Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    count,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey[600],
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMomentsContent() {
+    if (_memoriesByMoment.isEmpty) {
+      _loadMemoriesByMoment();
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isLoadingSpecialData) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: _memoriesByMoment.entries.map((entry) {
+          final moment = entry.key;
+          final typeMap = entry.value;
+          int totalCount = 0;
+          for (var list in typeMap.values) {
+            totalCount += list.length;
+          }
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildThemeItem(
+              icon: Icons.favorite,
+              title: moment,
+              count: '$totalCount recuerdos',
+              color: Colors.pink,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // Métodos para cargar datos
+  Future<void> _loadMemoriesByType() async {
+    if (_memoriesByType != null) return;
+    
+    setState(() => _isLoadingSpecialData = true);
+    try {
+      final data = await _memoriesService.getMemoriesByType(
+        memorialId: widget.memorialId,
+      );
+      setState(() => _memoriesByType = data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar tipos: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingSpecialData = false);
+    }
+  }
+
+  Future<void> _loadTimelineMemories() async {
+    if (_timelineMemories.isNotEmpty) return;
+    
+    setState(() => _isLoadingSpecialData = true);
+    try {
+      final data = await _memoriesService.getTimelineMemories(
+        memorialId: widget.memorialId,
+      );
+      setState(() => _timelineMemories = data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar timeline: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingSpecialData = false);
+    }
+  }
+
+  Future<void> _loadMemoriesByCategory() async {
+    if (_memoriesByCategory.isNotEmpty) return;
+    
+    setState(() => _isLoadingSpecialData = true);
+    try {
+      final data = await _memoriesService.getMemoriesGroupedByCategory(
+        memorialId: widget.memorialId,
+      );
+      setState(() => _memoriesByCategory = data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar categorías: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingSpecialData = false);
+    }
+  }
+
+  Future<void> _loadMemoriesByMoment() async {
+    if (_memoriesByMoment.isNotEmpty) return;
+    
+    setState(() => _isLoadingSpecialData = true);
+    try {
+      final data = await _memoriesService.getMemoriesGroupedByMoment(
+        memorialId: widget.memorialId,
+      );
+      setState(() => _memoriesByMoment = data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar momentos: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingSpecialData = false);
+    }
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'familia':
+        return Icons.family_restroom;
+      case 'celebraciones':
+        return Icons.celebration;
+      case 'viajes':
+        return Icons.travel_explore;
+      case 'trabajo':
+        return Icons.work;
+      case 'hobbies':
+        return Icons.sports_esports;
+      default:
+        return Icons.category;
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'familia':
+        return Colors.blue;
+      case 'celebraciones':
+        return Colors.purple;
+      case 'viajes':
+        return Colors.orange;
+      case 'trabajo':
+        return Colors.green;
+      case 'hobbies':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return months[month];
   }
 
   // Tab 0: Actividad reciente
@@ -502,9 +1645,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.more_vert,
-                  color: Colors.grey[600],
+                IconButton(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: () {
+                    _showMemoryOptionsMenu(context, memory.idMemory);
+                  },
                 ),
               ],
             ),
@@ -609,68 +1757,199 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     }
   }
 
-  // Tab 1: Añadir (Timeline)
+  // Tab 1: Timeline con datos reales
   Widget _buildTimelineTab() {
-    final timelineEvents = [
-      {
-        'year': '1946',
-        'title': 'Nació Lourdes',
-        'image': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '1972',
-        'title': 'Lourdes se convirtió en mamá',
-        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-        'hasButton': true,
-      },
-      {
-        'year': '1984',
-        'title': 'Primer viaje familiar',
-        'image': 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-        'hasButton': true,
-      },
-      {
-        'year': '2002',
-        'title': 'Nacimiento de su última nieta',
-        'image': 'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '2016',
-        'title': 'Cumpleaños N°70',
-        'image': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-        'hasButton': false,
-      },
-      {
-        'year': '2018',
-        'title': 'Cumpleaños N°72',
-        'image': 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-        'hasButton': false,
-      },
-    ];
+    print('DEBUG Timeline: Building timeline with ${memories.length} memories');
+    
+    if (isLoadingMemories) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (memories.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.timeline,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No hay memorias para mostrar en el timeline',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  currentPage = 0;
+                  _loadMemories();
+                },
+                child: const Text('Recargar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Filtrar solo memorias con imágenes
+    final memoriesWithImages = memories
+        .where((memory) => memory.files.any((file) => file.isImage))
+        .toList();
+
+    print('DEBUG Timeline: Memories with images: ${memoriesWithImages.length}');
+
+    if (memoriesWithImages.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.photo_library_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No hay imágenes para mostrar en el timeline',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                'Total de memorias: ${memories.length}',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Ordenar por fecha (más reciente primero)
+    memoriesWithImages.sort((a, b) {
+      final dateA = a.photoDate ?? a.createdDate;
+      final dateB = b.photoDate ?? b.createdDate;
+      return dateB.compareTo(dateA);
+    });
+
+    // Agrupar por año
+    final Map<int, List<MemoryResponse>> memoriesByYear = {};
+    for (final memory in memoriesWithImages) {
+      final date = memory.photoDate ?? memory.createdDate;
+      final year = date.year;
+      memoriesByYear.putIfAbsent(year, () => []).add(memory);
+    }
+
+    final years = memoriesByYear.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: timelineEvents.map((event) {
-          return _buildTimelineItem(
-            year: event['year'] as String,
-            title: event['title'] as String,
-            imageUrl: event['image'] as String,
-            hasButton: event['hasButton'] as bool,
-          );
+        children: years.map((year) {
+          final yearMemories = memoriesByYear[year]!;
+          return _buildTimelineYearSection(year, yearMemories);
         }).toList(),
       ),
     );
   }
 
-  Widget _buildTimelineItem({
-    required String year,
-    required String title,
-    required String imageUrl,
-    required bool hasButton,
-  }) {
+  // Construye una sección del timeline para un año específico
+  Widget _buildTimelineYearSection(int year, List<MemoryResponse> yearMemories) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header del año
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF6366F1).withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        year.toString(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${yearMemories.length} memoria${yearMemories.length != 1 ? 's' : ''}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Lista de memorias del año
+          ...yearMemories.asMap().entries.map((entry) {
+            final index = entry.key;
+            final memory = entry.value;
+            final isLast = index == yearMemories.length - 1;
+            
+            return _buildTimelineMemoryItem(memory, isLast);
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  // Construye un item individual del timeline con datos reales
+  Widget _buildTimelineMemoryItem(MemoryResponse memory, bool isLast) {
+    final date = memory.photoDate ?? memory.createdDate;
+    final imageFile = memory.files.firstWhere(
+      (file) => file.isImage,
+      orElse: () => memory.files.first,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
@@ -687,74 +1966,127 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   shape: BoxShape.circle,
                 ),
               ),
-              Container(
-                width: 2,
-                height: 120,
-                color: Colors.grey[300],
-              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 120,
+                  color: Colors.grey[300],
+                ),
             ],
           ),
           const SizedBox(width: 16),
+          
           // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Fecha específica
                 Text(
-                  year,
+                  '${date.day}/${date.month}/${date.year}',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF6366F1),
                   ),
                 ),
                 const SizedBox(height: 4),
+                
+                // Título de la memoria
                 Text(
-                  title,
+                  memory.title.isNotEmpty ? memory.title : 'Sin título',
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                
+                // Descripción si existe
+                if (memory.description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    memory.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                
                 const SizedBox(height: 8),
+                
+                // Imagen y botón "Ver más"
                 Row(
                   children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: NetworkImage(imageUrl),
-                          fit: BoxFit.cover,
+                    // Imagen principal
+                    GestureDetector(
+                      onTap: () => _showImageDetail(imageFile, memory, date),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            imageFile.downloadUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              print('Error loading image: $error');
+                              return Container(
+                                color: Colors.grey[300],
+                                child: Icon(Icons.photo, color: Colors.grey[500]),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                    if (hasButton) ...[
+                    
+                    // Botón "Ver más" si hay más archivos
+                    if (memory.files.length > 1) ...[
                       const SizedBox(width: 12),
                       Expanded(
                         child: Container(
                           height: 100,
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              TextButton.icon(
-                                onPressed: () {},
-                                icon: const Icon(
-                                  Icons.add_circle_outline,
+                              Icon(
+                                Icons.photo_library,
+                                color: Color(0xFF6366F1),
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '+${memory.files.length - 1}',
+                                style: const TextStyle(
                                   color: Color(0xFF6366F1),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
-                                label: const Text(
-                                  'Ver más',
-                                  style: TextStyle(
-                                    color: Color(0xFF6366F1),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                              Text(
+                                'más',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -764,6 +2096,30 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ],
                 ),
+                
+                // Tags si existen
+                if (memory.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: memory.tags.take(3).map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF6366F1).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '#$tag',
+                        style: const TextStyle(
+                          color: Color(0xFF6366F1),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ],
               ],
             ),
           ),
@@ -772,64 +2128,593 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
-  // Tab 2: Organizar (Grid de todas las fotos)
-  Widget _buildOrganizeTab() {
-    final images = [
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
-      'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=400',
-      'https://images.unsplash.com/photo-1571844307880-751c6d86f3f3?w=400',
-      'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
-    ];
+  // Método para mostrar el detalle de una imagen
+  void _showImageDetail(dynamic file, MemoryResponse memory, DateTime date) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            memory.title.isNotEmpty ? memory.title : 'Sin título',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${date.day}/${date.month}/${date.year}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Imagen
+              Flexible(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      file.downloadUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.error, size: 48, color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Descripción si existe
+              if (memory.description.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    memory.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  // Tab 2: Organizar (HU19)
+  Widget _buildOrganizeTab() {
+    // Selector de modo de organización
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Large featured image
-          Container(
-            width: double.infinity,
-            height: 220,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: NetworkImage(images[0]),
-                fit: BoxFit.cover,
-              ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildOrgChip('Formato', OrganizationMode.formato),
+                const SizedBox(width: 8),
+                _buildOrgChip('Línea de tiempo', OrganizationMode.lineaDeTiempo),
+                const SizedBox(width: 8),
+                _buildOrgChip('Temáticas', OrganizationMode.tematicas),
+                const SizedBox(width: 8),
+                _buildOrgChip('Momentos', OrganizationMode.momentos),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-
-          // Grid of smaller images
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
-            ),
-            itemCount: images.length - 1,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(images[index + 1]),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
-            },
-          ),
+          if (isLoadingMemories)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          else if (errorMessage != null)
+            Text(errorMessage!, style: TextStyle(color: Colors.red[600]))
+          else if (memories.isEmpty)
+            const Text('No hay memorias para organizar')
+          else
+            Expanded(child: _buildOrganizedList())
         ],
       ),
     );
+  }
+
+  Widget _buildOrgChip(String label, OrganizationMode mode) {
+    final selected = _organizationMode == mode;
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      onSelected: (_) => setState(() => _organizationMode = mode),
+    );
+  }
+
+  Widget _buildOrganizedList() {
+    // Construir estructura según modo
+    final Map<String, List<MemoryResponse>> groups = _groupMemories();
+    final groupKeys = groups.keys.toList();
+
+    return ListView.builder(
+      itemCount: groupKeys.length,
+      itemBuilder: (context, index) {
+        final key = groupKeys[index];
+        final items = groups[key] ?? const [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                key,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final m = items[i];
+                final url = m.firstImageUrl ?? 'https://via.placeholder.com/300x300.png?text=Memoria';
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(url, fit: BoxFit.cover),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, List<MemoryResponse>> _groupMemories() {
+    switch (_organizationMode) {
+      case OrganizationMode.formato:
+        return _groupBy(memories, (m) => _formatFromMemory(m));
+      case OrganizationMode.lineaDeTiempo:
+        // Agrupar por año-mes
+        return _groupBy(memories, (m) {
+          final d = m.photoDate ?? m.createdDate;
+          return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+        }, sortByKey: true, keyComparator: (a, b) => b.compareTo(a));
+      case OrganizationMode.tematicas:
+        // Para cada etiqueta crear grupos; si no hay, va a 'Sin etiqueta'
+        final Map<String, List<MemoryResponse>> g = {};
+        for (final m in memories) {
+          final tags = m.tags.isEmpty ? ['Sin etiqueta'] : m.tags;
+          for (final t in tags) {
+            g.putIfAbsent(t, () => []).add(m);
+          }
+        }
+        return g;
+      case OrganizationMode.momentos:
+        return _groupBy(memories, (m) => m.associatedQuestion ?? (m.tags.isNotEmpty ? m.tags.first : 'General'));
+    }
+  }
+
+  String _formatFromMemory(MemoryResponse m) {
+    // Usar field type cuando esté disponible, si no, derivar del media
+    final t = m.type.toLowerCase();
+    if (t.isNotEmpty) return t;
+    final types = m.mediaTypes;
+    if (types.length == 1) {
+      switch (types.first) {
+        case 'image':
+          return 'foto';
+        case 'video':
+          return 'video';
+        case 'audio':
+          return 'audio';
+      }
+    }
+    return types.isEmpty ? 'texto' : 'mixto';
+  }
+
+  Map<String, List<MemoryResponse>> _groupBy<T>(
+    List<MemoryResponse> list,
+    String Function(MemoryResponse) keySelector, {
+    bool sortByKey = false,
+    int Function(String a, String b)? keyComparator,
+  }) {
+    final Map<String, List<MemoryResponse>> map = {};
+    for (final item in list) {
+      final k = keySelector(item);
+      map.putIfAbsent(k, () => []).add(item);
+    }
+    if (sortByKey) {
+      final entries = map.entries.toList()
+        ..sort((a, b) => (keyComparator ?? (String a, String b) => a.compareTo(b))(a.key, b.key));
+      return {for (final e in entries) e.key: e.value};
+    }
+    return map;
+  }
+
+  /// Muestra el menú de opciones del memorial (Editar/Eliminar)
+  void _showMemorialOptionsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barra superior indicadora
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // Título
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Opciones del memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                
+                const Divider(),
+                
+                // Opción: Editar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Color(0xFF6366F1),
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Editar memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Modificar información del memorial',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navegar a la pantalla de edición
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditMemorialScreen(
+                          memorialId: widget.memorialId,
+                        ),
+                      ),
+                    ).then((value) {
+                      // Si se editó correctamente, recargar los datos
+                      if (value == true) {
+                        _loadMemorialData(); // 🔄 Recarga los datos actualizados
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Los cambios se guardaron correctamente'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    });
+                  },
+                ),
+                
+                const Divider(height: 1),
+
+                // Opción: Eliminar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Eliminar memorial',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Esta acción no se puede deshacer',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () async => _deleteMemorial(context, widget.memorialId),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Muestra el menú de opciones para una memoria individual
+  void _showMemoryOptionsMenu(BuildContext context, String memoryId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barra superior decorativa
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // Título
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Opciones de memoria',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Opción: Eliminar
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Eliminar memoria',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Esta acción no se puede deshacer',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteMemory(memoryId);
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Elimina una memoria del memorial
+  Future<void> _deleteMemory(String memoryId) async {
+    // Mostrar diálogo de confirmación
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            '¿Eliminar memoria?',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: const Text(
+            'Esta acción no se puede deshacer. La memoria se eliminará permanentemente.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Si el usuario canceló, no hacer nada
+    if (confirm != true) return;
+
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF6366F1),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Llamar al servicio para eliminar la memoria
+      await _memoriesService.deleteMemory(memoryId);
+
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Recargar las memorias
+      currentPage = 0;
+      await _loadMemories();
+
+      // Mostrar mensaje de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Memoria eliminada correctamente'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar el diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      //ELIMINAR DEL PROVIDER DE MEMORIES
+      // Mostrar mensaje de error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar la memoria: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
 

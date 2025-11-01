@@ -248,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               // Social login options
-              Row(
+              /*Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButtonCustom(
@@ -269,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {},
                   ),
                 ],
-              ),
+              ),*/
               const SizedBox(height: 16),
               // Sign up link
               Center(

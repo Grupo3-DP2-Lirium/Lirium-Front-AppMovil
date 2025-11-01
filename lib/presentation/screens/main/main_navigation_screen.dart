@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
-import '../memories/timeline_screen.dart';
-import '../profiles/profiles_screen.dart';
+import 'package:flutter_frontend/presentation/screens/videos/videos_screen.dart';
+import '../memories/organize_memories/timeline_screen.dart';
+import '../memorial/profiles_screen.dart';
 import '../memories/memories_grid_screen.dart';
 import '../chat/chat_screen.dart';
 import '../settings/settings_screen.dart';
@@ -21,7 +22,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>{
     const HomeScreen(),
     const ProfilesScreen(),
     const MemoriesGridScreen(),
-    const ChatScreen(),
+    const VideosScreen(),
     const SettingsScreen(),
   ];
 
@@ -46,10 +47,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>{
             icon: Icon(Icons.home_outlined),
             label: 'Home',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Perfiles'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Memoriales'),
           BottomNavigationBarItem(
             icon: Icon(Icons.add_circle_outline),
-            label: 'Memorias',
+            label: 'Recuerdos',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.movie_creation_outlined), label: 'Videos'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: 'Cuenta'),

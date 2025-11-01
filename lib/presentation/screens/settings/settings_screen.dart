@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/auth_storage.dart';
@@ -57,33 +59,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // 2) Cerrar sesión en backend/servicios
         await _authService.logout();
 
-        // 3) Limpiar tokens/refresh (se borrará last_email también)
+        // 3) Limpiar tokens/refresh (NO se borrará last_email)
         await _authStorage.clear();
 
-        // 4) Guardar el correo como último email DESPUÉS de cerrar sesión y limpiar
+        // 4) Guardar el correo como último email DESPUÉS de limpiar
         if (currentEmail != null && currentEmail.isNotEmpty) {
           await _authStorage.saveLastEmail(currentEmail);
         }
 
-        if (mounted) {
-          // Navegar al LoginScreen y limpiar toda la pila de navegación
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => LoginScreen(initialEmail: currentEmail)),
-            (route) => false,
-          );
-        }
+        // 5) Navegar al login y pasar el correo guardado
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(initialEmail: currentEmail),
+          ),
+          (route) => false,
+        );
       } catch (e) {
+        // Manejo de error
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cerrar sesión: $e')),
+        );
+      } finally {
         if (mounted) {
           setState(() {
             _isLoggingOut = false;
           });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al cerrar sesión: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     }
@@ -199,10 +201,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           SettingItem(
-            icon: Icons.storage,
-            title: 'Almacenamiento',
-            subtitle: 'Gestionar espacio usado',
-            onTap: () {},
+            icon: Icons.monetization_on,
+            title: 'Plan Lirium',
+            subtitle: 'Gestiona tu plan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubscriptionPlanDetailsScreen(
+                    usedStorageGB: 300,
+                    totalStorageGB: 500,
+                  ),
+                ),
+              );
+            },
+          ),
+          SettingItem(
+            icon: Icons.monetization_on,
+            title: 'Se Premium',
+            subtitle: 'Adquiere tu plan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GetPremiumScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 

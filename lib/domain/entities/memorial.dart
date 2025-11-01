@@ -5,7 +5,7 @@ class Memorial {
   final String description;
   final String gender;
   final String relation;
-  final DateTime birthDate;
+  final DateTime? birthDate; // ✅ Ahora es nullable
   final bool isCollaborative;
   final bool isJournal;
   final DateTime createdDate;

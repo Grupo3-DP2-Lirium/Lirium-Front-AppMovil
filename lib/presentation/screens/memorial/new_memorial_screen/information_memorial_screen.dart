@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/switch_button.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/memorial_created_screen.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:http/http.dart';
+import 'package:provider/provider.dart';
 
 class InformationMemorialScreen extends StatefulWidget {
   final String relation;
@@ -37,6 +41,8 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   // Form key used for validation
   final _formKey = GlobalKey<FormState>();
 
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,18 +52,27 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   /// Handles the submission of the form and sends the data to the backend
   Future<void> _saveMemorial() async {
     final service = MemorialService();
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    // Pop-up de Cargando
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
 
     String formattedBirthDate = '';
     if (_birthDateController.text.isNotEmpty) {
-      final parts = _birthDateController.text.split('/'); // "dd/MM/yyyy"
+      final parts = _birthDateController.text.split('/');
       if (parts.length == 3) {
         final day = parts[0].padLeft(2, '0');
         final month = parts[1].padLeft(2, '0');
         final year = parts[2];
-        formattedBirthDate = "$year-$month-$day"; // "yyyy-MM-dd"
+        formattedBirthDate = "$year-$month-$day";
       }
     }
 
@@ -73,19 +88,42 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
           isCollaborative: _isCollaborative,
           isJournal: false,
         ),
-        _imageFile?.path
+        _imageFile?.path,
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MemorialCreatedScreen(memorial: memorial),
-        ),
+      Navigator.pop(context); // cerrar loading
+
+      // Actualizar provider
+      final provider = Provider.of<MemorialProvider>(context, listen: false);
+      provider.agregarMemorial(memorial);
+
+      // Mostrar pop-up de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "¡Memorial creado!",
+        message: "Tu memorial ha sido creado correctamente",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cierra el pop-up
+              Navigator.pop(context); // retrocede al listado
+            },
+          ),
+        ],
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al crear memorial: $e")),
-      );
+      Navigator.pop(context); // cerrar loading si hubo error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al crear memorial: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -210,7 +248,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                 SizedBox(width: screenWidth * 0.04),
                 Expanded(
                   child: PrimaryButton(
-                    text: "Guardar",
+                    text: "Guardar", //CambiarPopUPS
                     onPressed: _saveMemorial,
                   ),
                 ),

@@ -17,8 +17,10 @@ import 'package:flutter_frontend/presentation/screens/settings/reminders_list_sc
 import 'package:flutter_frontend/presentation/screens/notifications/notifications_screen.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/buttons/secondary_button.dart';
-import '../memories/personal_space_screen.dart';
-import '../memories/new_personal_memory_screen.dart';
+import '../memories/personal_space/personal_space_screen.dart';
+import '../memories/personal_space/new_personal_memory_screen.dart';
+import '../memories/my_personal_space_screen.dart';
+import '../memories/new_reflection_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -63,20 +65,19 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
     );
   }
-  
   void _goToPersonalSpace() => Navigator.push(
     context, 
-    MaterialPageRoute(builder: (_) => const PersonalSpaceScreen()),
+    MaterialPageRoute(builder: (_) => const MyPersonalSpaceScreen()),
   );
   
   void _goToAddMemory() {
     //Botón de arriba
   }
   
-  void _goToNewReflection() {
+  void _goToCreateReflection() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const NewPersonalMemoryScreen()),
+      MaterialPageRoute(builder: (_) => const NewReflectionScreen()),
     );
   }
   
@@ -203,13 +204,31 @@ class _HomeScreenState extends State<HomeScreen> {
             widgets.add(
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: SizedBox(
-                  height: 48,
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _goToAddMemory,
-                    child: const Text('Añadir un recuerdo'),
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _goToAddMemory,
+                          child: const Text('Añadir un recuerdo'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _goToCreateReflection,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                          ),
+                          child: const Text('Crear reflexión'),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );

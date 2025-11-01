@@ -48,7 +48,7 @@ Future<void> appPopupButtonDefault({
                     ),
                     SizedBox(height: 24),
                     Text(
-                      "Guardando tu recuerdo...",
+                      "Procesando ...",
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),

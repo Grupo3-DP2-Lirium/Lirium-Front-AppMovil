@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/memorial_provider.dart';
@@ -142,16 +143,23 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
                         description: m.description,
                         isCollaborative: m.isCollaborative,
                         created: m.createdDate,
+                        profilePhotoUrl: m.profilePhotoUrl,
+                        profilePhotoBase64: m.profilePhotoBase64,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => MemorialDetailScreen(
                               memorialId: m.idMemorial,
-                              name: m.name,
-                              description: m.description,
                             ),
                           ),
-                        ),
+                        ).then((_) {
+                          // Recargar la lista cuando regrese
+                          if (isMis) {
+                            prov.cargarMisMemoriales(force: true);
+                          } else {
+                            prov.cargarColaborativos(force: true);
+                          }
+                        }),
                       );
                     },
                   );
@@ -171,7 +179,6 @@ class _SegmentedTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -229,7 +236,8 @@ class _TabPill extends StatelessWidget {
 
 class _MemorialListCard extends StatelessWidget {
   final String name; final String description; final bool isCollaborative; final DateTime created; final VoidCallback onTap;
-  const _MemorialListCard({required this.name, required this.description, required this.isCollaborative, required this.created, required this.onTap});
+  final String? profilePhotoUrl; final String? profilePhotoBase64;
+  const _MemorialListCard({required this.name, required this.description, required this.isCollaborative, required this.created, required this.onTap, this.profilePhotoUrl, this.profilePhotoBase64});
 
   String _timeAgo() {
     final diff = DateTime.now().difference(created);
@@ -237,6 +245,28 @@ class _MemorialListCard extends StatelessWidget {
     if (diff.inHours >= 1) return 'Hace ${diff.inHours} h';
     if (diff.inMinutes >= 1) return 'Hace ${diff.inMinutes} min';
     return 'Justo ahora';
+  }
+
+  DecorationImage? _getProfileImage() {
+    ImageProvider? imageProvider;
+    
+    if (profilePhotoBase64 != null && profilePhotoBase64!.isNotEmpty) {
+      try {
+        final base64String = profilePhotoBase64!.contains(',') 
+            ? profilePhotoBase64!.split(',').last 
+            : profilePhotoBase64!;
+        imageProvider = MemoryImage(base64Decode(base64String));
+      } catch (e) {
+        print('Error decoding base64 in list: $e');
+        return null;
+      }
+    } else if (profilePhotoUrl != null && profilePhotoUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(profilePhotoUrl!);
+    }
+    
+    return imageProvider != null 
+        ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+        : null;
   }
 
   @override
@@ -263,8 +293,11 @@ class _MemorialListCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFE9E8F6),
                 borderRadius: BorderRadius.circular(12),
+                image: _getProfileImage(),
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 32),
+              child: _getProfileImage() == null 
+                  ? const Icon(Icons.person, color: Colors.white, size: 32)
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(

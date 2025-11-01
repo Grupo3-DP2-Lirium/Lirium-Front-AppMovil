@@ -6,16 +6,32 @@ import 'package:flutter_frontend/data/models/memory_response.dart';
 class FileUrlHelper {
 
   // Para emulador Android:
-  static const String baseUrl = 'http://10.0.2.2:8080';
+  //static const String baseUrl = 'http://10.0.2.2:8080';
+  // Para celular físico:
+  static const String baseUrl = 'http://192.168.18.177:8080';
 
   /// Construye la URL completa para descargar un archivo
   static String getFileUrl({
     required String fullPath, // Ruta completa con el archivo o URL de Azure
     required String fileName,
   }) {
+    print('DEBUG FileUrlHelper - Input fullPath: $fullPath');
+    print('DEBUG FileUrlHelper - Input fileName: $fileName');
+    
     // Si ya es una URL completa de Azure o cualquier servicio en la nube, devolverla directamente
     if (fullPath.startsWith('https://') || fullPath.startsWith('http://')) {
-      print('Using direct URL: $fullPath');
+      // Si es localhost, convertir a la IP del emulador
+      if (fullPath.startsWith('http://localhost:8080')) {
+        final convertedUrl = fullPath.replaceFirst('http://localhost:8080', baseUrl);
+        print('DEBUG FileUrlHelper - Converting localhost URL to emulator URL: $convertedUrl');
+        return convertedUrl;
+      }
+      // Si ya es 10.0.2.2, usarla directamente
+      if (fullPath.startsWith('http://10.0.2.2:8080')) {
+        print('DEBUG FileUrlHelper - Using emulator URL directly: $fullPath');
+        return fullPath;
+      }
+      print('DEBUG FileUrlHelper - Using direct URL: $fullPath');
       return fullPath;
     }
 

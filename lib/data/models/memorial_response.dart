@@ -33,6 +33,17 @@ class MemorialResponseModel {
   });
 
   factory MemorialResponseModel.fromJson(Map<String, dynamic> json) {
+    String createdRaw = json['createdDate'] ?? '';
+    String updatedRaw = json['updatedDate'] ?? '';
+
+    DateTime parseDate(String raw) {
+      if (raw.isEmpty) return DateTime.now();
+      // Reemplaza espacio por 'T'
+      return DateTime.parse(raw.replaceFirst(' ', 'T'));
+      // Alternativamente, usando intl:
+      // return DateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(raw);
+    }
+
     return MemorialResponseModel(
       idMemorial: json["idMemorial"] ?? '',
       name: json["name"] ?? '',
@@ -44,10 +55,8 @@ class MemorialResponseModel {
       isCollaborative: json["collaborative"] ?? false,
       isJournal: json["journal"] ?? false,
       userId: json['userId'] ?? '',
-      createdDate: DateTime.parse(json['createdDate']),
-      updatedDate: json['updatedDate'] != null
-          ? DateTime.parse(json['updatedDate'])
-          : DateTime.now(),
+      createdDate: parseDate(createdRaw),
+      updatedDate: updatedRaw.isNotEmpty ? parseDate(updatedRaw) : DateTime.now(),
       profilePhoto: json['profilePhoto'] != null
           ? FileResponse.fromJson(json['profilePhoto'])
           : null,
@@ -55,6 +64,10 @@ class MemorialResponseModel {
   }
 
   Memorial toEntity() {
+    DateTime parseBirth(String raw) {
+      return DateTime.tryParse(raw.replaceFirst(' ', 'T')) ?? DateTime.now();
+    }
+
     return Memorial(
       idMemorial: idMemorial,
       name: name,
@@ -62,11 +75,11 @@ class MemorialResponseModel {
       description: description,
       gender: gender,
       relation: relation,
-      birthDate: DateTime.parse(birthDate),
+      birthDate: birthDate.isNotEmpty ? DateTime.tryParse(birthDate) : null, // ✅ Manejo seguro de null
       isCollaborative: isCollaborative,
       isJournal: isJournal,
       createdDate: createdDate,
-      profilePhotoUrl: profilePhoto?.fileUrl
+      profilePhotoUrl: profilePhoto?.fileUrl,
     );
   }
 
