@@ -8,6 +8,7 @@ export 'buttons/rectangle_button.dart';
 export 'forms/app_text_field.dart';
 export 'forms/password_field.dart';
 export 'forms/phone_field.dart';
+export 'forms/code_input_field.dart';
 
 // Cards
 export 'cards/profile_card.dart';

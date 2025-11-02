@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../components/components.dart';
 import '../setup/preserve_question_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -181,8 +182,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: SecondaryButton(
                   text: '¿Olvidaste tu contraseña?',
-                  textColor: const Color(0xFF6366F1),
-                  onPressed: () {},
+                  textColor: const Color(0xFFFC7171),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const Spacer(),
