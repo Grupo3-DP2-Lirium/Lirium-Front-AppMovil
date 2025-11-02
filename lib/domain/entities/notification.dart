@@ -1,9 +1,13 @@
 enum NotificationType {
-  REMINDER,
-  COMMENT,
-  LIKE,
-  MEMORIAL_SHARED,
-  SYSTEM,
+  SYSTEM,              // Notificaciones generales del sistema
+  MEMORIAL_SHARED,     // Cuando se comparte un memorial
+  COMMENT,             // Cuando alguien comenta
+  REMINDER,            // Recordatorios programados
+  SUBSCRIPTION,        // Notificaciones de suscripción (activación, renovación, vencimiento)
+  PAYMENT,             // Notificaciones de pagos (éxito, fallo)
+  DOCUMENTARY,         // Notificaciones relacionadas con documentales
+  REFLECTION,          // Notificaciones de reflexiones personales
+  COLLABORATION        
 }
 
 class AppNotification {
@@ -36,9 +40,9 @@ class AppNotification {
       relatedEntityId: json['relatedEntityId'],
       isRead: json['isRead'] ?? false,
       // ✅ CRÍTICO: El backend envía fechas SIN zona horaria, asumimos UTC
-      createdDate: DateTime.parse(json['createdDate']).toUtc(),
+      createdDate: DateTime.parse(json['createdDate']),
       readDate: json['readDate'] != null 
-          ? DateTime.parse(json['readDate']).toUtc()
+          ? DateTime.parse(json['readDate'])
           : null,
     );
   }
@@ -62,8 +66,6 @@ class AppNotification {
         return NotificationType.REMINDER;
       case 'COMMENT':
         return NotificationType.COMMENT;
-      case 'LIKE':
-        return NotificationType.LIKE;
       case 'MEMORIAL_SHARED':
         return NotificationType.MEMORIAL_SHARED;
       case 'SYSTEM':

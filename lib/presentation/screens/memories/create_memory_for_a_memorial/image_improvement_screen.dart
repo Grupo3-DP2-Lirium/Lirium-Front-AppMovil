@@ -1,19 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../components/painters/improvement_line_painter.dart';
-import '../../../data/services/image_service.dart';
+import 'package:flutter_frontend/data/services/image_service.dart';
 import 'package:flutter_frontend/presentation/components/painters/improvement_line_painter.dart';
 import 'image_result_screen.dart';
 
-/// Pantalla que muestra la animación de mejora de imagen
+/// Pantalla que muestra la animación de mejora de imagen (genérica)
 class ImageImprovementScreen extends StatefulWidget {
   final String imagePath;
-  final String memorialId;
   
   const ImageImprovementScreen({
     super.key,
     required this.imagePath,
-    required this.memorialId,
   });
 
   @override
@@ -49,12 +46,14 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
 
   Future<void> _startImprovement() async {
     await Future.delayed(const Duration(milliseconds: 500));
-    _controller.repeat(); // Animación continua mientras procesa
+    _controller.repeat();
     
     try {
-      // Enviar imagen al backend para mejorarla
+      print('🔧 Iniciando mejora de imagen...');
       final imageFile = File(widget.imagePath);
       final enhancedBytes = await _imageService.enhanceImage(imageFile);
+      
+      print('✅ Imagen mejorada recibida (${enhancedBytes.length} bytes)');
       
       if (mounted) {
         setState(() {
@@ -67,6 +66,7 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
         _navigateToResult();
       }
     } catch (e) {
+      print('❌ Error al mejorar imagen: $e');
       if (mounted) {
         setState(() {
           _errorMessage = e.toString();
@@ -78,18 +78,28 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
     }
   }
 
-  void _navigateToResult() {
-    if (_enhancedImageBytes != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageResultScreen(
-            originalImagePath: widget.imagePath,
-            enhancedImageBytes: _enhancedImageBytes!,
-            memorialId: widget.memorialId,
-          ),
+  // ✅ CORREGIDO: Usar push en lugar de pushReplacement
+  Future<void> _navigateToResult() async {
+    if (_enhancedImageBytes == null) return;
+    
+    print('📱 Navegando a ImageResultScreen...');
+    
+    // CAMBIO CRÍTICO: Usar push() en lugar de pushReplacement()
+    final String? resultPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ImageResultScreen(
+          originalImagePath: widget.imagePath,
+          enhancedImageBytes: _enhancedImageBytes!,
         ),
-      );
+      ),
+    );
+    
+    print('✅ ImageImprovementScreen recibió resultado: $resultPath');
+    
+    // Si recibimos un resultado, propagarlo hacia atrás
+    if (mounted && resultPath != null) {
+      Navigator.pop(context, resultPath);
     }
   }
 
@@ -109,12 +119,12 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Cerrar diálogo
+              Navigator.pop(context);
               setState(() {
                 _errorMessage = null;
                 _isProcessing = true;
               });
-              _startImprovement(); // Reintentar
+              _startImprovement();
             },
             child: const Text('Reintentar'),
           ),
@@ -174,7 +184,6 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
         borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
-            // Imagen original
             Image.file(
               File(widget.imagePath),
               width: 300,
@@ -182,7 +191,6 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
               fit: BoxFit.cover,
             ),
             
-            // Overlay de mejora con animación
             if (_isProcessing)
               AnimatedBuilder(
                 animation: _animation,

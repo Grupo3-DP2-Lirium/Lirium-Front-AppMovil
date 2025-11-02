@@ -2,25 +2,18 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
-import 'package:flutter_frontend/data/models/memory_create_request.dart';
-import 'package:flutter_frontend/data/services/memory_service.dart';
-import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
-import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/presentation/components/components.dart';
-import 'memory_success_screen.dart';
+import 'package:path_provider/path_provider.dart';
 
-/// Pantalla que muestra el resultado de la mejora de imagen
+/// Pantalla genérica que muestra el resultado de la mejora de imagen
+/// Devuelve la ruta de la imagen seleccionada (mejorada o original según toggle)
 class ImageResultScreen extends StatefulWidget {
   final String originalImagePath;
   final List<int> enhancedImageBytes;
-  final String memorialId;
 
   const ImageResultScreen({
     super.key,
     required this.originalImagePath,
     required this.enhancedImageBytes,
-    required this.memorialId,
   });
 
   @override
@@ -28,7 +21,7 @@ class ImageResultScreen extends StatefulWidget {
 }
 
 class _ImageResultScreenState extends State<ImageResultScreen> {
-  bool _showOriginal = false;
+  bool _showOriginal = false; // Por defecto muestra la mejorada
 
   void _toggleComparison() {
     setState(() {
@@ -36,72 +29,40 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
     });
   }
 
-  void _useEnhancedImage() {
-    // Aquí puedes guardar la imagen mejorada
-    // Por ahora solo navegamos de vuelta
-    Navigator.popUntil(context, (route) => route.isFirst);
+  Future<void> _useSelectedImage() async {
+    print('🎯 Usuario eligió usar: ${_showOriginal ? "original" : "mejorada"}');
     
-    // Mostrar confirmación
-  // Save Changes
-  Future<void> _saveMemory() async {
-    if (_titleController.text.trim().isEmpty) {
-      _showError('Por favor ingresa un título');
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
     try {
-      final request = MemoryCreateRequest(
-        memorialId: widget.memorialId,
-        type: MemoryOriginType.spontaneous,
-        title: _titleController.text.trim(),
-        photoDate: DateTime.now(),
-      );
-
-      final imageFile = File(widget.imagePath);
-      print('DEBUG: Image file exists: ${await imageFile.exists()}');
-      print('DEBUG: Image file path: ${widget.imagePath}');
-      print('DEBUG: Image file size: ${await imageFile.length()} bytes');
+      String selectedImagePath;
       
-      await _memoryService.createMemory(
-        request: request,
-        files: [imageFile],
-      );
-
+      if (_showOriginal) {
+        // Usar imagen original
+        selectedImagePath = widget.originalImagePath;
+        print('📸 Usando imagen original: $selectedImagePath');
+      } else {
+        // Guardar imagen mejorada en archivo temporal
+        final tempDir = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final tempFile = File('${tempDir.path}/enhanced_$timestamp.jpg');
+        await tempFile.writeAsBytes(widget.enhancedImageBytes);
+        selectedImagePath = tempFile.path;
+        print('✨ Imagen mejorada guardada en: $selectedImagePath');
+      }
+      
       if (mounted) {
-        _showSuccess();
-        await Future.delayed(const Duration(seconds: 1));
-        _navigateToSuccess();
+        Navigator.pop(context, selectedImagePath);
       }
     } catch (e) {
-      _showError('Error al guardar la memoria: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+      print('❌ Error al procesar imagen: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Imagen mejorada guardada'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _discardAndRetry() {
-    // Volver a la pantalla anterior para seleccionar otra imagen
-    Navigator.pop(context);
   }
 
   @override
@@ -113,16 +74,18 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context), // Cancelar (sin resultado)
+        ),
       ),
       body: Column(
         children: [
-          // Imagen con comparación
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Stack(
                 children: [
-                  // Imagen mejorada o original según el estado
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: AnimatedSwitcher(
@@ -145,7 +108,7 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
                     ),
                   ),
                   
-                  // Indicador de qué imagen se está mostrando
+                  // Badge indicador
                   Positioned(
                     top: 16,
                     right: 16,
@@ -155,16 +118,27 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
+                        color: _showOriginal ? Colors.grey[700] : Colors.green[700],
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        _showOriginal ? 'Original' : 'Mejorada',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _showOriginal ? Icons.image : Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _showOriginal ? 'Original' : 'Mejorada',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -183,7 +157,7 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
                 size: 20,
               ),
               label: Text(
-                _showOriginal ? 'Ver mejorada' : 'Comparar con original',
+                _showOriginal ? 'Ver imagen mejorada' : 'Comparar con original',
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF6366F1),
@@ -196,25 +170,12 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
           
           const SizedBox(height: 16),
           
-          // Botones de acción
+          // Botón principal - usa la imagen que esté visible
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SecondaryButton(
-                    onPressed: _discardAndRetry,
-                    text: "Reintentar",
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: PrimaryButton(
-                    text: "Usar esta",
-                    onPressed: _useEnhancedImage,
-                  ),
-                ),
-              ],
+            child: PrimaryButton(
+              text: _showOriginal ? "Usar imagen original" : "Usar imagen mejorada",
+              onPressed: _useSelectedImage,
             ),
           ),
         ],

@@ -11,8 +11,6 @@ import 'package:provider/provider.dart';
 import 'providers/memorial_provider.dart';
 import 'presentation/screens/memorial/memorials_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
-
-void main() {
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -27,15 +25,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📩 Data: ${message.data}');
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Inicializar Firebase
   await Firebase.initializeApp();
-  
+
   // ✅ Configurar handler de mensajes en background
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  
+
   runApp(const RemoryApp());
 }
 
@@ -56,27 +54,27 @@ class _RemoryAppState extends State<RemoryApp> {
   }
 
   Future<void> _initializeApp() async {
-    // ✅ PASO 1: Solicitar permisos de notificación (Android 13+)
+    // ✅ Paso 1: Solicitar permisos de notificación (Android 13+)
     await _requestNotificationPermissions();
-    
-    // ✅ PASO 2: Inicializar Firebase Messaging
+
+    // ✅ Paso 2: Inicializar Firebase Messaging
     await _initializeFirebaseMessaging();
   }
 
   /// ✅ Solicita permisos de notificación al usuario
   Future<void> _requestNotificationPermissions() async {
     final status = await Permission.notification.status;
-    
+
     print('🔔 Notification permission status: $status');
-    
+
     if (status.isDenied) {
       final result = await Permission.notification.request();
-      
+
       if (result.isGranted) {
         print('✅ Notification permission GRANTED');
       } else if (result.isPermanentlyDenied) {
         print('⚠️ Notification permission PERMANENTLY DENIED');
-        // Opcional: Mostrar diálogo para abrir configuración
+        // Puedes abrir la configuración si lo deseas:
         // await openAppSettings();
       } else {
         print('❌ Notification permission DENIED');
@@ -90,12 +88,12 @@ class _RemoryAppState extends State<RemoryApp> {
 
   Future<void> _initializeFirebaseMessaging() async {
     await _fcmService.initialize();
-    
-    // ✅ Configurar callback para manejar notificaciones
+
+    // ✅ Configurar callback para manejar notificaciones recibidas
     _fcmService.onNotificationReceived = (data) {
       print('📬 Notification received in app: $data');
       final type = data['type'];
-      
+
       switch (type) {
         case 'REMINDER':
           print('🔔 Reminder notification: ${data['reminderId']}');
@@ -123,7 +121,7 @@ class _RemoryAppState extends State<RemoryApp> {
       providers: [
         ChangeNotifierProvider(create: (_) => MemorialProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
-        ChangeNotifierProvider(create: (_) => DocumentaryProvider())
+        ChangeNotifierProvider(create: (_) => DocumentaryProvider()),
       ],
       child: MaterialApp(
         title: 'Remory',

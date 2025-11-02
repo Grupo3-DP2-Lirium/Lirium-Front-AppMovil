@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/image_improvement_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/fields_widget.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/files_preview_widget.dart';
+import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/improve_picture.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -44,16 +46,15 @@ class MemoryContainer extends StatefulWidget {
 }
 
 class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAliveClientMixin {
-  late List<domain.File> _localFiles; // Editable list of files for the memory
+  late List<domain.File> _localFiles;
   final picker = ImagePicker();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   int _currentFileIndex = 0;
-  final Map<Key, VideoPlayerController> _videoControllers = {}; // Mapping of video controllers for video files
-  bool _isEditing = false; // Tracks widget mode
+  final Map<Key, VideoPlayerController> _videoControllers = {};
+  bool _isEditing = false;
   bool _isCreating = false;
   late final bool _hadOriginalFiles;
 
-  // Method to switch edit mode without recreating the widget
   void setEditMode(bool value) {
     if (!mounted) return;
     setState(() {
@@ -61,24 +62,21 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     });
   }
 
-  // Restores the original files and resets any changes made
   void restoreOriginalFiles(List<domain.File> originalFiles) {
     if (!mounted) return;
     setState(() {
-      _localFiles = List.from(originalFiles); // Reset local files to the original state
+      _localFiles = List.from(originalFiles);
       _currentFileIndex = 0;
     });
   }
 
   @override
-  bool get wantKeepAlive => true; // Keeps widget alive when switching tabs
+  bool get wantKeepAlive => true;
 
-  // Initialize the audio recorder
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
   }
 
-  // Check and request microphone permissions if not granted
   Future<bool> _checkMicrophonePermission() async {
     var status = await Permission.microphone.status;
     if (!status.isGranted) {
@@ -90,28 +88,21 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   @override
   void initState() {
     super.initState();
-    _localFiles = List.from(widget.existingFiles ?? []); // Initialize with existing files or empty list
+    _localFiles = List.from(widget.existingFiles ?? []);
     _isEditing = widget.edit;
     _isCreating = widget.create;
-    _initRecorder(); // Initialize audio recorder
+    _initRecorder();
     _hadOriginalFiles = (widget.existingFiles?.isNotEmpty ?? false);
   }
 
-  // Detect changes in existing files passed
   @override
   void didUpdateWidget(covariant MemoryContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // Get URLs of old and new files to check for changes
     final oldUrls = (oldWidget.existingFiles ?? []).map((f) => f.url).toList();
     final newUrls = (widget.existingFiles ?? []).map((f) => f.url).toList();
-
-    // Only update if the content of the parent has changed (added/replaced files)
     if (oldUrls.join(',') != newUrls.join(',')) {
-      // Avoid resetting the file index if files already exist
       setState(() {
         _localFiles = List.from(widget.existingFiles ?? []);
-        // Ensure current file index stays within the valid range
         if (_currentFileIndex >= _localFiles.length) {
           _currentFileIndex = _localFiles.isEmpty ? 0 : _localFiles.length - 1;
         }
@@ -119,7 +110,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     }
   }
 
-  // Dispose the recorder when the widget is disposed to clean up resources
   @override
   void dispose() {
     for (var controller in _videoControllers.values) {
@@ -133,14 +123,11 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    // Caso: hay archivos
     if (_localFiles.isNotEmpty) {
       final file = _localFiles.first;
       final fileType = file.type;
       final previewHeight =
-      fileType == "audio" ? widget.screenHeight * 0.10 : widget.screenHeight * 0.40;
-
+          fileType == "audio" ? widget.screenHeight * 0.10 : widget.screenHeight * 0.40;
       return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,16 +154,13 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         ),
       );
     }
-
-    // Caso: no hay archivos o está creando una nueva Memoria
-    if ((_localFiles.isEmpty && _hadOriginalFiles)||widget.create) {
-      // Mostrar PreviewWidget vacío + botón añadir
+    if ((_localFiles.isEmpty && _hadOriginalFiles) || widget.create) {
       return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PreviewWidget(
-              localFiles: _localFiles, // lista vacía
+              localFiles: _localFiles,
               currentFileIndex: _currentFileIndex,
               isEditing: _isEditing || _isCreating,
               deleteFile: _deleteFile,
@@ -197,94 +181,95 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         ),
       );
     }
-
-    // Memorias que nunca tuvieron archivos
     return _buildQA();
   }
 
-  // ------------------- Pregunta / Respuesta -------------------
   Widget _buildQA() => SingleChildScrollView(
-    child: Column(
-      children: [
-        if (widget.memory.associatedQuestion != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: AppTextField(
-              controller: TextEditingController(text: widget.memory.associatedQuestion),
-              enabled: false,
+        child: Column(
+          children: [
+            if (widget.memory.associatedQuestion != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: AppTextField(
+                  controller: TextEditingController(text: widget.memory.associatedQuestion),
+                  enabled: false,
+                  hintText: "Escribe la pregunta",
+                ),
+              ),
+            AppTextField(
               hintText: "Escribe la pregunta",
+              controller: widget.titleController,
+              enabled: _isEditing,
+              validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
             ),
-          ),
-
-        // Título editable
-        AppTextField(
-          hintText: "Escribe la pregunta",
-          controller: widget.titleController,
-          enabled: _isEditing,
-          validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
+            const SizedBox(height: 16),
+            AppTextField(
+              hintText: "Escribe la respuesta",
+              controller: widget.descriptionController,
+              enabled: _isEditing,
+              maxLines: 20,
+              validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-
-        // Descripción editable
-        AppTextField(
-          hintText: "Escribe la respuesta",
-          controller: widget.descriptionController,
-          enabled: _isEditing,
-          maxLines: 20,
-          validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
-        ),
-      ],
-    ),
-  );
+      );
 
   void _showAddOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.image),
-                title: const Text("Añadir imagen"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _addFile(context, "image");
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.videocam),
-                title: const Text("Añadir video"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _addFile(context, "video");
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    print('🎬 _showAddOptions llamado');
+    
+    try {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (modalContext) {
+          print('✅ Modal builder ejecutado');
+          return SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.image),
+                  title: const Text("Añadir imagen"),
+                  onTap: () {
+                    print('📸 Opción imagen seleccionada');
+                    Navigator.pop(modalContext);
+                    // Usar el context original, no el del modal
+                    _addFile(context, "image");
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.videocam),
+                  title: const Text("Añadir video"),
+                  onTap: () {
+                    print('🎥 Opción video seleccionada');
+                    Navigator.pop(modalContext);
+                    _addFile(context, "video");
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ).then((value) {
+        print('✅ Modal cerrado con resultado: $value');
+      }).catchError((error) {
+        print('❌ Error en modal: $error');
+      });
+    } catch (e, stackTrace) {
+      print('❌ Error al abrir modal: $e');
+      print('Stack trace: $stackTrace');
+    }
   }
 
-  // ------------------- Eliminar archivo -------------------
   void _deleteFile(int index) {
     final file = _localFiles[index];
-
-    // Si el archivo es un video, destruir su controlador
     if (file.type == 'video') {
-      _videoControllers[file.key]?.dispose(); // Eliminar el controlador de video
-      _videoControllers.remove(file.key); // Eliminarlo del mapa
+      _videoControllers[file.key]?.dispose();
+      _videoControllers.remove(file.key);
     }
-
     setState(() {
-      // Eliminar el archivo de la lista
       _localFiles.removeAt(index);
-
-      // Si hemos eliminado el archivo actual, ajustar el índice
       if (_currentFileIndex >= _localFiles.length) {
         _currentFileIndex = _localFiles.isEmpty ? 0 : _localFiles.length - 1;
       }
@@ -292,11 +277,16 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     widget.onFileChanged?.call("delete", index, file);
   }
 
-  // ------------------- Agregar archivo -------------------
+  // =============== CORREGIDO: Flujo simplificado ===============
   Future<void> _addFile(BuildContext context, String type) async {
+    if (type == "image") {
+      await _addImageWithImprovement(context);
+      return;
+    }
+    
+    // Para video y audio, mantener el flujo original
     final picked = await _pickFile(type, context);
     if (picked == null) return;
-
     final file = File(picked.path);
     if (!await file.exists()) return;
 
@@ -312,38 +302,266 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     );
 
     setState(() {
-      // Si es audio y ya existe uno, reemplázalo
       if (type == "audio") {
         final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
         if (existingIndex != -1) {
-          // Si ya hay un audio, reemplazarlo
           final oldAudio = _localFiles[existingIndex];
-
-          // Notificar que se elimina el anterior
           widget.onFileChanged?.call("delete", existingIndex, oldAudio);
-
-          // Reemplazarlo por el nuevo audio
           _localFiles[existingIndex] = newFile;
           widget.onFileChanged?.call("update", existingIndex, newFile);
           return;
         }
       }
-
-      // Agregar nuevo archivo
       _localFiles.add(newFile);
-
-      // Actualizar índice al nuevo archivo
       _currentFileIndex = _localFiles.length - 1;
-
       widget.onFileChanged?.call("add", null, newFile);
     });
   }
 
-  // ------------------- Editar archivo -------------------
+  // =============== MEJORADO: Dar opción de mejorar o usar directamente ===============
+  Future<void> _addImageWithImprovement(BuildContext context) async {
+    print('🎬 _addImageWithImprovement iniciado');
+    
+    try {
+      // PASO 1: Elegir fuente (Galería o Cámara)
+      print('📋 Abriendo modal de selección de fuente...');
+      final ImageSource? source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (modalContext) {
+          print('✅ Modal de fuente construido');
+          return SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text("Galería de imágenes"),
+                  onTap: () {
+                    print('📸 Usuario seleccionó Galería');
+                    Navigator.pop(modalContext, ImageSource.gallery);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text("Tomar foto"),
+                  onTap: () {
+                    print('📷 Usuario seleccionó Cámara');
+                    Navigator.pop(modalContext, ImageSource.camera);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source == null) {
+        print('❌ Usuario canceló selección de fuente');
+        return;
+      }
+      
+      if (!context.mounted) {
+        print('❌ Context no disponible después de selección');
+        return;
+      }
+
+      print('🎯 Source seleccionado: $source');
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!context.mounted) return;
+
+      // PASO 2: Seleccionar imagen
+      print('📸 Seleccionando imagen...');
+      final XFile? pickedFile = await ImagePicker().pickImage(source: source);
+
+      if (pickedFile == null) {
+        print('❌ No se seleccionó imagen');
+        return;
+      }
+
+      print('✅ Imagen seleccionada: ${pickedFile.path}');
+
+      if (!context.mounted) return;
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (!context.mounted) return;
+
+      // PASO 3: Preguntar si quiere mejorar con IA
+      print('🤔 Preguntando si desea mejorar con IA...');
+      final bool? shouldEnhance = await showModalBottomSheet<bool>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (modalContext) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '¿Mejorar imagen con IA?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'La IA puede mejorar la calidad, pero tomará un rato.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Mejorar con IA'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () => Navigator.pop(modalContext, true),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(modalContext, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Usar sin mejora'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (shouldEnhance == null) {
+        print('❌ Usuario canceló decisión de mejora');
+        return;
+      }
+
+      if (!context.mounted) return;
+
+      String finalImagePath;
+
+      if (shouldEnhance) {
+        // FLUJO CON MEJORA: Ir directo a ImageImprovementScreen
+        print('🚀 Usuario eligió mejorar con IA, navegando directo a mejora...');
+        await Future.delayed(const Duration(milliseconds: 300));
+        
+        if (!context.mounted) return;
+
+        final String? enhancedPath = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) {
+              print('🏗️ Construyendo ImageImprovementScreen directamente');
+              return ImageImprovementScreen(imagePath: pickedFile.path);
+            },
+          ),
+        );
+
+        print('✅ Retornó de ImageImprovementScreen con: $enhancedPath');
+
+        if (enhancedPath == null) {
+          print('❌ Usuario canceló en flujo de mejora');
+          return;
+        }
+
+        finalImagePath = enhancedPath;
+      } else {
+        // FLUJO DIRECTO: Usar imagen sin mejora
+        print('⚡ Usuario eligió usar sin mejora');
+        finalImagePath = pickedFile.path;
+      }
+
+      if (!context.mounted) return;
+
+      // PASO FINAL: Agregar imagen a la lista
+      print('📁 Verificando archivo: $finalImagePath');
+      final file = File(finalImagePath);
+      if (!await file.exists()) {
+        print('❌ El archivo no existe: $finalImagePath');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: El archivo de imagen no existe'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      print('✅ Archivo válido, creando domain.File...');
+
+      final newFile = domain.File(
+        id: "",
+        url: finalImagePath,
+        name: finalImagePath.split('/').last,
+        type: "image",
+        mimeType: _guessMimeType(finalImagePath),
+        size: (await file.length()).toDouble(),
+        uploadedDate: DateTime.now(),
+        originalName: finalImagePath.split('/').last,
+      );
+
+      if (!mounted) {
+        print('❌ Widget no montado, no se puede actualizar estado');
+        return;
+      }
+
+      setState(() {
+        _localFiles.add(newFile);
+        _currentFileIndex = _localFiles.length - 1;
+        widget.onFileChanged?.call("add", null, newFile);
+      });
+
+      print('✅ Imagen agregada exitosamente a _localFiles (total: ${_localFiles.length})');
+      
+      // Mostrar confirmación
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(shouldEnhance 
+              ? '✨ Imagen mejorada agregada' 
+              : '📸 Imagen agregada'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+    } catch (e, stackTrace) {
+      print('❌ Error en _addImageWithImprovement: $e');
+      print('Stack trace: $stackTrace');
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al añadir imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _editFile(BuildContext context, String type, {int? index}) async {
     final picked = await _pickFile(type, context);
     if (picked == null) return;
-
     final file = File(picked.path);
     if (!await file.exists()) return;
 
@@ -359,32 +577,21 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     );
 
     setState(() {
-      // Buscar si ya hay un audio
       final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
-
       if (existingIndex != -1) {
         final oldAudio = _localFiles[existingIndex];
-
-        // Notificar que se elimina el anterior (para que el padre lo borre del backend)
         widget.onFileChanged?.call("delete", existingIndex, oldAudio);
-
-        // Reemplazarlo por el nuevo audio
         _localFiles[existingIndex] = newFile;
         widget.onFileChanged?.call("update", existingIndex, newFile);
-
       } else {
-        // Si por alguna razón no existía, simplemente agregarlo
         _localFiles.add(newFile);
         widget.onFileChanged?.call("add", null, newFile);
       }
-
     });
   }
 
-  // ------------------- Selector de imagen/video/audio -------------------
   Future<XFile?> _pickFile(String type, BuildContext context) async {
     final picker = ImagePicker();
-
     if (type == "audio") {
       final hasPermission = await _checkMicrophonePermission();
       if (!context.mounted) return null;
@@ -394,7 +601,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         );
         return null;
       }
-
       XFile? recordedFile;
       bool isRecording = false;
       bool isPlaying = false;
@@ -402,9 +608,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       Timer? timer;
       final FlutterSoundPlayer player = FlutterSoundPlayer();
       await player.openPlayer();
-
       if (!context.mounted) return null;
-
       final XFile? result = await showModalBottomSheet<XFile>(
         context: context,
         isScrollControlled: true,
@@ -436,22 +640,18 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                           final tempDir = Directory.systemTemp;
                           final filePath =
                               '${tempDir.path}/recorded_${DateTime.now().millisecondsSinceEpoch}.aac';
-
                           if (!isRecording) {
                             recordedFile = XFile(filePath);
                             recordingDuration = Duration.zero;
-
                             await _recorder.startRecorder(
                               toFile: filePath,
                               codec: Codec.aacADTS,
                             );
-
                             timer = Timer.periodic(const Duration(seconds: 1), (_) {
                               setModalState(() {
                                 recordingDuration += const Duration(seconds: 1);
                               });
                             });
-
                             setModalState(() => isRecording = true);
                           } else {
                             await _recorder.stopRecorder();
@@ -504,7 +704,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
           ),
         ),
       );
-      // Si se salió sin usar audio, eliminar el archivo temporal
       if (recordedFile != null && result == null) {
         final file = File(recordedFile!.path);
         if (await file.exists()) await file.delete();
@@ -513,10 +712,8 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       await player.closePlayer();
       return result;
     }
-
-    // --- Video / Imagen ---
+    // Para video (imagen ya no usa este método)
     if (!context.mounted) return null;
-
     return showModalBottomSheet<XFile?>(
       context: context,
       builder: (modalContext) => SafeArea(
@@ -525,22 +722,18 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: Text(type == "video" ? "Galería de videos" : "Galería de imágenes"),
+              title: const Text("Galería de videos"),
               onTap: () async {
-                final picked = type == "video"
-                    ? await picker.pickVideo(source: ImageSource.gallery)
-                    : await picker.pickImage(source: ImageSource.gallery);
+                final picked = await picker.pickVideo(source: ImageSource.gallery);
                 if (!modalContext.mounted) return;
                 Navigator.pop(modalContext, picked);
               },
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: Text(type == "video" ? "Grabar video" : "Tomar foto"),
+              title: const Text("Grabar video"),
               onTap: () async {
-                final picked = type == "video"
-                    ? await picker.pickVideo(source: ImageSource.camera)
-                    : await picker.pickImage(source: ImageSource.camera);
+                final picked = await picker.pickVideo(source: ImageSource.camera);
                 if (!modalContext.mounted) return;
                 Navigator.pop(modalContext, picked);
               },
@@ -555,5 +748,4 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     final mimeType = lookupMimeType(path);
     return mimeType ?? "application/octet-stream";
   }
-
 }

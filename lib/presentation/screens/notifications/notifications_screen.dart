@@ -18,7 +18,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isLoadingMore = false;
   String? _errorMessage;
   
-  // ✅ Para paginación
   int _currentPage = 0;
   final int _pageSize = 20;
   bool _hasMoreData = true;
@@ -36,7 +35,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.dispose();
   }
 
-  /// ✅ Detectar cuando llega al final para cargar más
   void _onScroll() {
     if (_scrollController.position.pixels >= 
         _scrollController.position.maxScrollExtent * 0.9) {
@@ -46,7 +44,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  /// ✅ Carga inicial
   Future<void> _loadNotifications() async {
     setState(() {
       _isLoading = true;
@@ -75,7 +72,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  /// ✅ Cargar más notificaciones (simulado - adaptar si backend soporta paginación)
   Future<void> _loadMoreNotifications() async {
     if (_isLoadingMore || !_hasMoreData) return;
     
@@ -83,44 +79,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _isLoadingMore = true;
     });
 
-    // Si tu backend NO soporta paginación, simplemente no hagas nada
-    // Este código es para cuando implementes paginación en backend
-    
     await Future.delayed(const Duration(milliseconds: 500));
     
     setState(() {
       _isLoadingMore = false;
-      _hasMoreData = false; // Por ahora, desactivar
+      _hasMoreData = false;
     });
   }
 
-  /// ✅ Ordena: NO LEÍDAS primero, luego por fecha descendente
   List<AppNotification> _sortNotifications(List<AppNotification> notifications) {
     final unread = notifications.where((n) => !n.isRead).toList();
     final read = notifications.where((n) => n.isRead).toList();
     
-    // Ordenar cada grupo por fecha (más reciente primero)
     unread.sort((a, b) => b.createdDate.compareTo(a.createdDate));
     read.sort((a, b) => b.createdDate.compareTo(a.createdDate));
     
     return [...unread, ...read];
   }
 
-  /// ✅ Marca como leída - SOLUCIÓN: Recarga desde backend
   Future<void> _markAsRead(AppNotification notification) async {
     if (notification.isRead) return;
 
     try {
-      // Enviar al backend PRIMERO
       await _notificationService.markAsRead(notification.idNotification!);
-      
-      // Luego recargar TODO desde backend para evitar inconsistencias
       await _loadNotifications();
     } catch (e) {
       print('❌ Error marking as read: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Error al marcar como leída'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
@@ -132,10 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllAsRead() async {
     try {
-      // Enviar al backend
       await _notificationService.markAllAsRead();
-      
-      // Recargar desde backend
       await _loadNotifications();
       
       if (mounted) {
@@ -187,7 +171,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           notification.idNotification!,
         );
         
-        // Recargar desde backend
         await _loadNotifications();
         
         if (mounted) {
@@ -222,7 +205,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.COMMENT:
         print('Navigate to memorial: ${notification.relatedEntityId}');
         break;
-      case NotificationType.LIKE:
+      case NotificationType.SUBSCRIPTION:
+        print('Navigate to subscription settings');
+        break;
+      case NotificationType.PAYMENT:
+        print('Navigate to payment history');
+        break;
+      case NotificationType.DOCUMENTARY:
+        print('Navigate to documentary: ${notification.relatedEntityId}');
+        break;
+      case NotificationType.REFLECTION:
+        print('Navigate to reflections');
         break;
       default:
         break;
@@ -235,10 +228,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.event;
       case NotificationType.COMMENT:
         return Icons.comment;
-      case NotificationType.LIKE:
-        return Icons.favorite;
       case NotificationType.MEMORIAL_SHARED:
         return Icons.share;
+      case NotificationType.SUBSCRIPTION:
+        return Icons.card_membership;
+      case NotificationType.PAYMENT:
+        return Icons.payment;
+      case NotificationType.DOCUMENTARY:
+        return Icons.movie;
+      case NotificationType.REFLECTION:
+        return Icons.auto_stories;
+      case NotificationType.COLLABORATION:
+        return Icons.group;
       case NotificationType.SYSTEM:
         return Icons.info_outline;
     }
@@ -250,19 +251,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return const Color(0xFF6366F1);
       case NotificationType.COMMENT:
         return Colors.blue;
-      case NotificationType.LIKE:
-        return Colors.pink;
       case NotificationType.MEMORIAL_SHARED:
         return Colors.purple;
+      case NotificationType.SUBSCRIPTION:
+        return Colors.orange;
+      case NotificationType.PAYMENT:
+        return Colors.green;
+      case NotificationType.DOCUMENTARY:
+        return Colors.red;
+      case NotificationType.REFLECTION:
+        return Colors.teal;
+      case NotificationType.COLLABORATION:
+        return Colors.indigo;
       case NotificationType.SYSTEM:
         return Colors.grey;
     }
   }
 
-  String _formatTimeAgo(DateTime dateTime) {
-    final localTime = dateTime.toLocal();
-    final now = DateTime.now();
-    final difference = now.difference(localTime);
+  /// ✅ CRÍTICO: Comparar SIEMPRE en UTC
+  String _formatTimeAgo(DateTime utcDateTime) {
+    // Ambas fechas en UTC para comparación correcta
+    final nowUtc = DateTime.now().toUtc();
+    final difference = nowUtc.difference(utcDateTime);
     
     if (difference.isNegative || difference.inSeconds < 60) {
       return 'Ahora';

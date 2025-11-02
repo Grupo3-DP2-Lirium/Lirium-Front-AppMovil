@@ -24,7 +24,7 @@ class ImageService {
         data: formData,
         options: Options(
           responseType: ResponseType.bytes, // Recibir bytes de la imagen
-          receiveTimeout: const Duration(minutes: 2), // Timeout extendido para ML
+          receiveTimeout: const Duration(minutes: 5), // Timeout extendido para ML
         ),
       );
 

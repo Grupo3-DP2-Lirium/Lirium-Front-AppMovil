@@ -5,11 +5,19 @@ import 'package:flutter_frontend/presentation/components/buttons/secondary_butto
 import 'package:image_picker/image_picker.dart';
 import 'image_improvement_screen.dart';
 
+/// Pantalla genérica para mejorar imágenes
+/// Puede recibir una imagen ya seleccionada o seleccionarla desde cámara/galería
+/// Devuelve la ruta de la imagen final (original o mejorada)
 class ImprovePicture extends StatefulWidget {
-  final ImageSource source;
-  final String memorialId;
+  final ImageSource? source; // Opcional: si es null, debe venir imagePath
+  final String? imagePath; // Opcional: imagen ya seleccionada
   
-  const ImprovePicture({super.key, required this.source, required this.memorialId});
+  const ImprovePicture({
+    super.key, 
+    this.source,
+    this.imagePath,
+  }) : assert(source != null || imagePath != null, 
+         'Debe proporcionar source o imagePath');
   
   @override
   State<ImprovePicture> createState() => _ImprovePictureState();
@@ -17,117 +25,97 @@ class ImprovePicture extends StatefulWidget {
 
 class _ImprovePictureState extends State<ImprovePicture> {
   final ImagePicker _picker = ImagePicker();
-  XFile? _image;
+  String? _imagePath;
   bool _loading = true;
   
   @override
   void initState() {
     super.initState();
-    _pickImage();
+    if (widget.imagePath != null) {
+      // Ya tiene imagen, no necesita seleccionar
+      print('📸 ImprovePicture iniciado con imagen: ${widget.imagePath}');
+      _imagePath = widget.imagePath;
+      _loading = false;
+    } else {
+      // Necesita seleccionar imagen
+      print('📸 ImprovePicture iniciado, seleccionando imagen...');
+      _pickImage();
+    }
   }
   
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: widget.source);
+    if (widget.source == null) return;
+    
+    final XFile? image = await _picker.pickImage(source: widget.source!);
     if (mounted) {
       setState(() {
-        _image = image;
+        _imagePath = image?.path;
         _loading = false;
       });
+      print('📸 Imagen seleccionada: $_imagePath');
     }
   }
   
   void _selectNewImage() {
+    if (widget.source == null) return;
     setState(() => _loading = true);
     _pickImage();
   }
   
-  void _startImageImprovement() {
-    if (_image != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageImprovementScreen(
-            imagePath: _image!.path, 
-            memorialId: widget.memorialId
-          ),
+  // ✅ CORREGIDO: Ahora espera el resultado y lo propaga hacia arriba
+  Future<void> _startImageImprovement() async {
+    if (_imagePath == null) return;
+    
+    print('🚀 Iniciando mejora de imagen...');
+    
+    final String? resultPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ImageImprovementScreen(
+          imagePath: _imagePath!,
         ),
-      );
+      ),
+    );
+    
+    print('✅ ImprovePicture recibió resultado: $resultPath');
+    
+    // Si se recibió un resultado, cerrarse y devolverlo
+    if (resultPath != null && mounted) {
+      print('🔙 Propagando resultado hacia MemoryContainer');
+      Navigator.pop(context, resultPath);
+    } else {
+      print('⚠️ No se recibió resultado, usuario canceló o hubo error');
     }
   }
 
-  Future<void> _useOriginalImage() async {
-    if (_image == null) return;
-    
-    try {
-      // Mostrar loading mientras se guarda
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-      
-      // TODO: Aquí debes llamar a tu servicio real para guardar la imagen
-      // Ejemplo (ajusta según tu lógica de negocio):
-      // 
-      // final memoryService = MemoryService();
-      // final request = MemoryCreateRequest(
-      //   memorialId: widget.memorialId,
-      //   title: "Nueva foto",
-      //   type: MemoryType.PHOTO,
-      //   // ... otros campos
-      // );
-      // 
-      // await memoryService.createMemory(
-      //   request: request,
-      //   files: [File(_image!.path)],
-      // );
-      
-      // Por ahora simulamos el guardado
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
-        // Cerrar loading
-        Navigator.pop(context);
-        
-        // Volver al inicio
-        Navigator.popUntil(context, (route) => route.isFirst);
-        
-        // Mostrar confirmación
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Imagen original guardada'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        // Cerrar loading
-        Navigator.pop(context);
-        
-        // Mostrar error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  void _useOriginalImage() {
+    if (_imagePath == null) return;
+    print('🎯 Usuario eligió usar imagen original: $_imagePath');
+    // Devolver la ruta de la imagen original
+    Navigator.pop(context, _imagePath);
   }
   
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
     
-    if (_image == null) {
+    if (_imagePath == null) {
       return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text("No seleccionaste ninguna imagen")),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: const Center(
+          child: Text("No seleccionaste ninguna imagen"),
+        ),
       );
     }
     
@@ -136,18 +124,21 @@ class _ImprovePictureState extends State<ImprovePicture> {
         title: const Text("Vista previa"),
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Imagen con padding controlado
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.file(
-                  File(_image!.path),
+                  File(_imagePath!),
                   fit: BoxFit.cover,
                   width: double.infinity,
                 ),
@@ -155,12 +146,10 @@ class _ImprovePictureState extends State<ImprovePicture> {
             ),
           ),
           
-          // Botones en dos filas
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
             child: Column(
               children: [
-                // Primera fila: Mejorar (destacado)
                 PrimaryButton(
                   text: "Mejorar con IA",
                   onPressed: _startImageImprovement,
@@ -169,32 +158,33 @@ class _ImprovePictureState extends State<ImprovePicture> {
                 
                 const SizedBox(height: 12),
                 
-                // Segunda fila: Guardar sin mejorar y Cambiar
                 Row(
                   children: [
                     Expanded(
                       child: SecondaryButton(
                         onPressed: _useOriginalImage,
-                        text: "Guardar así",
+                        text: "Usar original",
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _selectNewImage,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey[600],
-                          side: BorderSide(color: Colors.grey[300]!),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                        child: Text(
-                          widget.source == ImageSource.gallery
-                              ? "Cambiar"
-                              : "Repetir",
+                    if (widget.source != null) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _selectNewImage,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey[600],
+                            side: BorderSide(color: Colors.grey[300]!),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                          child: Text(
+                            widget.source == ImageSource.gallery
+                                ? "Cambiar"
+                                : "Repetir",
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
