@@ -1,21 +1,19 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/models/memory_create_request.dart';
-import 'package:flutter_frontend/data/services/memory_service.dart';
-import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
-import 'package:flutter_frontend/presentation/components/components.dart';
-import 'memory_success_screen.dart';
+import 'package:path_provider/path_provider.dart';
 
-/// Pantalla que muestra la imagen mejorada con campo de título
+/// Pantalla genérica que muestra el resultado de la mejora de imagen
+/// Devuelve la ruta de la imagen seleccionada (mejorada o original según toggle)
 class ImageResultScreen extends StatefulWidget {
-  final String imagePath;
-  final String memorialId;
+  final String originalImagePath;
+  final List<int> enhancedImageBytes;
 
   const ImageResultScreen({
     super.key,
-    required this.imagePath,
-    required this.memorialId,
+    required this.originalImagePath,
+    required this.enhancedImageBytes,
   });
 
   @override
@@ -23,79 +21,48 @@ class ImageResultScreen extends StatefulWidget {
 }
 
 class _ImageResultScreenState extends State<ImageResultScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  final MemoryService _memoryService = MemoryService();
-  bool _isSaving = false;
+  bool _showOriginal = false; // Por defecto muestra la mejorada
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
+  void _toggleComparison() {
+    setState(() {
+      _showOriginal = !_showOriginal;
+    });
   }
-  // Save Changes
-  Future<void> _saveMemory() async {
-    if (_titleController.text.trim().isEmpty) {
-      _showError('Por favor ingresa un título');
-      return;
-    }
 
-    setState(() => _isSaving = true);
-
+  Future<void> _useSelectedImage() async {
+    print('🎯 Usuario eligió usar: ${_showOriginal ? "original" : "mejorada"}');
+    
     try {
-      final request = MemoryCreateRequest(
-        memorialId: widget.memorialId,
-        type: MemoryOriginType.spontaneous,
-        title: _titleController.text.trim(),
-        photoDate: DateTime.now(),
-      );
-
-      final imageFile = File(widget.imagePath);
-      print('DEBUG: Image file exists: ${await imageFile.exists()}');
-      print('DEBUG: Image file path: ${widget.imagePath}');
-      print('DEBUG: Image file size: ${await imageFile.length()} bytes');
+      String selectedImagePath;
       
-      await _memoryService.createMemory(
-        request: request,
-        files: [imageFile],
-      );
-
+      if (_showOriginal) {
+        // Usar imagen original
+        selectedImagePath = widget.originalImagePath;
+        print('📸 Usando imagen original: $selectedImagePath');
+      } else {
+        // Guardar imagen mejorada en archivo temporal
+        final tempDir = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final tempFile = File('${tempDir.path}/enhanced_$timestamp.jpg');
+        await tempFile.writeAsBytes(widget.enhancedImageBytes);
+        selectedImagePath = tempFile.path;
+        print('✨ Imagen mejorada guardada en: $selectedImagePath');
+      }
+      
       if (mounted) {
-        _showSuccess();
-        await Future.delayed(const Duration(seconds: 1));
-        _navigateToSuccess();
+        Navigator.pop(context, selectedImagePath);
       }
     } catch (e) {
-      _showError('Error al guardar la memoria: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+      print('❌ Error al procesar imagen: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Memoria guardada exitosamente!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _navigateToSuccess() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MemorySuccessScreen(),
-      ),
-    );
   }
 
   @override
@@ -103,58 +70,112 @@ class _ImageResultScreenState extends State<ImageResultScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Imagen Mejorada'),
+        title: const Text('Resultado'),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context), // Cancelar (sin resultado)
+        ),
       ),
       body: Column(
         children: [
-          // Imagen mejorada
           Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _showOriginal
+                          ? Image.file(
+                              File(widget.originalImagePath),
+                              key: const ValueKey('original'),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                          : Image.memory(
+                              Uint8List.fromList(widget.enhancedImageBytes),
+                              key: const ValueKey('enhanced'),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                    ),
+                  ),
+                  
+                  // Badge indicador
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _showOriginal ? Colors.grey[700] : Colors.green[700],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _showOriginal ? Icons.image : Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _showOriginal ? 'Original' : 'Mejorada',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(widget.imagePath),
-                  fit: BoxFit.cover,
-                ),
               ),
             ),
           ),
-
-          // Campo de título y botón
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppTextField(
-                    controller: _titleController,
-                    hintText: 'Escribe un título para tu memoria...',
-                    prefixIcon: Icons.title_outlined,
-                  ),
-                  const SizedBox(height: 24),
-                  PrimaryButton(
-                    text: _isSaving ? 'Guardando...' : 'Guardar Memoria',
-                    onPressed: _isSaving ? null : _saveMemory,
-                  ),
-                ],
+          
+          // Botón de comparación
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: OutlinedButton.icon(
+              onPressed: _toggleComparison,
+              icon: Icon(
+                _showOriginal ? Icons.auto_awesome : Icons.compare,
+                size: 20,
               ),
+              label: Text(
+                _showOriginal ? 'Ver imagen mejorada' : 'Comparar con original',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF6366F1),
+                side: const BorderSide(color: Color(0xFF6366F1)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Botón principal - usa la imagen que esté visible
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+            child: PrimaryButton(
+              text: _showOriginal ? "Usar imagen original" : "Usar imagen mejorada",
+              onPressed: _useSelectedImage,
             ),
           ),
         ],

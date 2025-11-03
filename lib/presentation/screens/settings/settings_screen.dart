@@ -5,10 +5,11 @@ import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/auth_storage.dart';
 import '../auth/login_screen.dart';
+import '../reminders/notifications_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-
+  
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -51,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Intentar con claves comunes del payload
           currentEmail = (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])?.toString();
         }
+
         // Si no se pudo leer del token, usar el último guardado como fallback
         currentEmail ??= await _authStorage.getLastEmail();
 
@@ -145,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
           // Settings sections
           const Text(
             'General',
@@ -159,7 +162,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.notifications,
             title: 'Notificaciones',
             subtitle: 'Configurar alertas y recordatorios',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationsSettingsScreen(),
+                ),
+              );
+            },
           ),
           SettingItem(
             icon: Icons.privacy_tip,
@@ -174,6 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           const SizedBox(height: 24),
+
           const Text(
             'Contenido',
             style: TextStyle(
@@ -219,6 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
+
           const Text(
             'Soporte',
             style: TextStyle(
@@ -241,6 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           const SizedBox(height: 24),
+
           // Logout button
           _isLoggingOut
               ? const Center(
