@@ -4,7 +4,6 @@ import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
 import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
-import 'package:flutter_frontend/data/models/share_link_response.dart';
 import 'package:http/http.dart' as http;
 
 class MemorialService {
@@ -19,28 +18,43 @@ class MemorialService {
   /// Crear un memorial con o sin imagen
   Future<Memorial> createMemorial(
       MemorialRequestModel request,
-      String? imagePath,
-      ) async {
+      String? imagePath, {
+        void Function(bool isLoading)? onLoading,
+      }) async {
     final uri = Uri.parse("$baseUrl/memorials/create");
 
-    final requestMultipart = http.MultipartRequest("POST", uri)
-      ..headers.addAll(_http.authHeaders(includeJson: true)) // ahora Authorization + Accept JSON
-      ..fields['memorial'] = jsonEncode(request.toJson());
+    // Indicar que empieza la carga
+    onLoading?.call(true);
 
-    if (imagePath != null) {
-      requestMultipart.files.add(await http.MultipartFile.fromPath("file", imagePath));
-    }
-
-    final streamedResponse = await requestMultipart.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonMap = jsonDecode(response.body);
-      return MemorialResponseModel.fromJson(jsonMap).toEntity();
-    } else {
-      throw Exception(
-          "Error creando memorial: ${response.statusCode} ${response.body}"
+    try {
+      // GET previo para obtener headers con token
+      final res = await _client.get(
+        uri,
+        headers: _http.authHeaders(includeJson: false),
       );
+
+      final requestMultipart = http.MultipartRequest("POST", uri)
+        ..headers.addAll(_http.authHeaders(includeJson: true))
+        ..fields['memorial'] = jsonEncode(request.toJson());
+
+      if (imagePath != null) {
+        requestMultipart.files.add(await http.MultipartFile.fromPath("file", imagePath));
+      }
+
+      final streamedResponse = await requestMultipart.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonMap = jsonDecode(response.body);
+        return MemorialResponseModel.fromJson(jsonMap).toEntity();
+      } else {
+        throw Exception(
+            "Error creando memorial: ${response.statusCode} ${response.body}"
+        );
+      }
+    } finally {
+      // Indicar que terminó la carga
+      onLoading?.call(false);
     }
   }
 
@@ -159,25 +173,25 @@ class MemorialService {
     }
   }
 
-  /// Generar enlace de compartir para un memorial
-  Future<ShareLinkResponse> shareMemorial(String memorialId) async {
-    print('DEBUG: shareMemorial($memorialId) called');
-    final uri = Uri.parse("$baseUrl/memorials/$memorialId/share");
-    print('DEBUG: Making request to: $uri');
+  /// Eliminar un memorial por ID
+  Future<void> deleteMemorial(String memorialId) async {
+    print('DEBUG: deleteMemorial($memorialId) called');
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId");
+    print('DEBUG: Making DELETE request to: $uri');
 
-    final res = await _client.post(
+    final res = await _client.delete(
       uri,
-      headers: _http.authHeaders(),
+      headers: _http.authHeaders(), // incluye token
     );
 
-    print('DEBUG: shareMemorial response - Status: ${res.statusCode}, Body: ${res.body}');
-    if (res.statusCode == 200 || res.statusCode == 201) {
-      final Map<String, dynamic> jsonMap = jsonDecode(res.body);
-      return ShareLinkResponse.fromJson(jsonMap);
+    print('DEBUG: deleteMemorial response - Status: ${res.statusCode}, Body: ${res.body}');
+    if (res.statusCode == 200 || res.statusCode == 204) {
+      print('DEBUG: Memorial $memorialId deleted successfully');
     } else {
       throw Exception(
-        "Error generando enlace compartido: ${res.statusCode} ${res.body}",
+        "Error eliminando memorial: ${res.statusCode} ${res.body}",
       );
     }
   }
+
 }

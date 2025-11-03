@@ -17,6 +17,9 @@ class ApiConstants {
   // Endpoints de autenticación
   static String get login => '$baseUrl/auth/login';
   static String get register => '$baseUrl/auth/register';
+  static String get forgotPassword => '$baseUrl/auth/forgot-password';
+  static String get verifyCode => '$baseUrl/auth/verify-code';
+  static String get resetPassword => '$baseUrl/auth/reset-password';
 
   // Endpoints de memoriales
   static String get memorials => '$baseUrl/memorials';
@@ -34,4 +37,9 @@ class ApiConstants {
   static String get reflections => '$baseUrl/reflections';
   static String get reflectionSearch => '$baseUrl/reflections/search';
   static String get reflectionStats => '$baseUrl/reflections/stats';
+
+  // Endpoints de documentales
+  static String get documentaries => '$baseUrl/documentaries';
+  static String get myDocumentaries => '$baseUrl/documentaries/my-documentaries';
+  static String get musicCatalog => '$baseUrl/documentaries/music-catalog';
 }

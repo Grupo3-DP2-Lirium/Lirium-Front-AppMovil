@@ -128,9 +128,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (value.length < 8) {
                     return 'La contraseña debe tener al menos 8 caracteres';
                   }
-                  if (!RegExp(
-                    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_])[A-Za-z\d@$!%*?&_]{8,}$',
-                  ).hasMatch(value)) {
+                  // Validación más flexible que permite números como caracteres especiales
+                  final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
+                  final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+                  final hasDigit = RegExp(r'\d').hasMatch(value);
+                  final hasSpecialChar = RegExp(r'[@$!%*?&#_]').hasMatch(value);
+                  
+                  if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecialChar) {
                     return 'La contraseña debe contener al menos: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial';
                   }
                   return null;

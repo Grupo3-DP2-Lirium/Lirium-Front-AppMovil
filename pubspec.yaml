@@ -64,9 +64,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   cached_network_image: ^3.4.1
-  share_plus: ^10.1.4    # para compartir enlaces
-
-
+  url_launcher: ^6.2.1
+  chewie: ^1.7.4
+  webview_flutter: ^4.13.0  
+  firebase_core: ^4.2.0
+  firebase_analytics: ^12.0.3
+  firebase_messaging: ^16.0.3
+  timeago: ^3.6.0
+  flutter_local_notifications: ^17.1.0
 
 dev_dependencies:
   flutter_test:
