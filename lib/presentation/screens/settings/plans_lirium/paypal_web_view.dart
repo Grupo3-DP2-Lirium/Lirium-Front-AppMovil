@@ -1,8 +1,6 @@
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/config/api_constants.dart';
-import 'package:flutter_frontend/data/services/suscription_service.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class PayPalWebViewScreen extends StatefulWidget {
@@ -25,35 +23,38 @@ class _PayPalWebViewScreenState extends State<PayPalWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
 
-  final PayPalService _payPalService = PayPalService(); // instancia del servicio
+  final SubscriptionService _payPalService = SubscriptionService(); // instancia del servicio
 
   @override
   void initState() {
     super.initState();
+
+    // Habilitar cookies
+    final cookieManager = WebViewCookieManager();
+    if (kDebugMode) {
+      cookieManager.clearCookies();
+    }
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) => setState(() => _isLoading = false),
           onNavigationRequest: (req) async {
-            // Si el usuario cancela
             if (req.url.contains('cancel')) {
               Navigator.pop(context, false);
               return NavigationDecision.prevent;
             }
 
-            // Si se detecta éxito
             if (req.url.contains('success')) {
               final uri = Uri.parse(req.url);
               final orderId = uri.queryParameters['token'];
 
               if (orderId == null) {
-                Navigator.pop(context, {'status': 'ERROR', 'message': 'orderId no encontrado'});
+                Navigator.pop(context, {'status': 'ERROR', 'message': 'orderId not found'});
                 return NavigationDecision.prevent;
               }
 
               try {
-                // Llamada al servicio
                 final data = await _payPalService.capturePayPalOrder(
                   orderId: orderId,
                   planId: widget.planId,
@@ -70,7 +71,6 @@ class _PayPalWebViewScreenState extends State<PayPalWebViewScreen> {
               return NavigationDecision.prevent;
             }
 
-            // Navegación normal
             return NavigationDecision.navigate;
           },
         ),

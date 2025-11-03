@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
+import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/paypal_web_view.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/paypal_web_view2.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/plan_card.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/premium_tab_selector.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/receipt_paypal.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_service.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 class GetPremiumScreen extends StatefulWidget {
   const GetPremiumScreen({super.key});
@@ -21,49 +20,48 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   bool isMonthly = true;
   int selectedPlanIndex = 0; // Plan seleccionado por defecto
   bool _isLoadingPlans = false;
+  bool _isLoadingPaypal = false;
   List<Map<String, dynamic>> plans = [];
+  final subscriptionService = SubscriptionService();
+  String? currentPlan;
 
-  Future<void> _subscribe() async {
-    if (plans.isEmpty) return; // 🔹 por si no hay planes cargados
+  Future<void> _subscribeJustOneTime() async {
+    // No plans loaded
+    if (plans.isEmpty) return;
+
+    // Get selected plan
     final plan = plans[selectedPlanIndex];
-
-    final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+    final double basePrice = double.tryParse(plan['price'].toString()) ?? 0;
+    // Monthly vs yearly (30% discount)
     final double planAmountValue = isMonthly ? basePrice : (basePrice * 12 * 0.7);
+    // Format price for PayPal
     final String planAmount = planAmountValue.toStringAsFixed(2);
 
     try {
-      // Crear orden en el backend
-      final createOrderResponse = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/paypal/create-order'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'amount': planAmount,
-          'simulateFail': false,
-        }),
+      // Create PayPal order
+      final createOrderResponse = await subscriptionService.createPayPalOrder(
+        amount: double.parse(planAmount),
+        simulateFail: false,
+        planId: plan['idPlan'].toString(),
+        onLoading: (isLoading) {
+          setState(() => _isLoadingPaypal = isLoading);
+        },
       );
 
-      if (createOrderResponse.statusCode != 200) {
-        throw Exception('Error creando orden');
-      }
+      // Approval URL returned by PayPal
+      final approvalLink = createOrderResponse['approvalLink'];
 
-      final orderData = jsonDecode(createOrderResponse.body);
-      final approvalLink = orderData['approvalLink'];
-
-      // Verificar que exista approvalLink y planId
-      final plan = plans[selectedPlanIndex];
-      print('El planid es: $plan');
-      print('approvalLink: $approvalLink');
-
-      if (approvalLink == null || approvalLink.isEmpty) {
+      if (approvalLink.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo iniciar el pago.')),
+          const SnackBar(content: Text("No se pudo iniciar el pago.")),
         );
         return;
       }
 
+      // Subscription plan ID
       final planId = plan['idPlan'];
 
-      // Abrir WebView para que el usuario apruebe el pago
+      // Open PayPal webview for payment approval
       final paymentResult = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -75,14 +73,14 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         ),
       );
 
-      // Verificar resultado del pago
-      if (paymentResult != null &&
-          paymentResult is Map<String, dynamic> &&
+      // Check payment result
+      if (paymentResult != null && paymentResult is Map<String, dynamic> &&
           paymentResult['status'] == 'success') {
+        // Show receipt popup
         PaypalReceiptPopup.show(context, paymentResult);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pago cancelado o fallido')),
+          const SnackBar(content: Text("Pago capturado pero error creando suscripción")),
         );
       }
     } catch (e) {
@@ -93,10 +91,59 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadPlans();
+  Future<void> _subscribeRecurring() async {
+    if (plans.isEmpty) return;
+
+    final plan = plans[selectedPlanIndex];
+
+    final String paypalPlanId = 'P-97330861H7471194ANEDJ2RA'; // esto debe venir de tu API o BD
+    final String internalPlanId = plan['idPlan']; // ID de tu BD
+
+    try {
+      setState(() => _isLoadingPaypal = true);
+
+      final response = await subscriptionService.createPaypalSubscription(
+        paypalPlanId: paypalPlanId,
+        planId: internalPlanId
+      );
+
+      final approvalLink = response['approvalLink'];
+      final subscriptionId = response['subscriptionID'];
+
+      if (approvalLink == null || approvalLink.isEmpty) {
+        throw Exception("No se recibio approvalLink de PayPal");
+      }
+
+      // Abrimos PayPal WebView para que pague
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PayPalWebViewScreen2(
+            url: approvalLink,
+            planId: internalPlanId,
+            isSubscription: true,
+            subscriptionId: subscriptionId,
+            frequency: isMonthly ? "MONTHLY" : "YEARLY",
+          ),
+        ),
+      );
+
+      if (result != null && result is Map && result['status'] == "success") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("¡Suscripción activada exitosamente!")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("La suscripción no fue completada.")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() => _isLoadingPaypal = false);
+    }
   }
 
   Future<void> _loadPlans() async {
@@ -129,6 +176,21 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
     }
   }
 
+  Future<void> _loadCurrentPlan() async {
+    final plan = await StorageService.getPlan();
+    setState(() {
+      currentPlan = plan ?? "FREE";
+    });
+
+    print("Plan guardado del usuario: $currentPlan");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlans();
+    _loadCurrentPlan();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +271,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                         final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
                         final String currency = plan['currency'] ?? 'USD';
 
-                        // 🔹 Calcular precio según si es mensual o anual
+                        // Calcular precio según si es mensual o anual
                         final double displayPrice = isMonthly
                             ? basePrice
                             : (basePrice * 12 * 0.7); // 30% de descuento
@@ -235,13 +297,14 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                       }),
                   ],
                 ),
+                const SizedBox(height: 20),
                 // --- Botones ---
                 Column(
                   children: [
                     PrimaryButton(
-                      text: "Suscribirse",
+                      text: _isLoadingPaypal ? "Procesando..." : "Suscribirse",
                       color: AppColors.primary2,
-                      onPressed: _subscribe,
+                      onPressed: _isLoadingPaypal ? null : _subscribeRecurring,
                     ),
                     TextButton(
                       onPressed: () {},

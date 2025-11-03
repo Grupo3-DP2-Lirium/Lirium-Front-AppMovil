@@ -18,11 +18,26 @@ class AuthService {
         'password': password,
       });
 
+      //print("Respuesta login: ${response.data}");
+
       if (response.statusCode == 200) {
-        final token = response.data['token'] as String;
+        final data = response.data;
+
+        final token = data['token'] as String;
+        final plan = data['plan'] ?? 'FREE';
+        final permissions = List<String>.from(data['permissions'] ?? []);
+
+        print("Token recibido: $token");
+        print("Plan recibido del back: $plan");
+        print("Permisos recibidos: $permissions");
 
         // Guardar automáticamente en storage seguro
         await StorageService.saveToken(token);
+        await StorageService.savePlan(plan);
+        await StorageService.savePermissions(permissions);
+
+        //print("Plan guardado en storage: ${await StorageService.getPlan()}");
+        //print("Permisos guardados en storage: ${await StorageService.getPermissions()}");
 
         return token;
       } else {

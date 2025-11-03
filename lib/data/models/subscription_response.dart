@@ -1,5 +1,5 @@
 class SubscriptionResponse {
-  final String? subscriptionId; // null si es Free
+  final String? subscriptionId;  // null si es Free
   final String status;           // ACTIVE, NONE, CANCELLED, EXPIRED
   final String frequency;        // MONTHLY, YEARLY
   final DateTime? startDate;

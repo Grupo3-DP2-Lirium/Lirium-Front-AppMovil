@@ -10,10 +10,31 @@ class StorageService {
   );
 
   static const String _tokenKey = 'jwt_token';
+  static const String _planKey = 'user_plan';
+  static const String _permissionsKey = 'user_permissions';
+
+  static Future<void> savePlan(String plan) async {
+    await _storage.write(key: _planKey, value: plan);
+  }
+
+  static Future<void> savePermissions(List<String> permissions) async {
+    await _storage.write(key: _permissionsKey, value: jsonEncode(permissions));
+  }
+
+  static Future<String?> getPlan() async {
+    return await _storage.read(key: _planKey);
+  }
+
+  static Future<List<String>> getPermissions() async {
+    final data = await _storage.read(key: _permissionsKey);
+    if (data == null) return [];
+    return List<String>.from(jsonDecode(data));
+  }
 
   /// Guarda el token JWT de forma segura
   static Future<void> saveToken(String token) async {
-    await _storage.write(key: _tokenKey, value: token);
+    final cleanedToken = token.trim().replaceAll('"', '');
+    await _storage.write(key: _tokenKey, value: cleanedToken);
   }
 
   /// Obtiene el token JWT guardado
@@ -71,4 +92,5 @@ class StorageService {
       return null;
     }
   }
+
 }

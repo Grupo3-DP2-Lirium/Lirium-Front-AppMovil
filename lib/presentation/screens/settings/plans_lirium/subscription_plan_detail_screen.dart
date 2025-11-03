@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/services/subscription_response.dart';
-import 'package:flutter_frontend/data/services/suscription_service.dart';
+import 'package:flutter_frontend/data/models/subscription_response.dart';
+import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_service.dart';
 import 'package:intl/intl.dart';
-
+// VET/pO7}
 class SubscriptionPlanDetailsScreen extends StatefulWidget {
   final int usedStorageGB;
   final int totalStorageGB;
@@ -26,6 +25,7 @@ class _SubscriptionPlanDetailsScreenState
     extends State<SubscriptionPlanDetailsScreen> {
   late Future<SubscriptionResponse> _subscriptionFuture;
   final SubscriptionService _subscriptionService = SubscriptionService(); // instancia del servicio
+  final SubscriptionService _service = SubscriptionService();
 
   @override
   void initState() {
@@ -74,7 +74,7 @@ class _SubscriptionPlanDetailsScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Sección de almacenamiento
-                  Text(
+                  /*Text(
                     "Almacenamiento",
                     style: Theme.of(context)
                         .textTheme
@@ -93,7 +93,7 @@ class _SubscriptionPlanDetailsScreenState
                       color: Colors.redAccent,
                       backgroundColor: Colors.grey.shade300,
                     ),
-                  ),
+                  ),*/
                   const SizedBox(height: 24),
 
                   // Sección del plan
@@ -167,12 +167,22 @@ class _SubscriptionPlanDetailsScreenState
                   Center(
                     child: PrimaryButton(
                       text: "Cancelar plan",
-                      onPressed: () {
-                        // Abrir pantalla de cambio de plan
+                      onPressed: () async {
+                        try {
+                          await _service.cancelPaypalSubscription();
+                          // Mostrar mensaje de éxito
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Suscripción cancelada exitosamente"))
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error al cancelar la suscripción"))
+                          );
+                        }
                       },
-                      icon: Icons.cancel, // si tu PrimaryButton permite icon
+                      icon: Icons.cancel,
                     ),
-                  ),
+                  )
                 ],
               ),
             );

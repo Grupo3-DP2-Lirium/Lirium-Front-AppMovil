@@ -7,8 +7,8 @@ import 'package:flutter_frontend/presentation/screens/main/main_navigation_scree
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import '../../../data/services/storage_service.dart';
 import '../../components/components.dart';
-import '../setup/preserve_question_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
@@ -124,6 +124,19 @@ class _LoginScreenState extends State<LoginScreen> {
           _showMessage('No se recibió accessToken');
           return;
         }
+
+        final token = data['token'] as String;
+        final plan = data['plan'] ?? 'FREE';
+        final permissions = List<String>.from(data['permissions'] ?? []);
+
+        print("Token recibido: $token");
+        print("Plan recibido del back: $plan");
+        print("Permisos recibidos: $permissions");
+
+        // Guardar automáticamente en storage seguro
+        //await StorageService.saveToken(token);
+        await StorageService.savePlan(plan);
+        await StorageService.savePermissions(permissions);
 
         httpService.setToken(access);                 // usa el token en el HttpService
         await storage.save(access: access, refresh: refresh); // persiste seguro
