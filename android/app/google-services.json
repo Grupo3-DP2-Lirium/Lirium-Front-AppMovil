@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "886890862131",
+    "project_id": "lirium-3c939",
+    "storage_bucket": "lirium-3c939.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:886890862131:android:7624e226c4bb6e95727546",
+        "android_client_info": {
+          "package_name": "com.example.flutter_frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEJ_yhV0-4hdAnwu3w58hsKwRpnXXOh-g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
