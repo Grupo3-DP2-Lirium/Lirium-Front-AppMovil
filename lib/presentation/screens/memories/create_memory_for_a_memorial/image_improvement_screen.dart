@@ -78,13 +78,12 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
     }
   }
 
-  // ✅ CORREGIDO: Usar push en lugar de pushReplacement
+  // ✅ CORREGIDO: Usar push normal en lugar de pushReplacement
   Future<void> _navigateToResult() async {
     if (_enhancedImageBytes == null) return;
     
     print('📱 Navegando a ImageResultScreen...');
     
-    // CAMBIO CRÍTICO: Usar push() en lugar de pushReplacement()
     final String? resultPath = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -97,9 +96,13 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
     
     print('✅ ImageImprovementScreen recibió resultado: $resultPath');
     
-    // Si recibimos un resultado, propagarlo hacia atrás
-    if (mounted && resultPath != null) {
+    // Si recibió un resultado, propagarlo hacia atrás
+    if (resultPath != null && mounted) {
+      print('🔙 Propagando resultado y cerrando ImageImprovementScreen');
       Navigator.pop(context, resultPath);
+    } else {
+      print('❌ Usuario canceló, cerrando ImageImprovementScreen sin resultado');
+      Navigator.pop(context);
     }
   }
 
