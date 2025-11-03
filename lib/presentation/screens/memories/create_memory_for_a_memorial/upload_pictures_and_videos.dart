@@ -15,20 +15,41 @@ class UploadPicturesAndVideos extends StatefulWidget {
 
 class _UploadPicturesAndVideosState extends State<UploadPicturesAndVideos> {
 
-  void _goToImprovePicture(ImageSource source) {
-    Navigator.push(
+  // ========== MODIFICADO: Ahora espera el resultado y hace algo con él ==========
+  Future<void> _goToImprovePicture(ImageSource source) async {
+    // Navega a ImprovePicture (ya no necesita memorialId)
+    final String? imagePath = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => ImprovePicture(source: source, memorialId: widget.memorialId),
+        builder: (context) => ImprovePicture(source: source), // SIN memorialId
       ),
     );
+    
+    // Si el usuario seleccionó/mejoró una imagen
+    if (imagePath != null && mounted) {
+      // Aquí decides qué hacer con la imagen:
+      // Opción 1: Mostrar un snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Imagen seleccionada: ${imagePath.split('/').last}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Opción 2: Guardarla directamente
+      // await _uploadImageToMemorial(imagePath);
+      
+      // Opción 3: Volver a la pantalla anterior con el resultado
+      // Navigator.pop(context, imagePath);
+    }
   }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
       body: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             Text(
@@ -36,9 +57,9 @@ class _UploadPicturesAndVideosState extends State<UploadPicturesAndVideos> {
               style: Theme.of(context).textTheme.headlineLarge,
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-            // Primera fil
+            // Primera fila
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -51,7 +72,7 @@ class _UploadPicturesAndVideosState extends State<UploadPicturesAndVideos> {
                 const SizedBox(width: 24),
                 RectangleButton(
                   icon: Icons.attach_file,
-                  label: "Desde Galaría",
+                  label: "Desde Galería",
                   size: 120,
                   onTap: () => _goToImprovePicture(ImageSource.gallery),
                 ),

@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/auth_service.dart';
 import 'package:flutter_frontend/data/services/auth_storage.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import '../../../data/services/storage_service.dart';
 import '../../components/components.dart';
-import '../setup/preserve_question_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final authService = AuthService();
   final httpService = HttpService();
   final storage = AuthStorage();
+  final notificationService = NotificationService();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -48,6 +52,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ✅ Función para registrar el token FCM después del login
+  Future<void> _registerFCMToken() async {
+    try {
+      print('📱 Starting FCM token registration...');
+      
+      final FirebaseMessaging messaging = FirebaseMessaging.instance;
+      
+      // Solicitar permisos
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      
+      print('🔔 FCM Permission status: ${settings.authorizationStatus}');
+      
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // Obtener token
+        String? token = await messaging.getToken();
+        
+        if (token != null && token.isNotEmpty) {
+          print('✅ FCM Token obtained: ${token.substring(0, 20)}...');
+          
+          // Registrar en el backend
+          await notificationService.registerDeviceToken(token);
+          
+          print('✅ FCM Token registered in backend successfully');
+        } else {
+          print('⚠️ Failed to obtain FCM token');
+        }
+      } else {
+        print('❌ Notification permissions not granted: ${settings.authorizationStatus}');
+      }
+    } catch (e) {
+      print('❌ Error registering FCM token: $e');
+      // No lanzar error, solo loggear para no interrumpir el login
+    }
+  }
+
   // Función para hacer login con el backend
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -55,38 +99,68 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-
-      final token = await authService.login(
-        email: _emailController.text,
-        password: _passwordController.text,
+      final response = await http.post(
+        Uri.parse(ApiConstants.login),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
       );
 
-      //print("TOKEN RECIBIDO DESDE AUTH SERVICE: $token");
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-      if (token == null || token.isEmpty) {
-        _showMessage('Error: no se recibió token');
-        return;
+        // recibir token
+        final access = (data['accessToken'] ?? data['token']) as String?;
+        final refresh = (data['refreshToken'] ?? data['refresh_token']) as String?;
+
+        if (access == null || access.isEmpty) {
+          _showMessage('No se recibió accessToken');
+          return;
+        }
+
+        final token = data['token'] as String;
+        final plan = data['plan'] ?? 'FREE';
+        final permissions = List<String>.from(data['permissions'] ?? []);
+
+        print("Token recibido: $token");
+        print("Plan recibido del back: $plan");
+        print("Permisos recibidos: $permissions");
+
+        // Guardar automáticamente en storage seguro
+        //await StorageService.saveToken(token);
+        await StorageService.savePlan(plan);
+        await StorageService.savePermissions(permissions);
+
+        httpService.setToken(access);                 // usa el token en el HttpService
+        await storage.save(access: access, refresh: refresh); // persiste seguro
+        await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
+
+        // ✅ CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
+        await _registerFCMToken();
+
+        _showMessage('¡Login exitoso!');
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
+        );
+      } else if (response.statusCode == 401) {
+        _showMessage('Credenciales incorrectas');
+      } else {
+        _showMessage('Error ${response.statusCode}: ${response.body}');
       }
-
-      HttpService().setToken(token);
-
-      await storage.saveLastEmail(_emailController.text);
-
-      _showMessage('¡Login exitoso!');
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const MainNavigationScreen(),
-        ),
-      );
     } catch (e) {
-      print("Error en login UI: $e");
-      _showMessage('Error: $e');
+      _showMessage('Error de conexión: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -105,8 +179,8 @@ class _LoginScreenState extends State<LoginScreen> {
         body: jsonEncode({
           'firstName': 'Rodrigo',
           'firstLastName': 'Usuario',
-          'email': 'rodrigo@test.com',  // Cambié el email para evitar conflictos
-          'password': 'rodrigo',  // La contraseña que quieres usar
+          'email': 'rodrigo@test.com',
+          'password': 'rodrigo',
         }),
       );
 
@@ -167,8 +241,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: SecondaryButton(
                   text: '¿Olvidaste tu contraseña?',
-                  textColor: const Color(0xFF6366F1),
-                  onPressed: () {},
+                  textColor: const Color(0xFFFC7171),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const Spacer(),

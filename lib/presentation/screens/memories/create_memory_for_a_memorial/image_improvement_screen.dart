@@ -1,17 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/services/image_service.dart';
 import 'package:flutter_frontend/presentation/components/painters/improvement_line_painter.dart';
 import 'image_result_screen.dart';
 
-/// Pantalla que muestra la animación de mejora de imagen
+/// Pantalla que muestra la animación de mejora de imagen (genérica)
 class ImageImprovementScreen extends StatefulWidget {
   final String imagePath;
-  final String memorialId;
-
+  
   const ImageImprovementScreen({
     super.key,
     required this.imagePath,
-    required this.memorialId,
   });
 
   @override
@@ -22,6 +21,11 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  final ImageService _imageService = ImageService();
+  
+  List<int>? _enhancedImageBytes;
+  String? _errorMessage;
+  bool _isProcessing = true;
 
   @override
   void initState() {
@@ -35,7 +39,6 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
       duration: const Duration(seconds: 3),
       vsync: this,
     );
-
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -43,22 +46,92 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
 
   Future<void> _startImprovement() async {
     await Future.delayed(const Duration(milliseconds: 500));
-    await _controller.forward();
+    _controller.repeat();
     
-    if (mounted) {
-      await Future.delayed(const Duration(milliseconds: 800));
-      _navigateToResult();
+    try {
+      print('🔧 Iniciando mejora de imagen...');
+      final imageFile = File(widget.imagePath);
+      final enhancedBytes = await _imageService.enhanceImage(imageFile);
+      
+      print('✅ Imagen mejorada recibida (${enhancedBytes.length} bytes)');
+      
+      if (mounted) {
+        setState(() {
+          _enhancedImageBytes = enhancedBytes;
+          _isProcessing = false;
+        });
+        
+        await _controller.forward();
+        await Future.delayed(const Duration(milliseconds: 800));
+        _navigateToResult();
+      }
+    } catch (e) {
+      print('❌ Error al mejorar imagen: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isProcessing = false;
+        });
+        _controller.stop();
+        _showErrorDialog();
+      }
     }
   }
 
-  void _navigateToResult() {
-    Navigator.pushReplacement(
+  // ✅ CORREGIDO: Usar push normal en lugar de pushReplacement
+  Future<void> _navigateToResult() async {
+    if (_enhancedImageBytes == null) return;
+    
+    print('📱 Navegando a ImageResultScreen...');
+    
+    final String? resultPath = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (context) => ImageResultScreen(
-          imagePath: widget.imagePath,
-          memorialId: widget.memorialId
+          originalImagePath: widget.imagePath,
+          enhancedImageBytes: _enhancedImageBytes!,
         ),
+      ),
+    );
+    
+    print('✅ ImageImprovementScreen recibió resultado: $resultPath');
+    
+    // Si recibió un resultado, propagarlo hacia atrás
+    if (resultPath != null && mounted) {
+      print('🔙 Propagando resultado y cerrando ImageImprovementScreen');
+      Navigator.pop(context, resultPath);
+    } else {
+      print('❌ Usuario canceló, cerrando ImageImprovementScreen sin resultado');
+      Navigator.pop(context);
+    }
+  }
+
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error al mejorar imagen'),
+        content: Text(_errorMessage ?? 'Error desconocido'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Cerrar diálogo
+              Navigator.pop(context); // Volver a pantalla anterior
+            },
+            child: const Text('Volver'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _errorMessage = null;
+                _isProcessing = true;
+              });
+              _startImprovement();
+            },
+            child: const Text('Reintentar'),
+          ),
+        ],
       ),
     );
   }
@@ -78,9 +151,13 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Mejorando imagen...',
-                style: TextStyle(
+              Text(
+                _isProcessing 
+                    ? 'Mejorando imagen...'
+                    : _errorMessage != null
+                        ? 'Error'
+                        : 'Imagen mejorada',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
@@ -88,6 +165,12 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
               ),
               const SizedBox(height: 32),
               _buildAnimatedImage(),
+              if (_isProcessing) ...[
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ],
             ],
           ),
         ),
@@ -104,7 +187,6 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
         borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
-            // Imagen original (más opaca)
             Image.file(
               File(widget.imagePath),
               width: 300,
@@ -112,19 +194,19 @@ class _ImageImprovementScreenState extends State<ImageImprovementScreen>
               fit: BoxFit.cover,
             ),
             
-            // Overlay de mejora con animación
-            AnimatedBuilder(
-              animation: _animation,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: ImprovementLinePainter(_animation.value),
-                  child: Container(
-                    width: 300,
-                    height: 400,
-                  ),
-                );
-              },
-            ),
+            if (_isProcessing)
+              AnimatedBuilder(
+                animation: _animation,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: ImprovementLinePainter(_animation.value),
+                    child: Container(
+                      width: 300,
+                      height: 400,
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),
