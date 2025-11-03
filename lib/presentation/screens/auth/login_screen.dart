@@ -55,52 +55,38 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse(ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
+
+      final token = await authService.login(
+        email: _emailController.text,
+        password: _passwordController.text,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
+      //print("TOKEN RECIBIDO DESDE AUTH SERVICE: $token");
 
-        // recibir token
-        final access = (data['accessToken'] ?? data['token']) as String?;
-        final refresh = (data['refreshToken'] ?? data['refresh_token']) as String?;
-
-        if (access == null || access.isEmpty) {
-          _showMessage('No se recibió accessToken');
-          return;
-        }
-
-        httpService.setToken(access);                 // usa el token en el HttpService
-        await storage.save(access: access, refresh: refresh); // persiste seguro
-        await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
-
-        _showMessage('¡Login exitoso!');
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainNavigationScreen(),
-          ),
-        );
-      } else if (response.statusCode == 401) {
-        _showMessage('Credenciales incorrectas');
-      } else {
-        _showMessage('Error ${response.statusCode}: ${response.body}');
+      if (token == null || token.isEmpty) {
+        _showMessage('Error: no se recibió token');
+        return;
       }
+
+      HttpService().setToken(token);
+
+      await storage.saveLastEmail(_emailController.text);
+
+      _showMessage('¡Login exitoso!');
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainNavigationScreen(),
+        ),
+      );
     } catch (e) {
-      _showMessage('Error de conexión: $e');
+      print("Error en login UI: $e");
+      _showMessage('Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
