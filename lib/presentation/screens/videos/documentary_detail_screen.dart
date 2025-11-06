@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
 
-
 class DocumentaryDetailScreen extends StatefulWidget {
   final String documentaryId;
 
@@ -18,12 +17,14 @@ class DocumentaryDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<DocumentaryDetailScreen> createState() => _DocumentaryDetailScreenState();
+  State<DocumentaryDetailScreen> createState() =>
+      _DocumentaryDetailScreenState();
 }
 
 class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
   DocumentaryModel? _documentary;
   bool _loading = true;
+  bool _publishing = false;
 
   @override
   void initState() {
@@ -139,7 +140,7 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadDocumentary,
-        color: const Color(0xFF6366F1),
+        color: AppColors.primary,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -197,9 +198,8 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
               _buildInfoSection(),
               const SizedBox(height: 24),
 
-              // Acciones
-              if (_documentary!.isCompleted && _documentary!.videoUrl != null)
-                _buildActionsSection(),
+              // Acciones según estado
+              _buildActionsSection(),
             ],
           ),
         ),
@@ -208,7 +208,8 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
   }
 
   Widget _buildVideoSection() {
-    if (_documentary!.isCompleted && _documentary!.videoUrl != null) {
+    if ((_documentary!.isCompleted || _documentary!.isPublished) &&
+        _documentary!.videoUrl != null) {
       return Container(
         width: double.infinity,
         height: 200,
@@ -219,8 +220,6 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Aquí podrías integrar un video player
-            // Por ahora mostramos un placeholder
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -232,9 +231,38 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.play_circle_filled, size: 64, color: Colors.white),
+              icon: const Icon(Icons.play_circle_filled,
+                  size: 64, color: Colors.white),
               onPressed: () => _openVideo(_documentary!.videoUrl!),
             ),
+            // Badge si está publicado
+            if (_documentary!.isPublished)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.public, size: 14, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'PUBLICADO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       );
@@ -272,7 +300,11 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
             Icon(Icons.movie_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 8),
             Text(
-              _documentary!.isFailed ? 'Error en la generación' : 'En espera',
+              _documentary!.isFailed
+                  ? 'Error en la generación'
+                  : _documentary!.isDraft
+                  ? 'Borrador'
+                  : 'En espera',
               style: TextStyle(color: Colors.grey[700]),
             ),
           ],
@@ -320,20 +352,21 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
             const SizedBox(height: 8),
             Text(
               '${_documentary!.progress}% completado',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+          ],
+          if (_documentary!.isPublished && _documentary!.publishedDate != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Publicado el ${_formatDate(_documentary!.publishedDate!)}',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
           ],
           if (_documentary!.isFailed && _documentary!.errorMessage != null) ...[
             const SizedBox(height: 8),
             Text(
               _documentary!.errorMessage!,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.red,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.red),
             ),
           ],
         ],
@@ -355,7 +388,7 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
             'Recuerdos incluidos',
             '${_documentary!.totalMemories}',
           ),
-          if (_documentary!.isCompleted) ...[
+          if (_documentary!.isCompleted || _documentary!.isPublished) ...[
             const Divider(height: 24),
             _buildInfoRow(
               Icons.access_time,
@@ -396,10 +429,7 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
           ),
         ),
         Text(
@@ -415,38 +445,146 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
   }
 
   Widget _buildActionsSection() {
-    return Column(
-      children: [
-        PrimaryButton(
-          text: 'Reproducir Video',
-          icon: Icons.play_circle_filled,
-          isFullWidth: true,
-          onPressed: () => _openVideo(_documentary!.videoUrl!),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,   // full-width
-          //icon: Icons.download,
-          height: 52,               // opcional: iguala la altura del primario (ajusta si usas otra)
-          child: SecondaryButton(
-            text: 'Descargar',
-            isOutlined: true,
-            textColor: AppColors.primary,
-            onPressed: () => _downloadVideo(_documentary!.videoUrl!),
+    // Si está completado pero NO publicado → Botón publicar
+    if (_documentary!.isCompleted && !_documentary!.isPublished) {
+      return Column(
+        children: [
+          PrimaryButton(
+            text: 'Publicar en Perfil',
+            icon: Icons.public,
+            isFullWidth: true,
+            isLoading: _publishing,
+            onPressed: _publishing ? null : _publishDocumentary,
           ),
-        ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: SecondaryButton(
+              text: 'Vista Previa',
+              isOutlined: true,
+              textColor: AppColors.primary,
+              onPressed: () => _openVideo(_documentary!.videoUrl!),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Al publicar, el documental será visible en el perfil de ${_documentary!.memorialName}',
+                    style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
 
-      ],
-    );
+    // Si ya está publicado o tiene video → Botones reproducir y descargar
+    if ((_documentary!.isPublished || _documentary!.isCompleted) &&
+        _documentary!.videoUrl != null) {
+      return Column(
+        children: [
+          if (_documentary!.isPublished)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Publicado en el perfil de ${_documentary!.memorialName}',
+                      style: TextStyle(fontSize: 13, color: Colors.green[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          PrimaryButton(
+            text: 'Reproducir Video',
+            icon: Icons.play_circle_filled,
+            isFullWidth: true,
+            onPressed: () => _openVideo(_documentary!.videoUrl!),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: SecondaryButton(
+              text: 'Descargar',
+              isOutlined: true,
+              textColor: AppColors.primary,
+              onPressed: () => _downloadVideo(_documentary!.videoUrl!),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Future<void> _publishDocumentary() async {
+    setState(() {
+      _publishing = true;
+    });
+
+    final provider = context.read<DocumentaryProvider>();
+    final result = await provider.publishDocumentary(widget.documentaryId);
+
+    setState(() {
+      _publishing = false;
+    });
+
+    if (!mounted) return;
+
+    if (result != null) {
+      _documentary = result;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Documental publicado exitosamente!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${provider.error ?? "Desconocido"}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Color _getStatusColor() {
     switch (_documentary!.status) {
-      case 'PENDING':
+      case 'DRAFT':
         return Colors.orange;
       case 'PROCESSING':
         return Colors.blue;
       case 'COMPLETED':
+        return Colors.green;
+      case 'PUBLISHED':
         return Colors.green;
       case 'FAILED':
         return Colors.red;
@@ -459,12 +597,14 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
 
   IconData _getStatusIcon() {
     switch (_documentary!.status) {
-      case 'PENDING':
-        return Icons.schedule;
+      case 'DRAFT':
+        return Icons.edit_note;
       case 'PROCESSING':
         return Icons.hourglass_empty;
       case 'COMPLETED':
         return Icons.check_circle;
+      case 'PUBLISHED':
+        return Icons.public;
       case 'FAILED':
         return Icons.error;
       case 'CANCELLED':
@@ -522,8 +662,10 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar documental'),
-        content: const Text(
-          '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
+        content: Text(
+          _documentary!.isPublished
+              ? '¿Estás seguro de que deseas eliminar este documental? Se quitará del perfil y esta acción no se puede deshacer.'
+              : '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
         ),
         actions: [
           TextButton(
@@ -535,7 +677,8 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
               Navigator.pop(ctx);
 
               final provider = context.read<DocumentaryProvider>();
-              final success = await provider.deleteDocumentary(widget.documentaryId);
+              final success =
+              await provider.deleteDocumentary(widget.documentaryId);
 
               if (mounted) {
                 if (success) {
@@ -584,7 +727,8 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
               Navigator.pop(ctx);
 
               final provider = context.read<DocumentaryProvider>();
-              final success = await provider.cancelDocumentary(widget.documentaryId);
+              final success =
+              await provider.cancelDocumentary(widget.documentaryId);
 
               if (mounted) {
                 if (success) {

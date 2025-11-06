@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/videos/components/documentary_card.dart';
-import 'package:flutter_frontend/presentation/screens/videos/create_documentary_screen.dart';
+import 'package:flutter_frontend/presentation/screens/videos/select_memorial_documentary_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/documentary_detail_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 
-class DocumentariesTab extends StatelessWidget {
+class DocumentariesTab extends StatefulWidget {
   const DocumentariesTab({super.key});
+
+  @override
+  State<DocumentariesTab> createState() => _DocumentariesTabState();
+}
+
+class _DocumentariesTabState extends State<DocumentariesTab>
+    with SingleTickerProviderStateMixin {
+  late TabController _filterTabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _filterTabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,38 +60,119 @@ class DocumentariesTab extends StatelessWidget {
 
     return Column(
       children: [
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => provider.loadMyDocumentaries(force: true),
-            color: const Color(0xFF6366F1),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.documentaries.length,
-              itemBuilder: (context, index) {
-                final documentary = provider.documentaries[index];
-                return DocumentaryCard(
-                  documentary: documentary,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DocumentaryDetailScreen(
-                          documentaryId: documentary.idDocumentary,
-                        ),
-                      ),
-                    ).then((_) {
-                      provider.loadMyDocumentaries(force: true);
-                    });
-                  },
-                  onDelete: () => _showDeleteDialog(context, documentary),
-                  onCancel: documentary.isProcessing
-                      ? () => _showCancelDialog(context, documentary)
-                      : null,
-                );
-              },
+        // Filtros: Publicados | Borradores (chips estilo suave)
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TabBar(
+            controller: _filterTabController,
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorColor: Colors.transparent,
+            labelColor: AppColors.primary, // texto rosado cuando está seleccionado
+            unselectedLabelColor: Colors.grey[700],
+
+            labelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            tabs: [
+              //Publicados
+              Tab(
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle_outline, size: 16),
+                      const SizedBox(width: 6),
+                      const Text('Publicados'),
+                      if (provider.publishedDocumentaries.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${provider.publishedDocumentaries.length}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              //Borradores
+              Tab(
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.edit_note, size: 16),
+                      const SizedBox(width: 6),
+                      const Text('Borradores'),
+                      if (provider.draftDocumentaries.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${provider.draftDocumentaries.length}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+
+
+
+
+
+
+        // Contenido con tabs
+        Expanded(
+          child: TabBarView(
+            controller: _filterTabController,
+            children: [
+              _buildDocumentaryList(provider.publishedDocumentaries, provider),
+              _buildDocumentaryList(provider.draftDocumentaries, provider),
+
+            ],
+          ),
+        ),
+
+        // Botón crear
         Padding(
           padding: const EdgeInsets.all(16),
           child: PrimaryButton(
@@ -87,7 +183,7 @@ class DocumentariesTab extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const CreateDocumentaryScreen(),
+                  builder: (_) => const SelectMemorialDocumentaryScreen(),
                 ),
               ).then((_) {
                 provider.loadMyDocumentaries(force: true);
@@ -96,6 +192,64 @@ class DocumentariesTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDocumentaryList(List documentaries, DocumentaryProvider provider) {
+    if (documentaries.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _filterTabController.index == 0
+                  ? 'No hay borradores'
+                  : 'No hay documentales publicados',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => provider.loadMyDocumentaries(force: true),
+      color: AppColors.primary,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: documentaries.length,
+        itemBuilder: (context, index) {
+          final documentary = documentaries[index];
+          return DocumentaryCard(
+            documentary: documentary,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DocumentaryDetailScreen(
+                    documentaryId: documentary.idDocumentary,
+                  ),
+                ),
+              ).then((_) {
+                provider.loadMyDocumentaries(force: true);
+              });
+            },
+            onDelete: () => _showDeleteDialog(context, documentary, provider),
+            onCancel: documentary.isProcessing
+                ? () => _showCancelDialog(context, documentary, provider)
+                : null,
+          );
+        },
+      ),
     );
   }
 
@@ -140,7 +294,7 @@ class DocumentariesTab extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const CreateDocumentaryScreen(),
+                    builder: (_) => const SelectMemorialDocumentaryScreen(),
                   ),
                 ).then((_) {
                   context.read<DocumentaryProvider>().loadMyDocumentaries(force: true);
@@ -153,7 +307,7 @@ class DocumentariesTab extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, documentary) {
+  void _showDeleteDialog(BuildContext context, documentary, DocumentaryProvider provider) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -169,7 +323,6 @@ class DocumentariesTab extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final provider = context.read<DocumentaryProvider>();
               final success = await provider.deleteDocumentary(
                 documentary.idDocumentary,
               );
@@ -197,7 +350,7 @@ class DocumentariesTab extends StatelessWidget {
     );
   }
 
-  void _showCancelDialog(BuildContext context, documentary) {
+  void _showCancelDialog(BuildContext context, documentary, DocumentaryProvider provider) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -213,7 +366,6 @@ class DocumentariesTab extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final provider = context.read<DocumentaryProvider>();
               final success = await provider.cancelDocumentary(
                 documentary.idDocumentary,
               );
@@ -239,5 +391,11 @@ class DocumentariesTab extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _filterTabController.dispose();
+    super.dispose();
   }
 }

@@ -25,10 +25,27 @@ class DocumentaryProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasProcessingDocumentaries => _processingDocumentaries.isNotEmpty;
 
+  // ✨ NUEVO: Filtrar por estado
+  List<DocumentaryModel> get draftDocumentaries =>
+      _documentaries.where((d) => d.isDraft || d.isCompleted).toList();
+
+  List<DocumentaryModel> get publishedDocumentaries =>
+      _documentaries.where((d) => d.isPublished).toList();
+
+  /// ✨ NUEVO: Validar memorial
+  Future<Map<String, dynamic>?> validateMemorial(String memorialId) async {
+    try {
+      return await _service.validateMemorial(memorialId);
+    } catch (e) {
+      print('ERROR validating memorial: $e');
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
   /// Cargar todos los documentales del usuario
   Future<void> loadMyDocumentaries({bool force = false}) async {
-    print('DEBUG: loadMyDocumentaries called - force: $force');
-
     if (_loading && !force) return;
 
     _loading = true;
@@ -37,9 +54,6 @@ class DocumentaryProvider extends ChangeNotifier {
 
     try {
       _documentaries = await _service.getMyDocumentaries();
-      print('DEBUG: Loaded ${_documentaries.length} documentaries');
-
-      // Iniciar polling si hay documentales procesando
       _checkProcessingDocumentaries();
     } catch (e) {
       _error = e.toString();
@@ -50,51 +64,19 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// Cargar documentales de un memorial específico
-  Future<void> loadDocumentariesByMemorial(String memorialId) async {
-    print('DEBUG: loadDocumentariesByMemorial($memorialId)');
-
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _documentaries = await _service.getDocumentariesByMemorial(memorialId);
-      print('DEBUG: Loaded ${_documentaries.length} documentaries for memorial');
-
-      _checkProcessingDocumentaries();
-    } catch (e) {
-      _error = e.toString();
-      print('ERROR loading documentaries by memorial: $e');
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Crear un nuevo documental
+  /// Crear un nuevo documental (ahora crea en DRAFT)
   Future<DocumentaryModel?> createDocumentary(
       DocumentaryRequestModel request,
       ) async {
-    print('DEBUG: createDocumentary called');
-
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
       final documentary = await _service.createDocumentary(request);
-      print('DEBUG: Documentary created: ${documentary.idDocumentary}');
+      print('DEBUG: Documentary created in DRAFT: ${documentary.idDocumentary}');
 
-      // Agregar al inicio de la lista
       _documentaries.insert(0, documentary);
-
-      // Iniciar polling si está procesando
-      if (documentary.isProcessing) {
-        _processingDocumentaries.add(documentary.idDocumentary);
-        _startPolling();
-      }
-
       notifyListeners();
       return documentary;
     } catch (e) {
@@ -105,6 +87,78 @@ class DocumentaryProvider extends ChangeNotifier {
     } finally {
       _loading = false;
       notifyListeners();
+    }
+  }
+
+  /// ✨ NUEVO: Iniciar generación del video
+  Future<DocumentaryModel?> generateDocumentary(String documentaryId) async {
+    try {
+      final documentary = await _service.generateDocumentary(documentaryId);
+      print('DEBUG: Generation started: ${documentary.idDocumentary}');
+
+      final index = _documentaries.indexWhere((d) => d.idDocumentary == documentaryId);
+      if (index != -1) {
+        _documentaries[index] = documentary;
+
+        if (documentary.isProcessing) {
+          _processingDocumentaries.add(documentaryId);
+          _startPolling();
+        }
+
+        notifyListeners();
+      }
+
+      return documentary;
+    } catch (e) {
+      _error = e.toString();
+      print('ERROR generating documentary: $e');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// ✨ NUEVO: Publicar documental
+  Future<DocumentaryModel?> publishDocumentary(String documentaryId) async {
+    try {
+      final documentary = await _service.publishDocumentary(documentaryId);
+      print('DEBUG: Documentary published: ${documentary.idDocumentary}');
+
+      final index = _documentaries.indexWhere((d) => d.idDocumentary == documentaryId);
+      if (index != -1) {
+        _documentaries[index] = documentary;
+        notifyListeners();
+      }
+
+      return documentary;
+    } catch (e) {
+      _error = e.toString();
+      print('ERROR publishing documentary: $e');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// ✨ NUEVO: Actualizar documental
+  Future<DocumentaryModel?> updateDocumentary(
+      String documentaryId,
+      DocumentaryRequestModel request,
+      ) async {
+    try {
+      final documentary = await _service.updateDocumentary(documentaryId, request);
+      print('DEBUG: Documentary updated: ${documentary.idDocumentary}');
+
+      final index = _documentaries.indexWhere((d) => d.idDocumentary == documentaryId);
+      if (index != -1) {
+        _documentaries[index] = documentary;
+        notifyListeners();
+      }
+
+      return documentary;
+    } catch (e) {
+      _error = e.toString();
+      print('ERROR updating documentary: $e');
+      notifyListeners();
+      return null;
     }
   }
 
@@ -120,11 +174,8 @@ class DocumentaryProvider extends ChangeNotifier {
       if (index != -1) {
         _documentaries[index] = updated;
 
-        // Si completó o falló, quitar del polling
         if (!updated.isProcessing) {
           _processingDocumentaries.remove(documentaryId);
-
-          // Si no hay más procesando, detener polling
           if (_processingDocumentaries.isEmpty) {
             _stopPolling();
           }
@@ -141,10 +192,8 @@ class DocumentaryProvider extends ChangeNotifier {
   Future<bool> cancelDocumentary(String documentaryId) async {
     try {
       await _service.cancelDocumentary(documentaryId);
-
       _processingDocumentaries.remove(documentaryId);
       await refreshDocumentaryStatus(documentaryId);
-
       return true;
     } catch (e) {
       _error = e.toString();
@@ -158,10 +207,8 @@ class DocumentaryProvider extends ChangeNotifier {
   Future<bool> deleteDocumentary(String documentaryId) async {
     try {
       await _service.deleteDocumentary(documentaryId);
-
       _documentaries.removeWhere((d) => d.idDocumentary == documentaryId);
       _processingDocumentaries.remove(documentaryId);
-
       notifyListeners();
       return true;
     } catch (e) {
@@ -174,14 +221,13 @@ class DocumentaryProvider extends ChangeNotifier {
 
   /// Cargar catálogo de música
   Future<void> loadMusicCatalog() async {
-    if (_musicCatalog.isNotEmpty) return; // Solo cargar una vez
+    if (_musicCatalog.isNotEmpty) return;
 
     _loadingMusic = true;
     notifyListeners();
 
     try {
       _musicCatalog = await _service.getMusicCatalog();
-      print('DEBUG: Loaded ${_musicCatalog.length} music tracks');
     } catch (e) {
       print('ERROR loading music catalog: $e');
     } finally {
@@ -190,7 +236,6 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// Verificar si hay documentales procesando
   void _checkProcessingDocumentaries() {
     _processingDocumentaries.clear();
 
@@ -207,24 +252,17 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// Iniciar polling de documentales en proceso
   void _startPolling() {
     if (_pollingTimer != null && _pollingTimer!.isActive) return;
 
-    print('DEBUG: Starting polling for ${_processingDocumentaries.length} documentaries');
-
     _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      print('DEBUG: Polling tick - ${_processingDocumentaries.length} processing');
-
       for (var documentaryId in _processingDocumentaries.toList()) {
         await refreshDocumentaryStatus(documentaryId);
       }
     });
   }
 
-  /// Detener polling
   void _stopPolling() {
-    print('DEBUG: Stopping polling');
     _pollingTimer?.cancel();
     _pollingTimer = null;
   }
