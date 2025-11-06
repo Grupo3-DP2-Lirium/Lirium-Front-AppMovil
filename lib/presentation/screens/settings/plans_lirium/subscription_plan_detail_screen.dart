@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/subscription_response.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/current_plan_card.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_benefits_list.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/storage_use_card.dart';
 import 'package:intl/intl.dart';
-// VET/pO7}
+import 'dart:async';
+
 class SubscriptionPlanDetailsScreen extends StatefulWidget {
-  final int usedStorageGB;
-  final int totalStorageGB;
+  final double usedStorageGB;
+  final double totalStorageGB;
 
   const SubscriptionPlanDetailsScreen({
     super.key,
@@ -23,26 +30,149 @@ class SubscriptionPlanDetailsScreen extends StatefulWidget {
 
 class _SubscriptionPlanDetailsScreenState
     extends State<SubscriptionPlanDetailsScreen> {
-  late Future<SubscriptionResponse> _subscriptionFuture;
-  final SubscriptionService _subscriptionService = SubscriptionService(); // instancia del servicio
   final SubscriptionService _service = SubscriptionService();
+  Future<SubscriptionResponse>? _currentSubscription;
+  bool _loadingPlan = true;
+  List<String> _permissions = [];
 
   @override
   void initState() {
     super.initState();
-    _subscriptionFuture = _subscriptionService.getCurrentSubscription();
+    _loadCurrentPlan();
+  }
+
+  Future<void> _loadCurrentPlan() async {
+    try {
+      final plan = await StorageService.getPlan();
+      final permissions = await StorageService.getPermissions();
+
+      print("Plan guardado del usuario: $plan");
+      print("Permisos guardados del usuario: $permissions");
+
+      setState(() {
+        _permissions = permissions;
+        _currentSubscription = SubscriptionService().getCurrentSubscription();
+      });
+    } catch (e, stack) {
+      print("Error cargando plan actual: $e");
+      print(stack);
+      _currentSubscription = Future.value(
+        SubscriptionResponse(
+          subscriptionId: null,
+          status: "ERROR",
+          frequency: "",
+          startDate: null,
+          endDate: null,
+          paymentMethod: null,
+          planId: null,
+          planName: "Error al cargar",
+          planDescription: "No se pudo obtener el plan actual",
+          planPrice: 0,
+          planCurrency: "USD",
+          storageLimitGb: 0,
+        ),
+      );
+    } finally {
+      setState(() => _loadingPlan = false);
+    }
+  }
+
+  Future<void> _cancelSubscription(BuildContext context) async {
+    // Mostrar popup de confirmación y esperar respuesta
+    final completer = Completer<bool>();
+
+    await appPopupButtonDefault(
+      context: context,
+      title: "¿Estás seguro de que quieres cancelar tu plan?",
+      message:
+      "Perderás acceso a los beneficios de tu suscripción actual.",
+      buttons: [
+        AppPopupButton(
+          text: "No",
+          onPressed: () {
+            Navigator.pop(context);
+            completer.complete(false);
+          },
+        ),
+        AppPopupButton(
+          text: "Sí",
+          onPressed: () {
+            Navigator.pop(context);
+            completer.complete(true);
+          },
+        ),
+      ],
+    );
+
+    final confirm = await completer.future;
+    if (!confirm) return; // si el usuario cancela, salir
+
+    // Mostrar popup de carga
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
+    try {
+      // Llamar servicio de cancelación
+      await _service.cancelPaypalSubscription();
+
+      Navigator.pop(context); // cerrar popup de carga
+
+      // Mostrar popup de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Suscripción cancelada 💔",
+        message: "Tu plan ha sido cancelado exitosamente.",
+        buttons: [
+          AppPopupButton(
+            text: "Aceptar",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      );
+    } catch (e) {
+      Navigator.pop(context); // cerrar popup de carga en caso de error
+
+      // Mostrar popup de error
+      await appPopupButtonDefault(
+        context: context,
+        title: "Error",
+        message: "No se pudo cancelar la suscripción. Inténtalo nuevamente.",
+        buttons: [
+          AppPopupButton(
+            text: "Cerrar",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    double usedPercent = widget.usedStorageGB / widget.totalStorageGB;
+    final screenHeight = MediaQuery.of(context).size.height;
+    double appBarHeight = screenHeight * 0.09;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Detalles de la Suscripción")),
+      backgroundColor: Colors.white,
+      appBar: CustomMemoryAppBar(
+        title: "Mi Plan",
+        onBack: () => Navigator.pop(context),
+        appBarHeight: appBarHeight,
+        showBackButton: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: FutureBuilder<SubscriptionResponse>(
-          future: _subscriptionFuture,
+          future: _currentSubscription,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -55,134 +185,108 @@ class _SubscriptionPlanDetailsScreenState
             }
 
             final subscription = snapshot.data!;
-            final planName = subscription.planName;
-            final planPrice =
-            subscription.planPrice == 0 ? 'Gratis' : '\$${subscription.planPrice.toStringAsFixed(2)}';
-            final frequency = subscription.frequency.isNotEmpty
-                ? subscription.frequency
-                : 'Mensual';
-            final startDate = subscription.startDate != null
-                ? DateFormat('dd/MM/yyyy').format(subscription.startDate!)
-                : '-';
-            final endDate = subscription.endDate != null
-                ? DateFormat('dd/MM/yyyy').format(subscription.endDate!)
-                : '-';
-            final paymentMethod = subscription.paymentMethod ?? 'N/A';
+            final planName = subscription.planName.toUpperCase();
+
+            // Detectar si es FREE o DESCUBRE_REMORY
+            final isFreeOrDescubre = planName == "FREE" || planName == "DESCUBRE_REMORY";
 
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sección de almacenamiento
-                  /*Text(
-                    "Almacenamiento",
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                      "Has usado ${widget.usedStorageGB} GB de ${widget.totalStorageGB} GB"),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: usedPercent,
-                      minHeight: 12,
-                      color: Colors.redAccent,
-                      backgroundColor: Colors.grey.shade300,
-                    ),
-                  ),*/
-                  const SizedBox(height: 24),
+                currentPlanCard(
+                  hasPlan: true,
+                  planName: subscription.planName.isNotEmpty
+                      ? subscription.planName
+                      : "Sin nombre",
+                  storage: "${(subscription.storageLimitGb ?? 0).toStringAsFixed(0)} GB",
+                  startDate: subscription.startDate != null
+                      ? DateFormat('dd/MM/yyyy').format(subscription.startDate!)
+                      : "-",
+                  // Si tiene endDate, no calculamos renovación
+                  renewalDate: (subscription.endDate == null)
+                      ? (subscription.startDate != null
+                      ? (() {
+                    final nextRenewal = subscription.frequency == 'YEARLY'
+                        ? subscription.startDate!.add(const Duration(days: 365))
+                        : subscription.startDate!.add(const Duration(days: 30));
+                    return DateFormat('dd/MM/yyyy').format(nextRenewal);
+                  })()
+                      : "-")
+                      : null,
 
-                  // Sección del plan
-                  Text(
-                    "Plan Actual",
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                    elevation: 4,
-                    color: Colors.blue.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(planName,
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(subscription.planDescription),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("Precio: $planPrice"),
-                              Text("Frecuencia: $frequency"),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("Inicio: $startDate"),
-                              Text("Vence: $endDate"),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text("Método de pago: $paymentMethod"),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Botón cambiar plan
-                  Center(
-                    child: PrimaryButton(
-                      text: "Cambiar de plan",
-                      color: AppColors.primary2,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const GetPremiumScreen(),
-                          ),
-                        );
-                      },
-                      icon: Icons.swap_horiz, // si tu PrimaryButton lo acepta
-                    )
-                  ),
-
+                  endDate: (subscription.endDate != null)
+                      ? DateFormat('dd/MM/yyyy').format(subscription.endDate!)
+                      : null,
+                ),
+                const SizedBox(height: 24),
+                  PlanBenefitsList(permissions: _permissions),
                   const SizedBox(height: 16),
-
-                  // Botón cancelar suscripción
                   Center(
-                    child: PrimaryButton(
-                      text: "Cancelar plan",
-                      onPressed: () async {
-                        try {
-                          await _service.cancelPaypalSubscription();
-                          // Mostrar mensaje de éxito
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Suscripción cancelada exitosamente"))
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Error al cancelar la suscripción"))
-                          );
-                        }
-                      },
-                      icon: Icons.cancel,
+                    child: (subscription.endDate != null || isFreeOrDescubre)
+                        ? Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        Text(
+                          subscription.endDate != null
+                              ? "Suscribete para seguir disfrutando de todos los beneficios de Lirium"
+                              : "Desbloquea todos los beneficios de Lirium",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: "Poppins",
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        PrimaryButton(
+                          text: "Suscribirme",
+                          color: AppColors.primary2,
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const GetPremiumScreen(),
+                              ),
+                            );
+                            if (mounted) {
+                              setState(() => _loadingPlan = true);
+                              await _loadCurrentPlan();
+                            }
+                          },
+                        ),
+                      ],
+                    )
+                        : Column(
+                      children: [
+                        PrimaryButton(
+                          text: "Cambiar de plan",
+                          color: AppColors.primary2,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const GetPremiumScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        PrimaryButton(
+                          text: "Cancelar plan",
+                          onPressed: () async {
+                            await _cancelSubscription(context);
+                          },
+                        ),
+                      ],
                     ),
-                  )
+                  ),
+                  const SizedBox(height: 24),
+                  storageUsageCard(
+                    usedGb: widget.usedStorageGB,
+                    maxGb: subscription.storageLimitGb ?? 0,
+                  ),
                 ],
               ),
             );
