@@ -104,6 +104,7 @@ Future<void> appPopupButtonDefault({
                                   color: btn.color ?? (
                                       buttons.length == 1 ? AppColors.primary :
                                       (index == 0 ? Colors.grey[200] : AppColors.primary)),
+                                  onPressed: btn.onPressed,
                                   child: Text(
                                     btn.text,
                                     style: TextStyle(
@@ -113,10 +114,6 @@ Future<void> appPopupButtonDefault({
                                       index == 0 ? Colors.black : Colors.white,
                                     ),
                                   ),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    btn.onPressed();
-                                  },
                                 ),
                               ),
                             ),
