@@ -3,11 +3,12 @@ import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/paypal_web_view.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/paypal_web_view2.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/plan_card.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/premium_tab_selector.dart';
-import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/receipt_paypal.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/paypal_web_view.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/paypal_web_view2.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_card.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/premium_tab_selector.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/receipt_paypal.dart';
+// VET/pO7}
 
 class GetPremiumScreen extends StatefulWidget {
   const GetPremiumScreen({super.key});
@@ -96,7 +97,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
     final plan = plans[selectedPlanIndex];
 
-    final String paypalPlanId = 'P-97330861H7471194ANEDJ2RA'; // esto debe venir de tu API o BD
+    final String paypalPlanId = plan['paypalPlanId']; // esto debe venir de tu API o BD
     final String internalPlanId = plan['idPlan']; // ID de tu BD
 
     try {
@@ -129,6 +130,24 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
       );
 
       if (result != null && result is Map && result['status'] == "success") {
+        // Guardar el plan en StorageService
+        await StorageService.savePlan(plan['name']);
+
+        // Obtener y guardar los permisos actualizados
+        final updatedPermissions = await subscriptionService.getPlanPermissions(plan['idPlan']);
+        await StorageService.savePermissions(updatedPermissions);
+
+        // Actualizar estado local del widget
+        setState(() {
+          currentPlan = plan['name'];
+        });
+
+        final userPermissions = await StorageService.getPermissions();
+
+        // Imprimir valores actualizados
+        print("Plan actualizado: $currentPlan");
+        print("Permisos actualizados: $userPermissions");
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("¡Suscripción activada exitosamente!")),
         );
@@ -178,11 +197,14 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
   Future<void> _loadCurrentPlan() async {
     final plan = await StorageService.getPlan();
+    final permissions = await StorageService.getPermissions();
+
     setState(() {
       currentPlan = plan ?? "FREE";
     });
 
     print("Plan guardado del usuario: $currentPlan");
+    print("Permisos guardados del usuario: $permissions");
   }
 
   @override
@@ -265,36 +287,30 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                   children: [
                     if (_isLoadingPlans)
                       const Center(child: CircularProgressIndicator())
+                    else if (plans.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: PlanCard(
+                          title: isMonthly ? "CREA_COMPARTE" : "LEGADO ETERNO",
+                          description: isMonthly
+                              ? "Crea memoriales y colabora, acceso a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA (línea de tiempo, organización y cápsulas), 1 documental al mes."
+                              : "Acceso vitalicio a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA avanzadas, y acceso a todos los documentales.",
+                          price: () {
+                            final plan = plans[0];
+                            final double basePrice =
+                                double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+                            final double displayPrice =
+                            isMonthly ? basePrice : (basePrice * 12 * 0.7);
+                            final String currency = plan['currency'] ?? 'USD';
+                            return '$currency ${displayPrice.toStringAsFixed(2)}';
+                          }(),
+                          recommended: true,
+                          isSelected: true,
+                          onTap: () {},
+                        ),
+                      )
                     else
-                      ...List.generate(plans.length, (index) {
-                        final plan = plans[index];
-                        final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
-                        final String currency = plan['currency'] ?? 'USD';
-
-                        // Calcular precio según si es mensual o anual
-                        final double displayPrice = isMonthly
-                            ? basePrice
-                            : (basePrice * 12 * 0.7); // 30% de descuento
-
-                        final String priceText =
-                            '$currency ${displayPrice.toStringAsFixed(2)}';
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: PlanCard(
-                            title: plan['name'] ?? '',
-                            price: priceText,
-                            description: plan['description'] ?? '',
-                            recommended: index == 0,
-                            isSelected: selectedPlanIndex == index,
-                            onTap: () {
-                              setState(() {
-                                selectedPlanIndex = index;
-                              });
-                            },
-                          ),
-                        );
-                      }),
+                      const Center(child: Text("No hay planes disponibles.")),
                   ],
                 ),
                 const SizedBox(height: 20),
