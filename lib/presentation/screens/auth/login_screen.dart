@@ -254,11 +254,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const Spacer(),
               // Botón para crear usuario de prueba
-              SecondaryButton(
-                text: 'Crear usuario de prueba',
-                textColor: const Color(0xFF10B981),
-                onPressed: _isLoading ? null : _createTestUser,
-              ),
+              //SecondaryButton(
+              //  text: 'Crear usuario de prueba',
+              //  textColor: const Color(0xFF10B981),
+              //  onPressed: _isLoading ? null : _createTestUser,
+              //),
               const SizedBox(height: 16),
               // Login button
               _isLoading
