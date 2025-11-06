@@ -239,19 +239,18 @@ class _SelectMemorialDocumentaryScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Mis memoriales",
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
+                  Text("Mis memoriales", style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 16),
-                  Expanded(
+
+                  // SizedBox con altura fija
+                  SizedBox(
+                    height: 180, // 160–200 queda bien
                     child: misFiltrados.isEmpty
                         ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.search_off,
-                              size: 48, color: Colors.grey[400]),
+                          Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
                           const SizedBox(height: 8),
                           Text(
                             searchQuery.isEmpty
@@ -262,33 +261,33 @@ class _SelectMemorialDocumentaryScreenState
                         ],
                       ),
                     )
-                        : ListView.builder(
+                        : ListView.separated(
                       scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 4),
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
                       itemCount: misFiltrados.length,
-                      padding: const EdgeInsets.only(right: 0),
-                      itemBuilder: (_, index) => Padding(
-                        padding: EdgeInsets.only(
-                          right: index == misFiltrados.length - 1
-                              ? 0
-                              : 12,
-                        ),
-                        child: SizedBox(
-                          width:
-                          MediaQuery.of(context).size.width * 0.3,
-                          child: MemorialCard(
-                            memorial: misFiltrados[index],
-                            onTap: () => _onMemorialSelected(
-                              misFiltrados[index].idMemorial,
-                              misFiltrados[index].name,
+                      itemBuilder: (_, index) {
+                        final m = misFiltrados[index];
+                        // Ancho fijo o proporcional al ancho de pantalla
+                        final cardWidth = MediaQuery.of(context).size.width * 0.35; // o 140–160 px
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AspectRatio(
+                            aspectRatio: 3 / 4, // mantiene proporción agradable
+                            child: MemorialCard(
+                              memorial: m,
+                              onTap: () => _onMemorialSelected(m.idMemorial, m.name),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
             ),
+
           ],
         ),
       ),

@@ -209,8 +209,8 @@ class _DocumentariesTabState extends State<DocumentariesTab>
             const SizedBox(height: 16),
             Text(
               _filterTabController.index == 0
-                  ? 'No hay borradores'
-                  : 'No hay documentales publicados',
+                  ? 'No hay documentales publicados'
+                  : 'No hay borradores',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

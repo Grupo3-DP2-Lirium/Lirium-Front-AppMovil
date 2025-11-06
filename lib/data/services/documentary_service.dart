@@ -164,12 +164,17 @@ class DocumentaryService {
 
   /// Obtener estado de un documental específico
   Future<DocumentaryModel> getDocumentaryStatus(String documentaryId) async {
-    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId');
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId?_=$ts');
 
-    final res = await _client.get(
-      uri,
-      headers: _http.authHeaders(),
-    );
+    final headers = {
+      ..._http.authHeaders(),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+
+    final res = await _client.get(uri, headers: headers);
 
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);
@@ -182,12 +187,17 @@ class DocumentaryService {
 
   /// Obtener todos los documentales del usuario
   Future<List<DocumentaryModel>> getMyDocumentaries() async {
-    final uri = Uri.parse('$baseUrl/documentaries/my-documentaries');
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final uri = Uri.parse('$baseUrl/documentaries/my-documentaries?_=$ts');
 
-    final res = await _client.get(
-      uri,
-      headers: _http.authHeaders(),
-    );
+    final headers = {
+      ..._http.authHeaders(),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+
+    final res = await _client.get(uri, headers: headers);
 
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);

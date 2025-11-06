@@ -25,14 +25,18 @@ class DocumentaryProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasProcessingDocumentaries => _processingDocumentaries.isNotEmpty;
 
-  // ✨ NUEVO: Filtrar por estado
+  // Filtrar por estado
   List<DocumentaryModel> get draftDocumentaries =>
-      _documentaries.where((d) => d.isDraft || d.isCompleted).toList();
+      _documentaries.where((d) => d.isDraft ||
+          d.isCompleted ||
+          d.isProcessing ||
+          d.isFailed ||
+          d.isCancelled).toList();
 
   List<DocumentaryModel> get publishedDocumentaries =>
       _documentaries.where((d) => d.isPublished).toList();
 
-  /// ✨ NUEVO: Validar memorial
+  /// Validar memorial
   Future<Map<String, dynamic>?> validateMemorial(String memorialId) async {
     try {
       return await _service.validateMemorial(memorialId);
@@ -90,7 +94,7 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// ✨ NUEVO: Iniciar generación del video
+  /// Iniciar generación del video
   Future<DocumentaryModel?> generateDocumentary(String documentaryId) async {
     try {
       final documentary = await _service.generateDocumentary(documentaryId);
@@ -117,7 +121,7 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// ✨ NUEVO: Publicar documental
+  /// Publicar documental
   Future<DocumentaryModel?> publishDocumentary(String documentaryId) async {
     try {
       final documentary = await _service.publishDocumentary(documentaryId);
@@ -138,7 +142,7 @@ class DocumentaryProvider extends ChangeNotifier {
     }
   }
 
-  /// ✨ NUEVO: Actualizar documental
+  /// Actualizar documental
   Future<DocumentaryModel?> updateDocumentary(
       String documentaryId,
       DocumentaryRequestModel request,
@@ -172,7 +176,11 @@ class DocumentaryProvider extends ChangeNotifier {
       );
 
       if (index != -1) {
+        final old = _documentaries[index].progress;
+
         _documentaries[index] = updated;
+
+        print('Progress ${updated.idDocumentary}: $old -> ${updated.progress} (status: ${updated.status})');
 
         if (!updated.isProcessing) {
           _processingDocumentaries.remove(documentaryId);
@@ -255,7 +263,7 @@ class DocumentaryProvider extends ChangeNotifier {
   void _startPolling() {
     if (_pollingTimer != null && _pollingTimer!.isActive) return;
 
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       for (var documentaryId in _processingDocumentaries.toList()) {
         await refreshDocumentaryStatus(documentaryId);
       }
