@@ -12,6 +12,7 @@ class SubscriptionResponse {
   final String planDescription;
   final double planPrice;
   final String planCurrency;
+  final double storageLimitGb;
 
   SubscriptionResponse({
     required this.subscriptionId,
@@ -25,6 +26,7 @@ class SubscriptionResponse {
     required this.planDescription,
     required this.planPrice,
     required this.planCurrency,
+    required this.storageLimitGb
   });
 
   factory SubscriptionResponse.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class SubscriptionResponse {
       planDescription: json['planDescription'] ?? '',
       planPrice: (json['planPrice'] ?? 0).toDouble(),
       planCurrency: json['planCurrency'] ?? 'USD',
+      storageLimitGb: (json['storageLimitGb'] ?? 15).toDouble()
     );
   }
 }

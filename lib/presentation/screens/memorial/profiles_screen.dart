@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import '../../components/components.dart';
 import 'package:provider/provider.dart';
@@ -17,12 +19,17 @@ class ProfilesScreen extends StatefulWidget {
 class _ProfilesScreenState extends State<ProfilesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? userPlan;
+  List<String>? userPermissions;
 
+  bool canCreateMemorials = false;
+  bool canUseIA = false;
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
+    // Cargar plan y permisos
+    _loadUserPlanAndPermissions();
     // cargar data después de que el widget se haya montado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<MemorialProvider>();
@@ -31,6 +38,16 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     });
   }
 
+  Future<void> _loadUserPlanAndPermissions() async {
+    userPlan = await StorageService.getPlan();
+    userPermissions = await StorageService.getPermissions();
+
+    // Setear bools según permisos
+    canCreateMemorials = userPermissions?.contains('CREATE_MEMORIALS') ?? false;
+    canUseIA = userPermissions?.contains('IA_FEATURES') ?? false;
+
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,11 +86,23 @@ class _ProfilesScreenState extends State<ProfilesScreen>
           icon: Icons.add,
           isFullWidth: true,
           onPressed: () {
+            // Verificar permisos / plan
+            final isPremium = userPermissions?.contains("CREATE_MEMORIALS") ?? false;
+            if (isPremium) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
               );
-            },
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+              ).then((_) async {
+                // Se ejecuta al volver
+                await _loadUserPlanAndPermissions();
+              });
+            }
+          },
         ),
       )
           : null,
