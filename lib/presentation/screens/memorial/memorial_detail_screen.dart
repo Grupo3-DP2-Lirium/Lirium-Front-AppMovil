@@ -37,7 +37,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   late TabController _tab;
   final MemoryService _memoriesService = MemoryService();
   final MemorialService _memorialService = MemorialService();
-  
+  bool _isOwner = false; // ✅ NUEVO
+
   // Datos del memorial (cargados dinámicamente)
   String? name;
   String? description;
@@ -92,17 +93,26 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         isLoadingMemorial = true;
         memorialErrorMessage = null;
       });
-
+      
       final memorial = await _memorialService.getMemorialById(widget.memorialId);
-
+      
+      print('✅ Memorial cargado:');
+      print('   - ID: ${memorial.idMemorial}');
+      print('   - Nombre: ${memorial.name}');
+      print('   - isOwner: ${memorial.isOwner}'); // ✅ Log crítico
+      
       setState(() {
         name = memorial.name;
         description = memorial.description;
         avatarUrl = memorial.profilePhoto?.fileUrl;
-        // coverUrl se puede agregar si el backend lo proporciona
+        _isOwner = memorial.isOwner; // ✅ CRÍTICO: Actualizar desde backend
         isLoadingMemorial = false;
       });
+      
+      print('📊 Estado actualizado - isOwner: $_isOwner');
+      
     } catch (e) {
+      print('❌ Error cargando memorial: $e');
       setState(() {
         memorialErrorMessage = 'Error al cargar el memorial: $e';
         isLoadingMemorial = false;
@@ -2399,7 +2409,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Barra superior indicadora
+                // Barra superior
                 Container(
                   margin: const EdgeInsets.only(top: 12, bottom: 8),
                   width: 40,
@@ -2414,7 +2424,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Text(
-                    'Opciones del memorial',
+                    'Configuración del memorial',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -2425,7 +2435,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 
                 const Divider(),
                 
-                // Opción: Editar
+                // Opción: Editar (siempre visible)
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -2447,7 +2457,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ),
                   ),
                   subtitle: Text(
-                    'Modificar información del memorial',
+                    'Modificar información básica',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -2455,7 +2465,6 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    // Navegar a la pantalla de edición
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -2464,14 +2473,12 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         ),
                       ),
                     ).then((value) {
-                      // Si se editó correctamente, recargar los datos
                       if (value == true) {
-                        _loadMemorialData(); // 🔄 Recarga los datos actualizados
+                        _loadMemorialData();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Los cambios se guardaron correctamente'),
+                            content: Text('Cambios guardados'),
                             backgroundColor: Colors.green,
-                            duration: Duration(seconds: 2),
                           ),
                         );
                       }
@@ -2480,39 +2487,88 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 ),
                 
                 const Divider(height: 1),
-
-                // Opción: Eliminar
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                
+                // ✅ CRÍTICO: Mostrar SOLO si es dueño
+                if (_isOwner) ...[
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6B4CE6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.people,
+                        color: Color(0xFF6B4CE6),
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.delete,
-                      color: Colors.red,
-                      size: 20,
+                    title: const Text(
+                      'Gestionar colaboradores',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+                    subtitle: Text(
+                      'Invitar y administrar permisos',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CollaboratorsScreen(
+                            memorialId: widget.memorialId,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  title: const Text(
-                    'Eliminar memorial',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.red,
+                  const Divider(height: 1),
+                ],
+                
+                // Opción: Eliminar (solo dueño puede eliminar)
+                if (_isOwner) ...[
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    'Esta acción no se puede deshacer',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
+                    title: const Text(
+                      'Eliminar memorial',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.red,
+                      ),
                     ),
+                    subtitle: Text(
+                      'Esta acción no se puede deshacer',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _deleteMemorial(context, widget.memorialId);
+                    },
                   ),
-                  onTap: () async => _deleteMemorial(context, widget.memorialId),
-                ),
-
+                ],
+                
                 const SizedBox(height: 16),
               ],
             ),

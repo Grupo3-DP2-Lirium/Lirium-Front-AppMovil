@@ -53,32 +53,39 @@ class MemorialProvider extends ChangeNotifier {
   }
 
   Future<void> cargarColaborativos({bool force = false}) async {
-    print('DEBUG: cargarColaborativos called - force: $force, _cargandoColab: $_cargandoColab, _loadedColab: $_loadedColab');
-    
-    // Si force=true, resetear el flag para forzar recarga
+    print('📋 cargarColaborativos - force: $force, cargando: $_cargandoColab, loaded: $_loadedColab');
+
     if (force) {
       _loadedColab = false;
-      print('DEBUG: Force reload - resetting _loadedColab');
     }
-    
+
     if (_cargandoColab || (_loadedColab && !force)) {
-      print('DEBUG: cargarColaborativos skipped - already loading or loaded');
+      print('⏭️ Skipped - ya cargado o cargando');
       return;
     }
-    print('DEBUG: Starting to load colaborativos...');
-    _cargandoColab = true; _errorColab = null; notifyListeners();
+
+    _cargandoColab = true;
+    _errorColab = null;
+    notifyListeners();
+
     try {
-      _colaborativos = await _service.getCollaborativeMemorials();
+      print('📡 Llamando getMyCollaborations()...');
+      
+      // ✅ Usar el nuevo endpoint específico
+      _colaborativos = await _service.getMyCollaborations();
       _loadedColab = true;
-      print('DEBUG: Successfully loaded ${_colaborativos.length} colaborativos');
+      
+      print('✅ Colaborativos cargados: ${_colaborativos.length}');
     } catch (e) {
+      print('❌ Error cargando colaborativos: $e');
       _errorColab = e.toString();
-      print('ERROR loading colaborativos: $e');
+      _colaborativos = [];
     } finally {
-      _cargandoColab = false; notifyListeners();
+      _cargandoColab = false;
+      notifyListeners();
     }
   }
-
+  
   Future<void> recargarTodo() async {
     _loadedMis = false; _loadedColab = false;
     await Future.wait([
@@ -97,6 +104,26 @@ class MemorialProvider extends ChangeNotifier {
     _misMemoriales.removeWhere((m) => m.idMemorial == id);
     _colaborativos.removeWhere((m) => m.idMemorial == id);
     notifyListeners();
+  }
+  
+  void limpiarTodo() {
+    print('🧹 Limpiando MemorialProvider...');
+    
+    _misMemoriales = [];
+    _colaborativos = [];
+    
+    _cargandoMis = false;
+    _cargandoColab = false;
+    
+    _errorMis = null;
+    _errorColab = null;
+    
+    _loadedMis = false;
+    _loadedColab = false;
+
+    notifyListeners();
+    
+    print('✅ MemorialProvider limpiado');
   }
 }
 

@@ -15,6 +15,7 @@ class MemorialResponseModel {
   final DateTime createdDate;
   final DateTime updatedDate;
   final FileResponse? profilePhoto;
+  final bool isOwner; // ✅ CRÍTICO: Ahora obligatorio, no nullable
 
   MemorialResponseModel({
     required this.idMemorial,
@@ -30,6 +31,7 @@ class MemorialResponseModel {
     required this.createdDate,
     required this.updatedDate,
     this.profilePhoto,
+    this.isOwner = false, // ✅ Default falso si no viene del backend
   });
 
   factory MemorialResponseModel.fromJson(Map<String, dynamic> json) {
@@ -38,11 +40,16 @@ class MemorialResponseModel {
 
     DateTime parseDate(String raw) {
       if (raw.isEmpty) return DateTime.now();
-      // Reemplaza espacio por 'T'
       return DateTime.parse(raw.replaceFirst(' ', 'T'));
-      // Alternativamente, usando intl:
-      // return DateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(raw);
     }
+
+    // ✅ CRÍTICO: Parsear isOwner del backend
+    bool isOwner = json['isOwner'] ?? false;
+    
+    print('🔍 Parseando memorial:');
+    print('   - ID: ${json["idMemorial"]}');
+    print('   - Nombre: ${json["name"]}');
+    print('   - isOwner desde JSON: $isOwner');
 
     return MemorialResponseModel(
       idMemorial: json["idMemorial"] ?? '',
@@ -60,14 +67,11 @@ class MemorialResponseModel {
       profilePhoto: json['profilePhoto'] != null
           ? FileResponse.fromJson(json['profilePhoto'])
           : null,
+      isOwner: isOwner, // ✅ CRÍTICO
     );
   }
 
   Memorial toEntity() {
-    DateTime parseBirth(String raw) {
-      return DateTime.tryParse(raw.replaceFirst(' ', 'T')) ?? DateTime.now();
-    }
-
     return Memorial(
       idMemorial: idMemorial,
       name: name,
@@ -75,11 +79,12 @@ class MemorialResponseModel {
       description: description,
       gender: gender,
       relation: relation,
-      birthDate: birthDate.isNotEmpty ? DateTime.tryParse(birthDate) : null, // ✅ Manejo seguro de null
+      birthDate: birthDate.isNotEmpty ? DateTime.tryParse(birthDate) : null,
       isCollaborative: isCollaborative,
       isJournal: isJournal,
       createdDate: createdDate,
       profilePhotoUrl: profilePhoto?.fileUrl,
+      isOwner: isOwner, // ✅ CRÍTICO: Pasar a la entidad
     );
   }
 
@@ -92,7 +97,7 @@ class MemorialResponseModel {
       'userId': userId,
       'createdDate': createdDate.toIso8601String(),
       'updatedDate': updatedDate.toIso8601String(),
+      'isOwner': isOwner, // ✅ Incluir en JSON
     };
   }
-
 }

@@ -27,6 +27,7 @@ class ApiConstants {
       '$baseUrl/memorials/collaborative';
   static String get getCollaborativeMemorials =>
       '$baseUrl/memorials/getCollaborativeMemorials';
+  static String getMyCollaborations = '$baseUrl/collaborators/my-collaborations';
   static String get predefinedQuestions =>
       '$baseUrl/memorials/predefined-questions';
 
