@@ -3,11 +3,13 @@ import 'package:flutter_frontend/data/models/subscription_response.dart';
 import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
+import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/current_plan_card.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_storage_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_benefits_list.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/storage_use_card.dart';
 import 'package:intl/intl.dart';
@@ -256,13 +258,30 @@ class _SubscriptionPlanDetailsScreenState
                             }
                           },
                         ),
+                        // === NUEVO BOTÓN SOLO PARA LEGADO_ETERNO ACTIVO ===
+                        if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" && subscription.endDate == null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: PrimaryButton(
+                              text: "Agregar espacio extra",
+                              color: AppColors.primary,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ExtraStorageScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     )
                         : Column(
                       children: [
                         PrimaryButton(
                           text: "Cambiar de plan",
-                          color: AppColors.primary2,
+                          color: AppColors.primary,
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -273,11 +292,12 @@ class _SubscriptionPlanDetailsScreenState
                           },
                         ),
                         const SizedBox(height: 16),
-                        PrimaryButton(
+                        SecondaryButton(
                           text: "Cancelar plan",
                           onPressed: () async {
                             await _cancelSubscription(context);
                           },
+                          isOutlined: true
                         ),
                       ],
                     ),
@@ -287,6 +307,23 @@ class _SubscriptionPlanDetailsScreenState
                     usedGb: widget.usedStorageGB,
                     maxGb: subscription.storageLimitGb ?? 0,
                   ),
+                  // === BOTÓN AGREGAR ESPACIO EXTRA SOLO PARA LEGADO_ETERNO ACTIVO ===
+                  if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" && subscription.endDate == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 24.0), // un poco de espacio arriba
+                      child: PrimaryButton(
+                        text: "Agregar espacio extra",
+                        color: AppColors.primary2,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ExtraStorageScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                 ],
               ),
             );

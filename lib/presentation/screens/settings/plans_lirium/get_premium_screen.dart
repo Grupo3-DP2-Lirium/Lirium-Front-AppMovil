@@ -97,7 +97,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
     final plan = plans[selectedPlanIndex];
 
-    final String paypalPlanId = plan['paypalPlanId']; // esto debe venir de tu API o BD
+    final String paypalPlanId = plan['paypalPlanId']; // esto debe venir de BD
     final String internalPlanId = plan['idPlan']; // ID de tu BD
 
     try {
@@ -207,6 +207,30 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
     print("Permisos guardados del usuario: $permissions");
   }
 
+  List<Map<String, dynamic>> getFilteredPlans() {
+    if (plans.isEmpty) return [];
+
+    // Excluir los planes con price 0
+    final nonFreePlans = plans.where((plan) {
+      final price = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+      return price > 0;
+    }).toList();
+
+    if (isMonthly) {
+      // Solo CREA_COMPARTE
+      return nonFreePlans.where((plan) {
+        final name = (plan['name'] ?? '').toString().toUpperCase();
+        return name == 'CREA_COMPARTE';
+      }).toList();
+    } else {
+      // Solo LEGADO ETERNO
+      return nonFreePlans.where((plan) {
+        final name = (plan['name'] ?? '').toString().toUpperCase();
+        return name == 'LEGADO_ETERNO';
+      }).toList();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -287,33 +311,37 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                   children: [
                     if (_isLoadingPlans)
                       const Center(child: CircularProgressIndicator())
-                    else if (plans.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: PlanCard(
-                          title: isMonthly ? "CREA_COMPARTE" : "LEGADO ETERNO",
-                          description: isMonthly
-                              ? "Crea memoriales y colabora, acceso a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA (línea de tiempo, organización y cápsulas), 1 documental al mes."
-                              : "Acceso vitalicio a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA avanzadas, y acceso a todos los documentales.",
-                          price: () {
-                            final plan = plans[0];
-                            final double basePrice =
-                                double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
-                            final double displayPrice =
-                            isMonthly ? basePrice : (basePrice * 12 * 0.7);
-                            final String currency = plan['currency'] ?? 'USD';
-                            return '$currency ${displayPrice.toStringAsFixed(2)}';
-                          }(),
-                          recommended: true,
-                          isSelected: true,
-                          onTap: () {},
-                        ),
-                      )
                     else
-                      const Center(child: Text("No hay planes disponibles.")),
+                      for (var plan in getFilteredPlans())
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: PlanCard(
+                            title: plan['name'] ?? '',
+                            description: plan['description'] ?? '',
+                            price: () {
+                              final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+                              final String currency = plan['currency'] ?? 'USD';
+                              return '$currency ${basePrice.toStringAsFixed(2)}';
+                            }(),
+                            recommended: false,
+                            isSelected: selectedPlanIndex == plans.indexOf(plan),
+                            onTap: () {
+                              setState(() {
+                                selectedPlanIndex = plans.indexOf(plan);
+                              });
+                            },
+                            permissions: plan['permissions'] != null
+                                ? (plan['permissions'] as List).map((p) => p['name'].toString()).toList()
+                                : [],
+                            // Atributos extra
+                            storageLimitGb: plan['storageLimitGb'],
+                            maxCollaborations: plan['maxCollaborations'],
+                            maxDocumentariesPerMonth: plan['maxDocumentariesPerMonth'],
+                            supportLevel: plan['supportLevel'],
+                          ),
+                        ),
                   ],
                 ),
-                const SizedBox(height: 20),
                 // --- Botones ---
                 Column(
                   children: [

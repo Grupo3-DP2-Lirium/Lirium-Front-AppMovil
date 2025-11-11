@@ -47,7 +47,7 @@ class _PayPalWebViewScreenState2 extends State<PayPalWebViewScreen2> {
 
             if (url.contains('success')) {
               if (widget.isSubscription) {
-                // ✅ Suscripción automática
+                // Suscripción automática
                 final uri = Uri.parse(url);
                 final subscriptionId = widget.subscriptionId ?? uri.queryParameters['subscription_id'];
 
@@ -56,7 +56,7 @@ class _PayPalWebViewScreenState2 extends State<PayPalWebViewScreen2> {
                   return NavigationDecision.prevent;
                 }
 
-                // ✅ Confirmar y almacenar en tu backend
+                // Confirmar y almacenar en backend
                 try {
                   await _service.confirmPaypalSubscription(subscriptionId, widget.planId);
 
