@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
 import 'package:flutter_frontend/presentation/screens/videos/documentary_config_screen.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 
 class DocumentaryDetailsScreen extends StatefulWidget {
   final String memorialId;
@@ -99,31 +101,12 @@ class _DocumentaryDetailsScreenState extends State<DocumentaryDetailsScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Título
-              const Text(
-                'Título del documental',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              // ✨ Título con CustomTextField
+              CustomTextField(
+                label: 'Título del documental',
+                hintText: 'Ej: La vida de ${widget.memorialName}',
                 controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'Ej: La vida de ${widget.memorialName}',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
+                prefixIcon: const Icon(Icons.movie_creation_outlined, color: AppColors.primary),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'El título es requerido';
@@ -133,40 +116,17 @@ class _DocumentaryDetailsScreenState extends State<DocumentaryDetailsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Descripción
-              const Text(
-                'Descripción breve',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '¿Qué cuenta la historia de este documental?',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              // ✨ Descripción con CustomTextArea
+              CustomTextArea(
+                label: 'Descripción breve',
+                hintText: '¿Qué cuenta la historia de este documental? Ejemplo: Un recorrido por los momentos más especiales y significativos...',
                 controller: _descriptionController,
+                prefixIcon: Icons.description,
                 maxLines: 4,
-                decoration: InputDecoration(
-                  hintText:
-                  'Un recorrido por los momentos más especiales y significativos...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
+                maxLength: 500,
               ),
               const SizedBox(height: 32),
+
 
               // Botón continuar
               PrimaryButton(

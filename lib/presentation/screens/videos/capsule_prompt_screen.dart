@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
 import 'package:flutter_frontend/presentation/screens/videos/capsule_config_screen.dart';
 
 class CapsulePromptScreen extends StatefulWidget {
@@ -43,13 +44,13 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.auto_awesome,
                     size: 48,
-                    color: Colors.purple,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -64,7 +65,7 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.person_outline, color: Colors.purple),
+                    const Icon(Icons.person_outline, color: AppColors.primary),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -106,24 +107,14 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Campo de prompt
-              TextFormField(
+              // ✨ Campo de prompt con CustomTextArea
+              CustomTextArea(
+                label: 'Describe el momento',
+                hintText: 'Ej: "Cumpleaños 80 de mamá"\n"Navidad 2023 en casa"\n"Viaje a la playa en verano"',
                 controller: _promptController,
+                prefixIcon: Icons.auto_awesome,
                 maxLines: 4,
-                decoration: InputDecoration(
-                  hintText:
-                  'Ej: "Cumpleaños 80 de mamá"\n"Navidad 2023 en casa"\n"Viaje a la playa en verano"',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                    const BorderSide(color: Colors.purple, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
+                maxLength: 200,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Describe el momento que quieres capturar';
@@ -140,9 +131,9 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.purple[50],
+                  color: AppColors.secondary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.purple[200]!),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,13 +141,13 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
                     Row(
                       children: [
                         Icon(Icons.lightbulb_outline,
-                            color: Colors.purple[700], size: 20),
+                            color: AppColors.primary, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Ejemplos de prompts',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: Colors.purple[900],
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -235,7 +226,7 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
             width: 4,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.purple[700],
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
           ),
@@ -245,7 +236,7 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
               text,
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.purple[900],
+                color: AppColors.primary.withOpacity(0.8),
               ),
             ),
           ),

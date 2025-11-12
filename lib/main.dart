@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
 import 'package:flutter_frontend/presentation/screens/main/home_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/my_personal_space_screen.dart';
@@ -126,32 +127,179 @@ class _RemoryAppState extends State<RemoryApp> {
         ChangeNotifierProvider(create: (_) => CapsuleProvider()),
       ],
       child: MaterialApp(
-        title: 'Remory',
+        title: 'Lirium',
+        debugShowCheckedModeBanner: false,
+
+        // ✨ CONFIGURACIÓN DEL THEME CON INTER
         theme: ThemeData(
+          // Fuente principal
+          fontFamily: 'Inter',
+
+          // Color primario
+          primaryColor: AppColors.primary,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6366F1),
-            primary: const Color(0xFF6366F1),
+            seedColor: AppColors.primary,
+            primary: AppColors.primary,
+            secondary: AppColors.secondary,
           ),
+
+          // Configuración de texto con Inter
+          textTheme: const TextTheme(
+            // Headings
+            displayLarge: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 42,
+              fontWeight: FontWeight.w800, // ExtraBold
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
+            displayMedium: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 36,
+              fontWeight: FontWeight.w700, // Bold
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
+            displaySmall: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 32,
+              fontWeight: FontWeight.w600, // SemiBold
+              color: AppColors.textPrimary,
+            ),
+
+            // H1-H6 equivalentes
+            headlineLarge: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 28,
+              fontWeight: FontWeight.w600, // SemiBold
+              color: AppColors.textPrimary,
+            ),
+            headlineMedium: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 24,
+              fontWeight: FontWeight.w600, // SemiBold
+              color: AppColors.textPrimary,
+            ),
+            headlineSmall: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 20,
+              fontWeight: FontWeight.w600, // SemiBold
+              color: AppColors.textPrimary,
+            ),
+
+            // Body Text
+            bodyLarge: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w400, // Regular
+              color: AppColors.textPrimary,
+              height: 1.5,
+            ),
+            bodyMedium: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w400, // Regular
+              color: AppColors.textPrimary,
+              height: 1.5,
+            ),
+            bodySmall: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w400, // Regular
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+
+            // Labels
+            labelLarge: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w500, // Medium
+              color: AppColors.textPrimary,
+            ),
+            labelMedium: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w500, // Medium
+              color: AppColors.textPrimary,
+            ),
+            labelSmall: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w500, // Medium
+              color: AppColors.textSecondary,
+            ),
+          ),
+
+          // Input Decoration Theme
+          inputDecorationTheme: InputDecorationTheme(
+            // Se aplicará automáticamente a todos los TextFormField
+            labelStyle: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
+            ),
+            floatingLabelStyle: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.primary,
+            ),
+            hintStyle: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: Colors.grey[400],
+            ),
+          ),
+
+          // AppBar Theme
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
+            foregroundColor: AppColors.textPrimary,
             elevation: 0,
+            titleTextStyle: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
-          useMaterial3: true,
-          textTheme: GoogleFonts.interTextTheme().copyWith(
-            displayLarge: const TextStyle(fontSize: 42, fontWeight: FontWeight.w800),
-            displayMedium: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
-            displaySmall: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-            headlineMedium: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-            headlineSmall: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-            titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            bodyLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
-            bodyMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-            bodySmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-            labelSmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+
+          // Button Theme
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              textStyle: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 14,
+              ),
+            ),
+          ),
+
+          // Text Button Theme
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              textStyle: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
-        debugShowCheckedModeBanner: false,
+        //debugShowCheckedModeBanner: false,
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,

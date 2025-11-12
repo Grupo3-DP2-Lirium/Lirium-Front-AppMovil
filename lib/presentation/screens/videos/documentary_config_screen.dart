@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/documentary_request.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -108,9 +109,9 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
             ),
             const SizedBox(height: 32),
 
-            // 1. Enfoque narrativo
+            // 1. Enfoque narrativo con CustomTextArea
             const Text(
-              '1. Enfoque narrativo',
+              '1. Enfoque del relato',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -123,23 +124,13 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            CustomTextArea(
+              label: 'Enfoque narrativo (opcional)',
+              hintText: 'Ej: Que se vea su espíritu durante su niñez, con enfoque en momentos familiares importantes...',
               controller: _narrativeFocusController,
+              prefixIcon: Icons.auto_stories,
               maxLines: 3,
-              decoration: InputDecoration(
-                hintText:
-                'Ej: Que se vea su espíritu durante su niñez, con enfoque en momentos familiares importantes...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                  const BorderSide(color: AppColors.primary, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
+              maxLength: 300,
             ),
             const SizedBox(height: 32),
 
@@ -214,7 +205,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
                       'La generación puede tomar varios minutos. Te notificaremos cuando esté listo.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.primary,
+                        color: AppColors.primary.withOpacity(0.8),
                       ),
                     ),
                   ),
@@ -336,25 +327,21 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
         'value': 'nostalgic',
         'label': 'Nostálgico',
         'icon': Icons.history,
-        'description': 'Emotivo y reflexivo'
       },
       {
         'value': 'joyful',
         'label': 'Alegre',
         'icon': Icons.sentiment_satisfied_alt,
-        'description': 'Positivo y celebratorio'
       },
       {
         'value': 'formal',
         'label': 'Formal',
         'icon': Icons.business_center,
-        'description': 'Respetuoso y elegante'
       },
       {
         'value': 'inspiring',
         'label': 'Inspirador',
         'icon': Icons.auto_awesome,
-        'description': 'Motivacional y esperanzador'
       },
     ];
 
@@ -414,7 +401,6 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
     return Column(
       children: [
-        // Opción sin música
         _buildMusicOption(null, 'Sin música', 'Documental sin fondo musical', null),
         const SizedBox(height: 8),
 
@@ -517,7 +503,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
     if (trackId != null) {
       try {
-        final String baseAzureUrl =
+        const String baseAzureUrl =
             'https://stliriumfiles.blob.core.windows.net/lirium-files';
         final String fullUrl = '$baseAzureUrl/$trackId';
 
@@ -567,13 +553,11 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
     final provider = context.read<DocumentaryProvider>();
 
-    // Crear documental en DRAFT
     final documentary = await provider.createDocumentary(request);
 
     if (!mounted) return;
 
     if (documentary != null) {
-      // Iniciar generación inmediatamente
       final generated = await provider.generateDocumentary(documentary.idDocumentary);
 
       if (generated != null) {
@@ -584,7 +568,6 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
           ),
         );
 
-        // Volver a la lista
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

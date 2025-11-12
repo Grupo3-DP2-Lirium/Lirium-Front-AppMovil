@@ -120,9 +120,9 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
               });
             },
             backgroundColor: AppColors.primary,
-            icon: const Icon(Icons.movie_creation_outlined, color: Colors.white),
+            icon: const Icon(Icons.add, color: Colors.white),
             label: const Text(
-              'Nuevo Documental',
+              'Crear Documental',
               style: TextStyle(color: Colors.white),
             ),
           ),

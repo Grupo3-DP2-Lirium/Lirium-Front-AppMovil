@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/capsule_request.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
+import 'package:flutter_frontend/presentation/components/inputs/filter_carousel_selector.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
@@ -56,7 +59,6 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
   }
 
   String _generateTitleFromPrompt(String prompt) {
-    // Capitalizar primera letra
     if (prompt.isEmpty) return 'Mi Cápsula';
     String title = prompt.trim();
     title = title[0].toUpperCase() + title.substring(1);
@@ -85,13 +87,13 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.purple[50],
+                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.auto_awesome,
-                      color: Colors.purple, size: 20),
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -119,78 +121,59 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Título
-            const Text(
-              'Título de la cápsula',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
+            // Título con CustomTextField
+            CustomTextField(
+              label: 'Título de la cápsula',
+              hintText: 'Ej: ${widget.userPrompt}',
               controller: _titleController,
-              decoration: InputDecoration(
-                hintText: 'Ej: ${widget.userPrompt}',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.purple, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
+              prefixIcon: const Icon(Icons.video_library_outlined, color: AppColors.primary),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'El título es requerido';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 20),
 
-            // Descripción (opcional)
-            const Text(
-              'Descripción (opcional)',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
+            // Descripción con CustomTextArea
+            CustomTextArea(
+              label: 'Descripción (opcional)',
+              hintText: 'Agrega más detalles sobre este momento...',
               controller: _descriptionController,
+              prefixIcon: Icons.description,
               maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Agrega más detalles sobre este momento...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.purple, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
+              maxLength: 300,
             ),
             const SizedBox(height: 32),
 
             // Filtro Visual
-            const Text(
-              'Filtro Visual',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            if (capsuleProvider.loadingFilters)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              )
+            else
+              FilterCarouselSelector(
+                selectedFilter: _selectedFilter,
+                onFilterSelected: (filterId) {
+                  setState(() {
+                    _selectedFilter = filterId;
+                  });
+                },
+                filters: capsuleProvider.filters.map((filter) {
+                  return {
+                    'id': filter.id,
+                    'name': filter.name,
+                    'description': filter.description,
+                    'preview': null,
+                  };
+                }).toList(),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Estilo Instagram Stories',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
-            _buildFilterSelector(capsuleProvider),
             const SizedBox(height: 32),
+
 
             // Música
             const Text(
@@ -219,20 +202,20 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.info_outline,
-                      color: Colors.purple, size: 20),
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'La generación puede tomar algunos minutos. Te notificaremos cuando esté lista.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.purple[900],
+                        color: AppColors.primary.withOpacity(0.8),
                       ),
                     ),
                   ),
@@ -250,7 +233,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(color: Colors.purple),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -269,10 +252,10 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.purple : Colors.grey[100],
+              color: isSelected ? AppColors.primary : Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? Colors.purple : Colors.grey[300]!,
+                color: isSelected ? AppColors.primary : Colors.grey[300]!,
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -310,7 +293,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(color: Colors.purple),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -350,10 +333,10 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.purple.withOpacity(0.1) : Colors.grey[50],
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.purple : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -361,7 +344,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
           children: [
             Icon(
               trackId == null ? Icons.music_off : Icons.music_note,
-              color: isSelected ? Colors.purple : Colors.grey[600],
+              color: isSelected ? AppColors.primary : Colors.grey[600],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -373,7 +356,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
                     style: TextStyle(
                       fontWeight:
                       isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? Colors.purple : Colors.black87,
+                      color: isSelected ? AppColors.primary : Colors.black87,
                     ),
                   ),
                   Text(
@@ -387,7 +370,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
               IconButton(
                 icon: Icon(
                   isPlayingThis ? Icons.stop_circle : Icons.play_circle,
-                  color: isSelected ? Colors.purple : Colors.grey[600],
+                  color: isSelected ? AppColors.primary : Colors.grey[600],
                   size: 32,
                 ),
                 onPressed: () => _toggleMusicPreview(trackId, previewUrl),
@@ -395,7 +378,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             ],
             if (isSelected && trackId != null) const SizedBox(width: 8),
             if (isSelected)
-              const Icon(Icons.check_circle, color: Colors.purple),
+              const Icon(Icons.check_circle, color: AppColors.primary),
           ],
         ),
       ),
