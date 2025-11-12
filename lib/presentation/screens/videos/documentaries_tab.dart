@@ -68,7 +68,7 @@ class _DocumentariesTabState extends State<DocumentariesTab>
             dividerColor: Colors.transparent,
             indicatorSize: TabBarIndicatorSize.tab,
             indicatorColor: Colors.transparent,
-            labelColor: AppColors.primary, // texto rosado cuando está seleccionado
+            labelColor: AppColors.primary,
             unselectedLabelColor: Colors.grey[700],
 
             labelStyle: const TextStyle(
@@ -116,7 +116,7 @@ class _DocumentariesTabState extends State<DocumentariesTab>
                 ),
               ),
 
-              //Borradores
+              //Borradores (completado, procesado, failed, canceled)
               Tab(
                 child: Container(
                   height: 36,

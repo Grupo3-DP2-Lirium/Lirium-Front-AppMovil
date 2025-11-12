@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/videos/documentaries_tab.dart';
+import 'package:flutter_frontend/presentation/screens/videos/capsules_tab.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
-import 'package:flutter_frontend/presentation/screens/videos/capsules_tab.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
-
 
 class VideosScreen extends StatefulWidget {
   const VideosScreen({super.key});
@@ -23,21 +22,12 @@ class _VideosScreenState extends State<VideosScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return;
-      if (_tabController.index == 0) {
-        context.read<CapsuleProvider>().loadMyCapsules(force: true);
-      } else {
-        context.read<DocumentaryProvider>().loadMyDocumentaries();
-      }
-    });
-
+    // Cargar documentales y cápsulas después de montar el widget
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DocumentaryProvider>().loadMyDocumentaries();
       context.read<CapsuleProvider>().loadMyCapsules();
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +49,13 @@ class _VideosScreenState extends State<VideosScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          const CapsulesTab(),
-          const DocumentariesTab(),
+        children: const [
+          CapsulesTab(),
+          DocumentariesTab(),
         ],
       ),
     );
   }
-
 
   @override
   void dispose() {
