@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/videos/components/documentary_card.dart';
 import 'package:flutter_frontend/presentation/screens/videos/select_memorial_documentary_screen.dart';
@@ -14,21 +13,14 @@ class DocumentariesTab extends StatefulWidget {
   State<DocumentariesTab> createState() => _DocumentariesTabState();
 }
 
-class _DocumentariesTabState extends State<DocumentariesTab>
-    with SingleTickerProviderStateMixin {
-  late TabController _filterTabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _filterTabController = TabController(length: 2, vsync: this);
-  }
+class _DocumentariesTabState extends State<DocumentariesTab> {
+  String _selectedFilter = 'drafts'; // 'drafts' o 'published'
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DocumentaryProvider>();
 
-    if (provider.loading) {
+    if (provider.loading && provider.documentaries.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -58,127 +50,65 @@ class _DocumentariesTabState extends State<DocumentariesTab>
       return _buildEmptyState(context);
     }
 
-    return Column(
+    final draftDocumentaries = provider.draftDocumentaries;
+    final publishedDocumentaries = provider.publishedDocumentaries;
+
+    // Determinar qué mostrar según el filtro
+    final documentariesToShow = _selectedFilter == 'drafts'
+        ? draftDocumentaries
+        : publishedDocumentaries;
+
+    return Stack(
       children: [
-        // Filtros: Publicados | Borradores (chips estilo suave)
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TabBar(
-            controller: _filterTabController,
-            dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicatorColor: Colors.transparent,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: Colors.grey[700],
-
-            labelStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-            tabs: [
-              //Publicados
-              Tab(
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle_outline, size: 16),
-                      const SizedBox(width: 6),
-                      const Text('Publicados'),
-                      if (provider.publishedDocumentaries.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${provider.publishedDocumentaries.length}',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-              //Borradores (completado, procesado, failed, canceled)
-              Tab(
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.edit_note, size: 16),
-                      const SizedBox(width: 6),
-                      const Text('Borradores'),
-                      if (provider.draftDocumentaries.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${provider.draftDocumentaries.length}',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-
-
-
-
-
-        // Contenido con tabs
-        Expanded(
-          child: TabBarView(
-            controller: _filterTabController,
+        RefreshIndicator(
+          onRefresh: () => provider.loadMyDocumentaries(force: true),
+          color: AppColors.primary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDocumentaryList(provider.publishedDocumentaries, provider),
-              _buildDocumentaryList(provider.draftDocumentaries, provider),
+              // 🎨 Chips de filtro suaves
+              _buildFilterChips(draftDocumentaries.length, publishedDocumentaries.length),
 
+              // Lista de documentales
+              Expanded(
+                child: documentariesToShow.isEmpty
+                    ? _buildEmptyFilterState()
+                    : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                  itemCount: documentariesToShow.length,
+                  itemBuilder: (context, index) {
+                    final documentary = documentariesToShow[index];
+                    return DocumentaryCard(
+                      documentary: documentary,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DocumentaryDetailScreen(
+                              documentaryId: documentary.idDocumentary,
+                            ),
+                          ),
+                        ).then((_) {
+                          provider.loadMyDocumentaries(force: true);
+                        });
+                      },
+                      onDelete: () => _showDeleteDialog(context, documentary, provider),
+                      onCancel: documentary.isProcessing
+                          ? () => _showCancelDialog(context, documentary, provider)
+                          : null,
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
 
-        // Botón crear
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: PrimaryButton(
-            text: 'Nuevo Documental',
-            icon: Icons.movie_creation_outlined,
-            isFullWidth: true,
+        // FAB - Crear documental
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton.extended(
             onPressed: () {
               Navigator.push(
                 context,
@@ -189,107 +119,198 @@ class _DocumentariesTabState extends State<DocumentariesTab>
                 provider.loadMyDocumentaries(force: true);
               });
             },
+            backgroundColor: AppColors.primary,
+            icon: const Icon(Icons.movie_creation_outlined, color: Colors.white),
+            label: const Text(
+              'Nuevo Documental',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDocumentaryList(List documentaries, DocumentaryProvider provider) {
-    if (documentaries.isEmpty) {
-      return Center(
+  /// 🎨 Chips de filtro suaves
+  Widget _buildFilterChips(int draftsCount, int publishedCount) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          _buildFilterChip(
+            label: 'Borradores',
+            value: 'drafts',
+            count: draftsCount,
+            icon: Icons.edit_note,
+          ),
+          const SizedBox(width: 12),
+          _buildFilterChip(
+            label: 'Publicados',
+            value: 'published',
+            count: publishedCount,
+            icon: Icons.check_circle_outline,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required String value,
+    required int count,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedFilter == value;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.12)
+              : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.3)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : Colors.grey[700],
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? AppColors.primary : Colors.grey[700],
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withOpacity(0.2)
+                      : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? AppColors.primary : Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Estado vacío cuando no hay documentales filtrados
+  Widget _buildEmptyFilterState() {
+    final isDrafts = _selectedFilter == 'drafts';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.inbox_outlined,
+              isDrafts ? Icons.edit_note : Icons.public_off,
               size: 64,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 16),
             Text(
-              _filterTabController.index == 0
-                  ? 'No hay documentales publicados'
-                  : 'No hay borradores',
+              isDrafts
+                  ? 'No tienes borradores'
+                  : 'No tienes documentales publicados',
               style: TextStyle(
                 fontSize: 16,
+                fontWeight: FontWeight.w500,
                 color: Colors.grey[600],
               ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isDrafts
+                  ? 'Crea un documental para empezar'
+                  : 'Publica tus documentales completados',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => provider.loadMyDocumentaries(force: true),
-      color: AppColors.primary,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: documentaries.length,
-        itemBuilder: (context, index) {
-          final documentary = documentaries[index];
-          return DocumentaryCard(
-            documentary: documentary,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => DocumentaryDetailScreen(
-                    documentaryId: documentary.idDocumentary,
-                  ),
-                ),
-              ).then((_) {
-                provider.loadMyDocumentaries(force: true);
-              });
-            },
-            onDelete: () => _showDeleteDialog(context, documentary, provider),
-            onCancel: documentary.isProcessing
-                ? () => _showCancelDialog(context, documentary, provider)
-                : null,
-          );
-        },
       ),
     );
   }
 
+  /// Estado vacío general (sin ningún documental)
   Widget _buildEmptyState(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.movie_creation_outlined,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'No tienes documentales aún',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 48),
-            child: Text(
-              'Crea tu primer documental para recordar momentos especiales',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.movie_creation_outlined,
+                size: 64,
+                color: AppColors.primary,
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: PrimaryButton(
-              text: 'Crear Documental',
-              icon: Icons.add,
+            const SizedBox(height: 24),
+            const Text(
+              'No tienes documentales aún',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Crea tu primer documental para recordar momentos especiales',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -300,9 +321,21 @@ class _DocumentariesTabState extends State<DocumentariesTab>
                   context.read<DocumentaryProvider>().loadMyDocumentaries(force: true);
                 });
               },
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Crear mi primer documental',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -391,11 +424,5 @@ class _DocumentariesTabState extends State<DocumentariesTab>
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _filterTabController.dispose();
-    super.dispose();
   }
 }
