@@ -7,6 +7,7 @@ import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 
 class CreateDocumentaryScreen extends StatefulWidget {
   const CreateDocumentaryScreen({super.key});
@@ -100,29 +101,10 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
               const SizedBox(height: 24),
 
               // Título
-              const Text(
-                'Título del documental',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
+              CustomTextField(
+                label: 'Título del documental',
+                hintText: 'Ej: La vida de María',
                 controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'Ej: La vida de Jorge',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'El título es requerido';

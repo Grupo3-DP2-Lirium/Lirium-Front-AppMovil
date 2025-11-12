@@ -4,6 +4,8 @@ import 'package:flutter_frontend/data/services/auth_storage.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -31,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -52,33 +55,27 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ✅ Función para registrar el token FCM después del login
   Future<void> _registerFCMToken() async {
     try {
       print('📱 Starting FCM token registration...');
-      
+
       final FirebaseMessaging messaging = FirebaseMessaging.instance;
-      
-      // Solicitar permisos
+
       NotificationSettings settings = await messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
       );
-      
+
       print('🔔 FCM Permission status: ${settings.authorizationStatus}');
-      
+
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // Obtener token
         String? token = await messaging.getToken();
-        
+
         if (token != null && token.isNotEmpty) {
           print('✅ FCM Token obtained: ${token.substring(0, 20)}...');
-          
-          // Registrar en el backend
           await notificationService.registerDeviceToken(token);
-          
           print('✅ FCM Token registered in backend successfully');
         } else {
           print('⚠️ Failed to obtain FCM token');
@@ -88,11 +85,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       print('❌ Error registering FCM token: $e');
-      // No lanzar error, solo loggear para no interrumpir el login
     }
   }
 
-  // Función para hacer login con el backend
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       _showMessage('Por favor completa todos los campos');
@@ -116,7 +111,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-        // recibir token
         final access = (data['accessToken'] ?? data['token']) as String?;
         final refresh = (data['refreshToken'] ?? data['refresh_token']) as String?;
 
@@ -133,16 +127,13 @@ class _LoginScreenState extends State<LoginScreen> {
         print("Plan recibido del back: $plan");
         print("Permisos recibidos: $permissions");
 
-        // Guardar automáticamente en storage seguro
-        //await StorageService.saveToken(token);
         await StorageService.savePlan(plan);
         await StorageService.savePermissions(permissions);
 
-        httpService.setToken(access);                 // usa el token en el HttpService
-        await storage.save(access: access, refresh: refresh); // persiste seguro
-        await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
+        httpService.setToken(access);
+        await storage.save(access: access, refresh: refresh);
+        await storage.saveLastEmail(_emailController.text);
 
-        // ✅ CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
         await _registerFCMToken();
 
         _showMessage('¡Login exitoso!');
@@ -166,41 +157,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Función para crear un usuario de prueba con las credenciales que quieres
-  Future<void> _createTestUser() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8080/api/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'firstName': 'Rodrigo',
-          'firstLastName': 'Usuario',
-          'email': 'rodrigo@test.com',
-          'password': 'rodrigo',
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        _showMessage('¡Usuario creado! Email: rodrigo@test.com, Password: rodrigo');
-        // Prellenar los campos automáticamente
-        _emailController.text = 'rodrigo@test.com';
-        _passwordController.text = 'rodrigo';
-      } else {
-        _showMessage('Error creando usuario: ${response.body}');
-      }
-    } catch (e) {
-      _showMessage('Error de conexión: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -212,36 +168,72 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
+
               // Title
               const AppTitle(title: 'Inicia sesión'),
               const SizedBox(height: 40),
-              // Email field
-              AppTextField(
+
+              // Email field con CustomTextField
+              CustomTextField(
+                label: 'Correo electrónico',
                 hintText: 'Tu correo@ejemplo.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                prefixIcon: Icons.email_outlined,
+                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
                 onChanged: (value) {
-                  // Guardar el último correo en tiempo real
                   storage.saveLastEmail(value);
                 },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingresa tu correo';
+                  }
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    return 'Por favor ingresa un correo válido';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 16),
-              // Password field
-              PasswordField(controller: _passwordController),
+              const SizedBox(height: 20),
+
+              // Password field con CustomTextField
+              CustomTextField(
+                label: 'Contraseña',
+                hintText: 'Tu contraseña',
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingresa tu contraseña';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 24),
+
               // Forgot password
               Align(
                 alignment: Alignment.centerRight,
                 child: SecondaryButton(
                   text: '¿Olvidaste tu contraseña?',
-                  textColor: const Color(0xFFFC7171),
+                  textColor: AppColors.primary,
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -252,59 +244,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
               ),
-              const Spacer(),
-              // Botón para crear usuario de prueba
-              SecondaryButton(
-                text: 'Crear usuario de prueba',
-                textColor: const Color(0xFF10B981),
-                onPressed: _isLoading ? null : _createTestUser,
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
+
               // Login button
               _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : PrimaryButton(
                 text: 'Iniciar',
                 onPressed: _login,
               ),
-              const SizedBox(height: 16),
-              // Social login options
-              /*Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButtonCustom(
-                    icon: Icons.facebook,
-                    backgroundColor: Colors.blue,
-                    onPressed: () {},
-                  ),
-                  const SizedBox(width: 16),
-                  IconButtonCustom(
-                    icon: Icons.g_mobiledata,
-                    backgroundColor: Colors.red,
-                    onPressed: () {},
-                  ),
-                  const SizedBox(width: 16),
-                  IconButtonCustom(
-                    icon: Icons.apple,
-                    backgroundColor: Colors.black,
-                    onPressed: () {},
-                  ),
-                ],
-              ),*/
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+
               // Sign up link
               Center(
-                child: SecondaryButton(
-                  text: 'Crear una cuenta',
-                  textColor: const Color(0xFF6366F1),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterScreen(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '¿No tienes cuenta? ',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
                       ),
-                    );
-                  },
+                    ),
+                    SecondaryButton(
+                      text: 'Crear cuenta',
+                      textColor: AppColors.primary,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

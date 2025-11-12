@@ -84,7 +84,7 @@ class DocumentaryCard extends StatelessWidget {
                         '${documentary.totalMemories} recuerdos',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
-                      if (documentary.isCompleted) ...[
+                      if (documentary.isCompleted || documentary.isPublished) ...[
                         const SizedBox(width: 12),
                         Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
                         const SizedBox(width: 4),
@@ -156,11 +156,11 @@ class DocumentaryCard extends StatelessWidget {
   }
 
   Widget _buildThumbnail() {
-    if (documentary.isCompleted && documentary.videoUrl != null) {
+    // Publicado o Completado con video
+    if ((documentary.isCompleted || documentary.isPublished) && documentary.videoUrl != null) {
       return Stack(
         alignment: Alignment.center,
         children: [
-          // Aquí podrías cargar un thumbnail del video si lo tienes
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -172,9 +172,32 @@ class DocumentaryCard extends StatelessWidget {
             ),
           ),
           const Icon(Icons.play_circle_filled, size: 32, color: Colors.white),
+          // Badge si está publicado
+          if (documentary.isPublished)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'PÚBLICO',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       );
-    } else if (documentary.isProcessing) {
+    }
+    // Procesando
+    else if (documentary.isProcessing) {
       return Stack(
         alignment: Alignment.center,
         children: [
@@ -187,14 +210,23 @@ class DocumentaryCard extends StatelessWidget {
           const CircularProgressIndicator(strokeWidth: 3),
         ],
       );
-    } else if (documentary.isFailed) {
+    }
+    // Error
+    else if (documentary.isFailed) {
       return Icon(Icons.error_outline, size: 40, color: Colors.red[300]);
-    } else {
+    }
+    // Borrador
+    else if (documentary.isDraft) {
+      return Icon(Icons.edit_note, size: 40, color: Colors.orange[300]);
+    }
+    // Default
+    else {
       return Icon(Icons.movie_outlined, size: 40, color: Colors.grey[400]);
     }
   }
 
   Widget _buildStatusWidget() {
+    // Procesando
     if (documentary.isProcessing) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,7 +264,26 @@ class DocumentaryCard extends StatelessWidget {
           ),
         ],
       );
-    } else if (documentary.isCompleted) {
+    }
+    // Publicado
+    else if (documentary.isPublished) {
+      return Row(
+        children: [
+          Icon(Icons.public, size: 16, color: Colors.green[600]),
+          const SizedBox(width: 4),
+          Text(
+            documentary.statusText,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.green[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+    // Completado (listo para publicar)
+    else if (documentary.isCompleted) {
       return Row(
         children: [
           Icon(Icons.check_circle, size: 16, color: Colors.green[600]),
@@ -247,7 +298,9 @@ class DocumentaryCard extends StatelessWidget {
           ),
         ],
       );
-    } else if (documentary.isFailed) {
+    }
+    // Error
+    else if (documentary.isFailed) {
       return Row(
         children: [
           Icon(Icons.error, size: 16, color: Colors.red[600]),
@@ -262,16 +315,35 @@ class DocumentaryCard extends StatelessWidget {
           ),
         ],
       );
-    } else {
+    }
+    // Borrador
+    else if (documentary.isDraft) {
       return Row(
         children: [
-          Icon(Icons.schedule, size: 16, color: Colors.orange[600]),
+          Icon(Icons.edit_note, size: 16, color: Colors.orange[600]),
           const SizedBox(width: 4),
           Text(
             documentary.statusText,
             style: TextStyle(
               fontSize: 12,
               color: Colors.orange[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+    // Default
+    else {
+      return Row(
+        children: [
+          Icon(Icons.schedule, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 4),
+          Text(
+            documentary.statusText,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
           ),
