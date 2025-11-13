@@ -279,6 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SecondaryButton(
                       text: 'Crear cuenta',
                       textColor: AppColors.primary,
+                      isFullWidth: false,
                       onPressed: () {
                         Navigator.push(
                           context,
