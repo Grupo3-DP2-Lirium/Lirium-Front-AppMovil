@@ -16,6 +16,7 @@ class MemorialResponseModel {
   final DateTime updatedDate;
   final FileResponse? profilePhoto;
   final bool isOwner; // ✅ CRÍTICO: Ahora obligatorio, no nullable
+  final bool canEdit; // ✅ CRÍTICO: Nuevo campo para permisos
 
   MemorialResponseModel({
     required this.idMemorial,
@@ -32,6 +33,7 @@ class MemorialResponseModel {
     required this.updatedDate,
     this.profilePhoto,
     this.isOwner = false, // ✅ Default falso si no viene del backend
+    this.canEdit = false, // ✅ Default falso si no viene del backend
   });
 
   factory MemorialResponseModel.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,7 @@ class MemorialResponseModel {
           ? FileResponse.fromJson(json['profilePhoto'])
           : null,
       isOwner: isOwner, // ✅ CRÍTICO
+      canEdit: json['canEdit'] ?? false, // ✅ CRÍTICO
     );
   }
 
@@ -85,6 +88,7 @@ class MemorialResponseModel {
       createdDate: createdDate,
       profilePhotoUrl: profilePhoto?.fileUrl,
       isOwner: isOwner, // ✅ CRÍTICO: Pasar a la entidad
+      canEdit: canEdit, // ✅ CRÍTICO: Pasar a la entidad
     );
   }
 
@@ -98,6 +102,7 @@ class MemorialResponseModel {
       'createdDate': createdDate.toIso8601String(),
       'updatedDate': updatedDate.toIso8601String(),
       'isOwner': isOwner, // ✅ Incluir en JSON
+      'canEdit': canEdit, // ✅ Incluir en JSON
     };
   }
 }
