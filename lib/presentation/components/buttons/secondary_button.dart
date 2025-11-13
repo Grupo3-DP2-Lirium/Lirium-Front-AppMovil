@@ -60,6 +60,7 @@ class SecondaryButton extends StatelessWidget {
     );
 
     return SizedBox(
+      width: isFullWidth ? double.infinity : null,
       height: height,
       child: button,
     );
