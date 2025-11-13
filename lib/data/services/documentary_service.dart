@@ -15,7 +15,28 @@ class DocumentaryService {
       : _client = client ?? http.Client(),
         _http = HttpService();
 
-  /// Crear un nuevo documental
+  /// ✨ NUEVO: Validar si memorial tiene suficientes recuerdos
+  Future<Map<String, dynamic>> validateMemorial(String memorialId) async {
+    final uri = Uri.parse('$baseUrl/documentaries/validate-memorial/$memorialId');
+
+    print('DEBUG: Validating memorial - URI: $uri');
+
+    final res = await _client.get(
+      uri,
+      headers: _http.authHeaders(),
+    );
+
+    print('DEBUG: validateMemorial response - Status: ${res.statusCode}');
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      return jsonMap['data'];
+    } else {
+      throw Exception('Error validando memorial: ${res.statusCode}');
+    }
+  }
+
+  /// Crear un nuevo documental (ahora crea en DRAFT)
   Future<DocumentaryModel> createDocumentary(
       DocumentaryRequestModel request, {
         void Function(bool isLoading)? onLoading,
@@ -34,97 +55,156 @@ class DocumentaryService {
       );
 
       print('DEBUG: createDocumentary response - Status: ${res.statusCode}');
-      print('DEBUG: createDocumentary response - Body: ${res.body}');
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final jsonMap = jsonDecode(res.body);
         final data = jsonMap['data'];
         return DocumentaryModel.fromJson(data);
       } else {
-        throw Exception(
-          'Error creando documental: ${res.statusCode} ${res.body}',
-        );
+        throw Exception('Error creando documental: ${res.statusCode}');
       }
     } finally {
       onLoading?.call(false);
     }
   }
 
-  /// Obtener estado de un documental específico
-  Future<DocumentaryModel> getDocumentaryStatus(String documentaryId) async {
-    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId');
+  /// ✨ NUEVO: Iniciar generación del video
+  Future<DocumentaryModel> generateDocumentary(String documentaryId) async {
+    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId/generate');
 
-    print('DEBUG: Getting documentary status - URI: $uri');
+    print('DEBUG: Generating documentary - URI: $uri');
 
-    final res = await _client.get(
+    final res = await _client.post(
       uri,
       headers: _http.authHeaders(),
     );
 
-    print('DEBUG: getDocumentaryStatus response - Status: ${res.statusCode}');
+    print('DEBUG: generateDocumentary response - Status: ${res.statusCode}');
 
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);
       final data = jsonMap['data'];
       return DocumentaryModel.fromJson(data);
     } else {
-      throw Exception(
-        'Error obteniendo estado: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error generando documental: ${res.statusCode}');
     }
   }
 
-  /// Obtener documentales de un memorial
-  Future<List<DocumentaryModel>> getDocumentariesByMemorial(
-      String memorialId,
-      ) async {
-    final uri = Uri.parse('$baseUrl/documentaries/memorial/$memorialId');
+  /// ✨ NUEVO: Publicar documental
+  Future<DocumentaryModel> publishDocumentary(String documentaryId) async {
+    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId/publish');
 
-    print('DEBUG: Getting documentaries by memorial - URI: $uri');
+    print('DEBUG: Publishing documentary - URI: $uri');
+
+    final res = await _client.post(
+      uri,
+      headers: _http.authHeaders(),
+    );
+
+    print('DEBUG: publishDocumentary response - Status: ${res.statusCode}');
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      final data = jsonMap['data'];
+      return DocumentaryModel.fromJson(data);
+    } else {
+      throw Exception('Error publicando documental: ${res.statusCode}');
+    }
+  }
+
+  /// ✨ NUEVO: Actualizar documental
+  Future<DocumentaryModel> updateDocumentary(
+      String documentaryId,
+      DocumentaryRequestModel request,
+      ) async {
+    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId');
+
+    print('DEBUG: Updating documentary - URI: $uri');
+
+    final res = await _client.put(
+      uri,
+      headers: _http.authHeaders(),
+      body: jsonEncode(request.toJson()),
+    );
+
+    print('DEBUG: updateDocumentary response - Status: ${res.statusCode}');
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      final data = jsonMap['data'];
+      return DocumentaryModel.fromJson(data);
+    } else {
+      throw Exception('Error actualizando documental: ${res.statusCode}');
+    }
+  }
+
+  /// ✨ NUEVO: Obtener documentales por estado
+  Future<List<DocumentaryModel>> getDocumentariesByStatus(
+      String memorialId,
+      String status,
+      ) async {
+    final uri = Uri.parse(
+        '$baseUrl/documentaries/memorial/$memorialId/by-status?status=$status');
+
+    print('DEBUG: Getting documentaries by status - URI: $uri');
 
     final res = await _client.get(
       uri,
       headers: _http.authHeaders(),
     );
 
-    print('DEBUG: getDocumentariesByMemorial response - Status: ${res.statusCode}');
-
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);
       final List<dynamic> data = jsonMap['data'];
-      return data
-          .map((json) => DocumentaryModel.fromJson(json))
-          .toList();
+      return data.map((json) => DocumentaryModel.fromJson(json)).toList();
     } else {
-      throw Exception(
-        'Error obteniendo documentales: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error obteniendo documentales: ${res.statusCode}');
+    }
+  }
+
+  /// Obtener estado de un documental específico
+  Future<DocumentaryModel> getDocumentaryStatus(String documentaryId) async {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final uri = Uri.parse('$baseUrl/documentaries/$documentaryId?_=$ts');
+
+    final headers = {
+      ..._http.authHeaders(),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+
+    final res = await _client.get(uri, headers: headers);
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      final data = jsonMap['data'];
+      return DocumentaryModel.fromJson(data);
+    } else {
+      throw Exception('Error obteniendo estado: ${res.statusCode}');
     }
   }
 
   /// Obtener todos los documentales del usuario
   Future<List<DocumentaryModel>> getMyDocumentaries() async {
-    final uri = Uri.parse('$baseUrl/documentaries/my-documentaries');
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final uri = Uri.parse('$baseUrl/documentaries/my-documentaries?_=$ts');
 
-    print('DEBUG: Getting my documentaries - URI: $uri');
+    final headers = {
+      ..._http.authHeaders(),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
 
-    final res = await _client.get(
-      uri,
-      headers: _http.authHeaders(),
-    );
-
-    print('DEBUG: getMyDocumentaries response - Status: ${res.statusCode}');
+    final res = await _client.get(uri, headers: headers);
 
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);
       final List<dynamic> data = jsonMap['data'];
-      return data
-          .map((json) => DocumentaryModel.fromJson(json))
-          .toList();
+      return data.map((json) => DocumentaryModel.fromJson(json)).toList();
     } else {
-      throw Exception(
-        'Error obteniendo mis documentales: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error obteniendo mis documentales: ${res.statusCode}');
     }
   }
 
@@ -132,19 +212,13 @@ class DocumentaryService {
   Future<void> cancelDocumentary(String documentaryId) async {
     final uri = Uri.parse('$baseUrl/documentaries/$documentaryId/cancel');
 
-    print('DEBUG: Cancelling documentary - URI: $uri');
-
     final res = await _client.post(
       uri,
       headers: _http.authHeaders(),
     );
 
-    print('DEBUG: cancelDocumentary response - Status: ${res.statusCode}');
-
     if (res.statusCode != 200) {
-      throw Exception(
-        'Error cancelando documental: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error cancelando documental: ${res.statusCode}');
     }
   }
 
@@ -152,19 +226,13 @@ class DocumentaryService {
   Future<void> deleteDocumentary(String documentaryId) async {
     final uri = Uri.parse('$baseUrl/documentaries/$documentaryId');
 
-    print('DEBUG: Deleting documentary - URI: $uri');
-
     final res = await _client.delete(
       uri,
       headers: _http.authHeaders(),
     );
 
-    print('DEBUG: deleteDocumentary response - Status: ${res.statusCode}');
-
     if (res.statusCode != 200) {
-      throw Exception(
-        'Error eliminando documental: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error eliminando documental: ${res.statusCode}');
     }
   }
 
@@ -172,25 +240,17 @@ class DocumentaryService {
   Future<List<MusicTrackModel>> getMusicCatalog() async {
     final uri = Uri.parse('$baseUrl/documentaries/music-catalog');
 
-    print('DEBUG: Getting music catalog - URI: $uri');
-
     final res = await _client.get(
       uri,
       headers: _http.authHeaders(),
     );
 
-    print('DEBUG: getMusicCatalog response - Status: ${res.statusCode}');
-
     if (res.statusCode == 200) {
       final jsonMap = jsonDecode(res.body);
       final List<dynamic> data = jsonMap['data'];
-      return data
-          .map((json) => MusicTrackModel.fromJson(json))
-          .toList();
+      return data.map((json) => MusicTrackModel.fromJson(json)).toList();
     } else {
-      throw Exception(
-        'Error obteniendo catálogo de música: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Error obteniendo catálogo de música: ${res.statusCode}');
     }
   }
 }

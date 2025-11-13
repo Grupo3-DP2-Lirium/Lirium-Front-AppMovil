@@ -37,7 +37,10 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   late TabController _tab;
   final MemoryService _memoriesService = MemoryService();
   final MemorialService _memorialService = MemorialService();
-  
+  bool _isOwner = false; // ✅ NUEVO
+  bool _canEditMemorial = false; 
+  bool _isCollaborative = false;
+
   // Datos del memorial (cargados dinámicamente)
   String? name;
   String? description;
@@ -92,17 +95,30 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         isLoadingMemorial = true;
         memorialErrorMessage = null;
       });
-
+      
       final memorial = await _memorialService.getMemorialById(widget.memorialId);
+      
+      print('✅ Memorial cargado:');
+      print('   - ID: ${memorial.idMemorial}');
+      print('   - Nombre: ${memorial.name}');
+      print('   - isOwner: ${memorial.isOwner}'); // ✅ Log crítico
+      print('   - canEdit: ${memorial.canEdit}');
+      print('   - isColaborative: ${memorial.isCollaborative}');
 
       setState(() {
         name = memorial.name;
         description = memorial.description;
         avatarUrl = memorial.profilePhoto?.fileUrl;
-        // coverUrl se puede agregar si el backend lo proporciona
+        _isOwner = memorial.isOwner; // ✅ CRÍTICO: Actualizar desde backend
+        _canEditMemorial = memorial.canEdit ?? false;
         isLoadingMemorial = false;
+        _isCollaborative = memorial.isCollaborative ?? false;
       });
+      
+      print('📊 Estado actualizado - isOwner: $_isOwner');
+      
     } catch (e) {
+      print('❌ Error cargando memorial: $e');
       setState(() {
         memorialErrorMessage = 'Error al cargar el memorial: $e';
         isLoadingMemorial = false;
@@ -345,22 +361,23 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
           ),
 
           // Settings Button
-          Positioned(
-            top: 50,
-            right: 16,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF6366F1),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.settings, color: Colors.white),
-                onPressed: () {
-                  _showMemorialOptionsMenu(context);
-                },
+          if (_isOwner || _canEditMemorial)
+            Positioned(
+              top: 50,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.settings, color: Colors.white),
+                  onPressed: () {
+                    _showMemorialOptionsMenu(context);
+                  },
+                ),
               ),
             ),
-          ),
 
           // Main Content
           Positioned(
@@ -1645,15 +1662,16 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: Colors.grey[600],
+                if (_canEdit())
+                  IconButton(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Colors.grey[600],
+                    ),
+                    onPressed: () {
+                      _showMemoryOptionsMenu(context, memory.idMemory);
+                    },
                   ),
-                  onPressed: () {
-                    _showMemoryOptionsMenu(context, memory.idMemory);
-                  },
-                ),
               ],
             ),
           ),
@@ -2383,49 +2401,50 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   /// Muestra el menú de opciones del memorial (Editar/Eliminar)
   void _showMemorialOptionsMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) {
+      return Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Barra superior indicadora
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Barra superior
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Título
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text(
+                  'Configuración del memorial',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
                   ),
                 ),
-                
-                // Título
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Opciones del memorial',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ),
-                
-                const Divider(),
-                
-                // Opción: Editar
+              ),
+              
+              const Divider(),
+              
+              // ✅ EDITAR: Solo si es dueño o colaborador con permiso
+              if (_canEdit()) ...[
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -2447,7 +2466,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ),
                   ),
                   subtitle: Text(
-                    'Modificar información del memorial',
+                    'Modificar información básica',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -2455,7 +2474,6 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    // Navegar a la pantalla de edición
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -2464,12 +2482,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                         ),
                       ),
                     ).then((value) {
-                      // Si se editó correctamente, recargar los datos
                       if (value == true) {
-                        _loadMemorialData(); // 🔄 Recarga los datos actualizados
+                        _loadMemorialData();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Los cambios se guardaron correctamente'),
+                            content: Text('Cambios guardados'),
                             backgroundColor: Colors.green,
                             duration: Duration(seconds: 2),
                           ),
@@ -2478,10 +2495,55 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     });
                   },
                 ),
-                
                 const Divider(height: 1),
-
-                // Opción: Eliminar
+              ],
+              
+              // ✅ GESTIONAR COLABORADORES: Solo dueño
+              if (_isOwner && _isCollaborative) ...[
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B4CE6).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.people,
+                      color: Color(0xFF6B4CE6),
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Gestionar colaboradores',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Invitar y administrar permisos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CollaboratorsScreen(
+                          memorialId: widget.memorialId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+              ],
+              
+              // ✅ ELIMINAR: Solo dueño
+              if (_isOwner) ...[
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -2510,17 +2572,26 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                       color: Colors.grey[600],
                     ),
                   ),
-                  onTap: () async => _deleteMemorial(context, widget.memorialId),
+                  onTap: () async {
+                    await _deleteMemorial(context, widget.memorialId);
+                  },
                 ),
-
-                const SizedBox(height: 16),
               ],
-            ),
+              
+              const SizedBox(height: 16),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
+bool _canEdit() {
+  // TODO: Implementar lógica para obtener permisos del colaborador
+  // Por ahora, solo permitir al dueño
+  return _isOwner || _canEditMemorial;
+}
 
   /// Muestra el menú de opciones para una memoria individual
   void _showMemoryOptionsMenu(BuildContext context, String memoryId) {

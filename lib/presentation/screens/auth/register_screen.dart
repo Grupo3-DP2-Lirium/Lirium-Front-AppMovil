@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/register_request.dart';
@@ -20,6 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   final AuthService _authService = AuthService();
 
   @override
@@ -49,6 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
+
               // Profile picture section
               Center(
                 child: ProfileAvatar(
@@ -61,10 +66,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Form fields
-              AppTextField(
-                hintText: 'Nombre',
+
+              // Nombre con CustomTextField
+              CustomTextField(
+                label: 'Nombre',
+                hintText: 'Tu nombre',
                 controller: _nameController,
+                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu nombre';
@@ -76,9 +84,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              AppTextField(
-                hintText: 'Primer apellido',
+
+              // Primer apellido
+              CustomTextField(
+                label: 'Primer apellido',
+                hintText: 'Tu primer apellido',
                 controller: _lastNameController,
+                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu primer apellido';
@@ -90,9 +102,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              AppTextField(
-                hintText: 'Segundo apellido (opcional)',
+
+              // Segundo apellido (opcional)
+              CustomTextField(
+                label: 'Segundo apellido (opcional)',
+                hintText: 'Tu segundo apellido',
                 controller: _secondLastNameController,
+                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
                 validator: (value) {
                   if (value != null && value.isNotEmpty && value.length < 2) {
                     return 'El segundo apellido debe tener al menos 2 caracteres';
@@ -101,26 +117,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              AppTextField(
-                hintText: 'Email',
+
+              // Email
+              CustomTextField(
+                label: 'Correo electrónico',
+                hintText: 'correo@ejemplo.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu email';
                   }
-                  if (!RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  ).hasMatch(value)) {
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                     return 'Por favor ingresa un email válido';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
-              PasswordField(
-                hintText: 'Contraseña',
+
+              // Password
+              CustomTextField(
+                label: 'Contraseña',
+                hintText: 'Mínimo 8 caracteres',
                 controller: _passwordController,
+                obscureText: _obscurePassword,
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa una contraseña';
@@ -128,22 +162,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (value.length < 8) {
                     return 'La contraseña debe tener al menos 8 caracteres';
                   }
-                  // Validación más flexible que permite números como caracteres especiales
                   final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
                   final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
                   final hasDigit = RegExp(r'\d').hasMatch(value);
                   final hasSpecialChar = RegExp(r'[@$!%*?&#_]').hasMatch(value);
-                  
+
                   if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecialChar) {
-                    return 'La contraseña debe contener al menos: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial';
+                    return 'Debe contener: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
-              PasswordField(
-                hintText: 'Confirmar contraseña',
+
+              // Confirm Password
+              CustomTextField(
+                label: 'Confirmar contraseña',
+                hintText: 'Repite tu contraseña',
                 controller: _confirmPasswordController,
+                obscureText: _obscureConfirmPassword,
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textSecondary,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    });
+                  },
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor confirma tu contraseña';
@@ -154,30 +203,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 32),
+
               // Register button
               _isLoading
-                  ? const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF6366F1),
-                      ),
-                    )
+                  ? const CircularProgressIndicator(color: AppColors.primary)
                   : PrimaryButton(
-                      text: 'Crear Cuenta',
-                      onPressed: _handleRegister,
-                    ),
+                text: 'Crear Cuenta',
+                onPressed: _handleRegister,
+              ),
               const SizedBox(height: 20),
+
               // Login link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     '¿Ya tienes cuenta? ',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
                   ),
                   SecondaryButton(
                     text: 'Inicia sesión',
-                    textColor: const Color(0xFF6366F1),
+                    textColor: AppColors.primary,
                     onPressed: () {
                       Navigator.pop(context);
                     },
@@ -196,7 +246,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Validar que las contraseñas coincidan
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -239,7 +288,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         );
 
-        // Navegar de vuelta a la pantalla de login
         Navigator.pop(context);
       }
     } catch (e) {
@@ -253,14 +301,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (e.toString().contains('Email already exists') ||
             e.toString().contains('Email ya está registrado')) {
           errorMessage =
-              'Este email ya está registrado. Usa otro email o inicia sesión.';
+          'Este email ya está registrado. Usa otro email o inicia sesión.';
         } else if (e.toString().contains('Error de validación')) {
           errorMessage =
-              'Por favor verifica que todos los campos estén correctos';
+          'Por favor verifica que todos los campos estén correctos';
         } else if (e.toString().contains('Connection refused') ||
             e.toString().contains('Network')) {
           errorMessage =
-              'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+          'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

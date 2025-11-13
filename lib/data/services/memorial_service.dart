@@ -84,6 +84,65 @@ class MemorialService {
     }
   }
 
+ Future<List<Memorial>> getMyCollaborations() async {
+    print('📡 Obteniendo mis colaboraciones...');
+    
+    try {
+      final response = await _http.get(ApiConstants.getMyCollaborations);
+      
+      print('📡 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        // Manejar respuesta vacía
+        if (response.body.isEmpty || response.body == 'null') {
+          print('✅ No hay colaboraciones (respuesta vacía)');
+          return [];
+        }
+
+        final dynamic decoded = json.decode(response.body);
+
+        // Si es null o no es lista, retornar vacío
+        if (decoded == null || decoded is! List) {
+          print('⚠️ Respuesta no es lista: ${decoded.runtimeType}');
+          return [];
+        }
+
+        // Si la lista está vacía
+        if (decoded.isEmpty) {
+          print('✅ No hay colaboraciones (lista vacía)');
+          return [];
+        }
+
+        // Parsear lista usando MemorialResponseModel → Memorial
+        final collaborations = decoded
+            .map((json) => MemorialResponseModel.fromJson(json).toEntity())
+            .toList();
+
+        print('✅ Colaboraciones cargadas: ${collaborations.length}');
+
+        return collaborations;
+
+      } else if (response.statusCode == 404) {
+        print('⚠️ No se encontraron colaboraciones');
+        return [];
+      } else {
+        print('❌ Error del servidor: ${response.statusCode}');
+        throw Exception('Error al cargar colaboraciones: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error en getMyCollaborations: $e');
+
+      // Si es error de conexión o parsing, re-lanzar
+      if (e.toString().contains('FormatException') || 
+          e.toString().contains('SocketException')) {
+        rethrow;
+      }
+
+      // Para otros errores, retornar lista vacía
+      return [];
+    }
+  }
+
   /// Listar memoriales
   Future<List<Memorial>> getMemorials() async {
     print('DEBUG: getMemorials() called');

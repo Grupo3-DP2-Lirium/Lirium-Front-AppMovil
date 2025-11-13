@@ -11,6 +11,8 @@ class Memorial {
   final DateTime createdDate;
   final String? profilePhotoUrl;
   final String? profilePhotoBase64;
+  final bool? isOwner; // ✅ CRÍTICO: Campo obligatorio
+  final bool? canEdit; // ✅ CRÍTICO: Nuevo campo para permisos
 
   Memorial({
     required this.idMemorial,
@@ -24,7 +26,9 @@ class Memorial {
     required this.isJournal,
     required this.createdDate,
     this.profilePhotoUrl,
-    this.profilePhotoBase64
+    this.profilePhotoBase64,
+    this.isOwner = false,
+    this.canEdit = false,
   });
 
 }
