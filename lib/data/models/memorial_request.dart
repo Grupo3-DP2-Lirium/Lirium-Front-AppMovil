@@ -19,14 +19,25 @@ class MemorialRequestModel {
     required this.isJournal,
   });
 
-  Map<String, dynamic> toJson() => {
-    "name": name,
-    "relationType": relation, // 👈 backend pide esto
-    "nickname": nickname,
-    "description": description,
-    "gender": gender,
-    "birthDate": birthDate,
-    "isCollaborative": isCollaborative,
-    "isJournal": isJournal,
-  };
+  Map<String, dynamic> toJson() {
+    // ✅ DEBUG: Imprimir valores antes de enviar
+    print('🔍 Dart toJson():');
+    print('   - isCollaborative: $isCollaborative');
+    print('   - isJournal: $isJournal');
+    
+    final json = {
+      "name": name,
+      "relationType": relation,
+      "nickname": nickname,
+      "description": description,
+      "gender": gender,
+      "birthDate": birthDate,
+      // ✅ CAMBIAR: Enviar SIN "is"
+      "collaborative": isCollaborative,
+      "journal": isJournal,
+    };
+    
+    print('📦 JSON generado: $json');
+    return json;
+  }
 }

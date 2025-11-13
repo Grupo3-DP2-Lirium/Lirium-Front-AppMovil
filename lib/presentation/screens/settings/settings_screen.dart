@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:provider/provider.dart';
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/auth_storage.dart';
@@ -20,76 +23,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoggingOut = false;
 
   Future<void> _logout() async {
-    // Mostrar dialogo de confirmación
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro que deseas cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+  // Mostrar diálogo de confirmación
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Cerrar sesión'),
+      content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  setState(() {
+    _isLoggingOut = true;
+  });
+
+  try {
+    // 1️⃣ Obtener email actual ANTES de limpiar
+    final user = await _authService.getCurrentUser();
+    String? currentEmail;
+    if (user != null) {
+      currentEmail = (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])?.toString();
+    }
+    currentEmail ??= await _authStorage.getLastEmail();
+
+    // 2️⃣ Cerrar sesión en backend
+    try {
+      await _authService.logout();
+    } catch (e) {
+      print('⚠️ Error en logout del backend: $e');
+      // Continuar de todas formas
+    }
+
+    // 3️⃣ Limpiar TODOS los tokens y storage
+    await _authStorage.clear();
+    await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
+    
+    // 4️⃣ Guardar solo el email para prellenar
+    if (currentEmail != null && currentEmail.isNotEmpty) {
+      await _authStorage.saveLastEmail(currentEmail);
+    }
+
+    // 5️⃣ ✅ LIMPIAR TODOS LOS PROVIDERS
+    if (!mounted) return;
+    
+    // Limpiar MemorialProvider
+    final memorialProvider = Provider.of<MemorialProvider>(context, listen: false);
+    memorialProvider.limpiarTodo();
+    
+    // Limpiar otros providers si existen
+    // final memoryProvider = Provider.of<MemoryProvider>(context, listen: false);
+    // memoryProvider.limpiarTodo();
+    
+    print('✅ Todos los providers limpiados');
+
+    // 6️⃣ Navegar al login
+    if (!mounted) return;
+    
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => LoginScreen(initialEmail: currentEmail),
       ),
+      (route) => false, // Eliminar TODO el stack
     );
 
-    if (confirmed == true) {
+    print('✅ Logout completado exitosamente');
+    
+  } catch (e) {
+    print('❌ Error en logout: $e');
+    
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error al cerrar sesión: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) {
       setState(() {
-        _isLoggingOut = true;
+        _isLoggingOut = false;
       });
-
-      try {
-        // 1) Obtener el correo del usuario autenticado desde el token
-        final user = await _authService.getCurrentUser();
-        String? currentEmail;
-        if (user != null) {
-          // Intentar con claves comunes del payload
-          currentEmail = (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])?.toString();
-        }
-
-        // Si no se pudo leer del token, usar el último guardado como fallback
-        currentEmail ??= await _authStorage.getLastEmail();
-
-        // 2) Cerrar sesión en backend/servicios
-        await _authService.logout();
-
-        // 3) Limpiar tokens/refresh (NO se borrará last_email)
-        await _authStorage.clear();
-
-        // 4) Guardar el correo como último email DESPUÉS de limpiar
-        if (currentEmail != null && currentEmail.isNotEmpty) {
-          await _authStorage.saveLastEmail(currentEmail);
-        }
-
-        // 5) Navegar al login y pasar el correo guardado
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => LoginScreen(initialEmail: currentEmail),
-          ),
-          (route) => false,
-        );
-      } catch (e) {
-        // Manejo de error
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cerrar sesión: $e')),
-        );
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoggingOut = false;
-          });
-        }
-      }
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

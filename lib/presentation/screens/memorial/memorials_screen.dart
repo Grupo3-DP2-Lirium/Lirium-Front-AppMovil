@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/memorial_provider.dart';
 import 'memorial_detail_screen.dart';
+import 'accept_invite_code_screen.dart';
 
 class MemorialsScreen extends StatefulWidget {
   const MemorialsScreen({super.key});
@@ -26,12 +27,26 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
     }
   }
 
+  Future<void> _showAcceptCodeDialog() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AcceptInviteCodeScreen(),
+      ),
+    );
+    
+    // Si aceptó exitosamente, recargar colaboraciones
+    if (result == true && mounted) {
+      final prov = context.read<MemorialProvider>();
+      prov.cargarColaborativos(force: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<MemorialProvider>();
     final cs = Theme.of(context).colorScheme;
     final isMis = _tabIndex == 0;
-
     final items = isMis ? prov.misMemoriales : prov.colaborativos;
     final cargando = isMis ? prov.cargandoMis : prov.cargandoColab;
     final error = isMis ? prov.errorMis : prov.errorColab;
@@ -53,14 +68,7 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Navegar a creación de memorial
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Crear memorial (pendiente)')));
-        },
-        backgroundColor: cs.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _buildFAB(context, cs, isMis),
       body: Column(
         children: [
           const SizedBox(height: 8),
@@ -122,7 +130,7 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
                               Text(
                                 isMis
                                     ? 'Crea tu primer memorial para empezar a construir un legado.'
-                                    : 'Cuando aceptes invitaciones aparecerán aquí.',
+                                    : 'Ingresa un código de invitación para unirte a un memorial.',
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54, height: 1.3),
                               ),
@@ -171,10 +179,39 @@ class _MemorialsScreenState extends State<MemorialsScreen> {
       ),
     );
   }
+
+  Widget? _buildFAB(BuildContext context, ColorScheme cs, bool isMis) {
+    if (isMis) {
+      // Botón para crear memorial
+      return FloatingActionButton(
+        onPressed: () {
+          // TODO: Navegar a creación de memorial
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Crear memorial (pendiente)')));
+        },
+        backgroundColor: cs.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      );
+    } else {
+      // Botón para ingresar código
+      return FloatingActionButton.extended(
+        onPressed: _showAcceptCodeDialog,
+        backgroundColor: const Color(0xFF6B4CE6),
+        icon: const Icon(Icons.qr_code, color: Colors.white),
+        label: const Text(
+          'Ingresar código',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+  }
 }
 
 class _SegmentedTabs extends StatelessWidget {
-  final int index; final ValueChanged<int> onChanged;
+  final int index;
+  final ValueChanged<int> onChanged;
   const _SegmentedTabs({required this.index, required this.onChanged});
 
   @override
@@ -208,8 +245,13 @@ class _SegmentedTabs extends StatelessWidget {
 }
 
 class _TabPill extends StatelessWidget {
-  final String text; final bool selected; final VoidCallback onTap; final Color color; final Color? selectedTextColor;
+  final String text;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color color;
+  final Color? selectedTextColor;
   const _TabPill({required this.text, required this.selected, required this.onTap, required this.color, this.selectedTextColor});
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -235,8 +277,13 @@ class _TabPill extends StatelessWidget {
 }
 
 class _MemorialListCard extends StatelessWidget {
-  final String name; final String description; final bool isCollaborative; final DateTime created; final VoidCallback onTap;
-  final String? profilePhotoUrl; final String? profilePhotoBase64;
+  final String name;
+  final String description;
+  final bool isCollaborative;
+  final DateTime created;
+  final VoidCallback onTap;
+  final String? profilePhotoUrl;
+  final String? profilePhotoBase64;
   const _MemorialListCard({required this.name, required this.description, required this.isCollaborative, required this.created, required this.onTap, this.profilePhotoUrl, this.profilePhotoBase64});
 
   String _timeAgo() {
@@ -333,4 +380,3 @@ class _MemorialListCard extends StatelessWidget {
     );
   }
 }
-
