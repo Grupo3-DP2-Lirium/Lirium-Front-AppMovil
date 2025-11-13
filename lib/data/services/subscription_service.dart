@@ -186,4 +186,22 @@ class SubscriptionService {
     }
   }
 
+  Future<List<String>> getPlanPermissions(String planId) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/subscriptions/$planId/permissions');
+
+    final response = await _client.get(
+      uri,
+      headers: _http.authHeaders(includeJson: true), // si necesitas token
+    );
+
+    if (response.statusCode == 200) {
+      // Decodificar JSON
+      final List<dynamic> jsonList = jsonDecode(response.body);
+      // Convertir dinámicos a strings
+      return jsonList.map((e) => e.toString()).toList();
+    } else {
+      throw Exception("Error obteniendo permisos del plan");
+    }
+  }
+
 }

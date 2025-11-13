@@ -237,7 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => SubscriptionPlanDetailsScreen(
-                    usedStorageGB: 300,
+                    usedStorageGB: 2,
                     totalStorageGB: 500,
                   ),
                 ),
