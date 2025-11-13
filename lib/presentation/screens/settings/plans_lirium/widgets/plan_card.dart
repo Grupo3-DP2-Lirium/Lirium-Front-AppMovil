@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'plan_benefits_list.dart';
+
+import 'package:flutter/material.dart';
+import 'plan_benefits_list.dart';
 
 class PlanCard extends StatelessWidget {
   final String title;
@@ -7,6 +11,13 @@ class PlanCard extends StatelessWidget {
   final bool recommended;
   final bool isSelected;
   final VoidCallback onTap;
+  final List<String> permissions;
+
+  // ✅ Nuevos atributos
+  final int? storageLimitGb;
+  final int? maxCollaborations;
+  final int? maxDocumentariesPerMonth;
+  final String? supportLevel;
 
   const PlanCard({
     super.key,
@@ -16,15 +27,46 @@ class PlanCard extends StatelessWidget {
     required this.recommended,
     required this.isSelected,
     required this.onTap,
+    this.permissions = const [],
+    this.storageLimitGb,
+    this.maxCollaborations,
+    this.maxDocumentariesPerMonth,
+    this.supportLevel,
   });
+
+  Widget _buildTag(String text, {Color color = const Color(0xFFFC7171)}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      margin: const EdgeInsets.only(right: 6, bottom: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> tags = [];
+    if (storageLimitGb != null) tags.add(_buildTag("$storageLimitGb GB"));
+    if (maxCollaborations != null) tags.add(_buildTag("Colab. max: $maxCollaborations"));
+    if (maxDocumentariesPerMonth != null) tags.add(_buildTag("Doc. x mes: $maxDocumentariesPerMonth"));
+    if (supportLevel != null) tags.add(_buildTag("Soporte: $supportLevel"));
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -43,7 +85,7 @@ class PlanCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Título y etiqueta "Recomendado"
+            // --- Título y etiqueta recomendado
             Row(
               children: [
                 Expanded(
@@ -94,6 +136,14 @@ class PlanCard extends StatelessWidget {
                 fontWeight: FontWeight.w400,
               ),
             ),
+            const SizedBox(height: 12),
+            // --- Tags de atributos
+            Wrap(
+              children: tags,
+            ),
+            const SizedBox(height: 12),
+            // --- Beneficios
+            PlanBenefitsList(permissions: permissions),
           ],
         ),
       ),

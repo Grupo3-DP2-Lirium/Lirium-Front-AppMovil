@@ -8,6 +8,7 @@ class PrimaryButton extends StatelessWidget {
   final double height;
   final bool isLoading;
   final IconData? icon;
+  final bool isEnabled;
   final Color? color;
 
   const PrimaryButton({
@@ -17,6 +18,7 @@ class PrimaryButton extends StatelessWidget {
     this.isFullWidth = true,
     this.height = 56,
     this.isLoading = false,
+    this.isEnabled = true,
     this.icon,
     this.color
   });
@@ -27,9 +29,10 @@ class PrimaryButton extends StatelessWidget {
       width: isFullWidth ? double.infinity : null,
       height: height,
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color ?? AppColors.primary,
+          onPressed: (isLoading || !isEnabled) ? null : onPressed,        style: ElevatedButton.styleFrom(
+        backgroundColor: isEnabled
+            ? (color ?? AppColors.primary)
+            : Colors.grey[300],
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

@@ -7,6 +7,8 @@ class SecondaryButton extends StatelessWidget {
   final Color? textColor;
   final IconData? icon;
   final bool isOutlined;
+  final bool isFullWidth;
+  final double height;
 
   const SecondaryButton({
     super.key,
@@ -15,56 +17,52 @@ class SecondaryButton extends StatelessWidget {
     this.textColor,
     this.icon,
     this.isOutlined = false,
+    this.isFullWidth = true,
+    this.height = 56,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isOutlined) {
-      return OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: textColor ?? AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: textColor ?? AppColors.primary),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              text,
-              style: TextStyle(
-                color: textColor ?? AppColors.primary,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return TextButton(
-      onPressed: onPressed,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 18, color: textColor ?? Colors.grey),
-            const SizedBox(width: 8),
-          ],
-          Text(
-            text,
-            style: TextStyle(color: textColor ?? Colors.grey, fontSize: 16),
-          ),
+    final buttonChild = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 18, color: textColor ?? AppColors.primary),
+          const SizedBox(width: 8),
         ],
+        Text(
+          text,
+          style: TextStyle(
+            color: textColor ?? AppColors.primary,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+
+    final button = isOutlined
+        ? OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: AppColors.primary),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
+      child: buttonChild,
+    )
+        : TextButton(
+      onPressed: onPressed,
+      child: buttonChild,
+    );
+
+    return SizedBox(
+      width: isFullWidth ? double.infinity : null,
+      height: height,
+      child: button,
     );
   }
 }

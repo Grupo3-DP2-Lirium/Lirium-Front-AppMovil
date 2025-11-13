@@ -3,6 +3,7 @@ import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/paypal_web_view.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/paypal_web_view2.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_card.dart';
@@ -26,96 +27,40 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   final subscriptionService = SubscriptionService();
   String? currentPlan;
 
-  Future<void> _subscribeJustOneTime() async {
-    // No plans loaded
-    if (plans.isEmpty) return;
-
-    // Get selected plan
-    final plan = plans[selectedPlanIndex];
-    final double basePrice = double.tryParse(plan['price'].toString()) ?? 0;
-    // Monthly vs yearly (30% discount)
-    final double planAmountValue = isMonthly ? basePrice : (basePrice * 12 * 0.7);
-    // Format price for PayPal
-    final String planAmount = planAmountValue.toStringAsFixed(2);
-
-    try {
-      // Create PayPal order
-      final createOrderResponse = await subscriptionService.createPayPalOrder(
-        amount: double.parse(planAmount),
-        simulateFail: false,
-        planId: plan['idPlan'].toString(),
-        onLoading: (isLoading) {
-          setState(() => _isLoadingPaypal = isLoading);
-        },
-      );
-
-      // Approval URL returned by PayPal
-      final approvalLink = createOrderResponse['approvalLink'];
-
-      if (approvalLink.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No se pudo iniciar el pago.")),
-        );
-        return;
-      }
-
-      // Subscription plan ID
-      final planId = plan['idPlan'];
-
-      // Open PayPal webview for payment approval
-      final paymentResult = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PayPalWebViewScreen(
-            url: approvalLink,
-            planId: planId.toString(),
-            frequency: isMonthly ? "MONTHLY" : "YEARLY",
-          ),
-        ),
-      );
-
-      // Check payment result
-      if (paymentResult != null && paymentResult is Map<String, dynamic> &&
-          paymentResult['status'] == 'success') {
-        // Show receipt popup
-        PaypalReceiptPopup.show(context, paymentResult);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Pago capturado pero error creando suscripción")),
-        );
-      }
-    } catch (e) {
-      print('Error en suscripción: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
   Future<void> _subscribeRecurring() async {
     if (plans.isEmpty) return;
 
     final plan = plans[selectedPlanIndex];
-
-    final String paypalPlanId = plan['paypalPlanId']; // esto debe venir de tu API o BD
-    final String internalPlanId = plan['idPlan']; // ID de tu BD
+    final String paypalPlanId = plan['paypalPlanId'];
+    final String internalPlanId = plan['idPlan'];
 
     try {
       setState(() => _isLoadingPaypal = true);
 
+      // Pop-up de carga mientras se crea la suscripción
+      appPopupButtonDefault(
+        context: context,
+        title: "Procesando...",
+        message: "Estamos creando tu suscripción. Por favor espera.",
+        buttons: [AppPopupButton(text: "", onPressed: () {})],
+        isLoading: true,
+      );
+
       final response = await subscriptionService.createPaypalSubscription(
         paypalPlanId: paypalPlanId,
-        planId: internalPlanId
+        planId: internalPlanId,
       );
+
+      Navigator.pop(context); // cerrar popup de carga
 
       final approvalLink = response['approvalLink'];
       final subscriptionId = response['subscriptionID'];
 
       if (approvalLink == null || approvalLink.isEmpty) {
-        throw Exception("No se recibio approvalLink de PayPal");
+        throw Exception("No se recibió approvalLink de PayPal");
       }
 
-      // Abrimos PayPal WebView para que pague
+      // Abrimos PayPal WebView para el pago
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -134,7 +79,8 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         await StorageService.savePlan(plan['name']);
 
         // Obtener y guardar los permisos actualizados
-        final updatedPermissions = await subscriptionService.getPlanPermissions(plan['idPlan']);
+        final updatedPermissions =
+        await subscriptionService.getPlanPermissions(plan['idPlan']);
         await StorageService.savePermissions(updatedPermissions);
 
         // Actualizar estado local del widget
@@ -144,21 +90,57 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
         final userPermissions = await StorageService.getPermissions();
 
-        // Imprimir valores actualizados
         print("Plan actualizado: $currentPlan");
         print("Permisos actualizados: $userPermissions");
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Suscripción activada exitosamente!")),
+        // Mostrar popup de éxito
+        await appPopupButtonDefault(
+          context: context,
+          title: "¡Suscripción exitosa!",
+          message:
+          "Tu suscripción ha sido activada correctamente. Ahora tienes acceso a todos los beneficios del plan ${plan['name']}.",
+          buttons: [
+            AppPopupButton(
+              text: "Aceptar",
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("La suscripción no fue completada.")),
+        // Mostrar popup si el usuario no completó el pago
+        await appPopupButtonDefault(
+          context: context,
+          title: "Suscripción incompleta",
+          message:
+          "La suscripción no fue completada. Puedes intentarlo nuevamente.",
+          buttons: [
+            AppPopupButton(
+              text: "Cerrar",
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+      Navigator.pop(context, null); // cerrar pop-up de carga si quedó abierto
+
+      // Mostrar popup de error
+      await appPopupButtonDefault(
+        context: context,
+        title: "Error",
+        message: "Ocurrió un problema al crear la suscripción.\nDetalles: $e",
+        buttons: [
+          AppPopupButton(
+            text: "Cerrar",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ],
       );
     } finally {
       setState(() => _isLoadingPaypal = false);
@@ -205,6 +187,30 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
     print("Plan guardado del usuario: $currentPlan");
     print("Permisos guardados del usuario: $permissions");
+  }
+
+  List<Map<String, dynamic>> getFilteredPlans() {
+    if (plans.isEmpty) return [];
+
+    // Excluir los planes con price 0
+    final nonFreePlans = plans.where((plan) {
+      final price = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+      return price > 0;
+    }).toList();
+
+    if (isMonthly) {
+      // Solo CREA_COMPARTE
+      return nonFreePlans.where((plan) {
+        final name = (plan['name'] ?? '').toString().toUpperCase();
+        return name == 'CREA_COMPARTE';
+      }).toList();
+    } else {
+      // Solo LEGADO ETERNO
+      return nonFreePlans.where((plan) {
+        final name = (plan['name'] ?? '').toString().toUpperCase();
+        return name == 'LEGADO_ETERNO';
+      }).toList();
+    }
   }
 
   @override
@@ -287,33 +293,37 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                   children: [
                     if (_isLoadingPlans)
                       const Center(child: CircularProgressIndicator())
-                    else if (plans.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: PlanCard(
-                          title: isMonthly ? "CREA_COMPARTE" : "LEGADO ETERNO",
-                          description: isMonthly
-                              ? "Crea memoriales y colabora, acceso a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA (línea de tiempo, organización y cápsulas), 1 documental al mes."
-                              : "Acceso vitalicio a tu espacio personal, 200 GB de almacenamiento, funcionalidades IA avanzadas, y acceso a todos los documentales.",
-                          price: () {
-                            final plan = plans[0];
-                            final double basePrice =
-                                double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
-                            final double displayPrice =
-                            isMonthly ? basePrice : (basePrice * 12 * 0.7);
-                            final String currency = plan['currency'] ?? 'USD';
-                            return '$currency ${displayPrice.toStringAsFixed(2)}';
-                          }(),
-                          recommended: true,
-                          isSelected: true,
-                          onTap: () {},
-                        ),
-                      )
                     else
-                      const Center(child: Text("No hay planes disponibles.")),
+                      for (var plan in getFilteredPlans())
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: PlanCard(
+                            title: plan['name'] ?? '',
+                            description: plan['description'] ?? '',
+                            price: () {
+                              final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+                              final String currency = plan['currency'] ?? 'USD';
+                              return '$currency ${basePrice.toStringAsFixed(2)}';
+                            }(),
+                            recommended: false,
+                            isSelected: selectedPlanIndex == plans.indexOf(plan),
+                            onTap: () {
+                              setState(() {
+                                selectedPlanIndex = plans.indexOf(plan);
+                              });
+                            },
+                            permissions: plan['permissions'] != null
+                                ? (plan['permissions'] as List).map((p) => p['name'].toString()).toList()
+                                : [],
+                            // Atributos extra
+                            storageLimitGb: plan['storageLimitGb'],
+                            maxCollaborations: plan['maxCollaborations'],
+                            maxDocumentariesPerMonth: plan['maxDocumentariesPerMonth'],
+                            supportLevel: plan['supportLevel'],
+                          ),
+                        ),
                   ],
                 ),
-                const SizedBox(height: 20),
                 // --- Botones ---
                 Column(
                   children: [
