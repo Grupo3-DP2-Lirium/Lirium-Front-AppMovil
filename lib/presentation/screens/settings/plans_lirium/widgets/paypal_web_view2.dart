@@ -69,7 +69,7 @@ class _PayPalWebViewScreenState2 extends State<PayPalWebViewScreen2> {
                 }
 
               } else {
-                // ✅ Pago único (tu lógica original)
+                // Pago único (tu lógica original)
                 final uri = Uri.parse(url);
                 final orderId = uri.queryParameters['token'];
 

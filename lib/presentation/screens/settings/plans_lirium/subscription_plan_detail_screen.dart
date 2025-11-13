@@ -14,7 +14,7 @@ import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widg
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/storage_use_card.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-
+// VET/pO7}
 class SubscriptionPlanDetailsScreen extends StatefulWidget {
   final double usedStorageGB;
   final double totalStorageGB;
@@ -87,7 +87,8 @@ class _SubscriptionPlanDetailsScreenState
       context: context,
       title: "¿Estás seguro de que quieres cancelar tu plan?",
       message:
-      "Perderás acceso a los beneficios de tu suscripción actual.",
+      "Perderás acceso a los beneficios de tu suscripción actual."
+      "Tendrás 6 meses para renovarla; pasado ese tiempo, todo lo creado será eliminado permanentemente.",
       buttons: [
         AppPopupButton(
           text: "No",
@@ -127,7 +128,7 @@ class _SubscriptionPlanDetailsScreenState
       // Mostrar popup de éxito
       await appPopupButtonDefault(
         context: context,
-        title: "Suscripción cancelada 💔",
+        title: "Suscripción cancelada",
         message: "Tu plan ha sido cancelado exitosamente.",
         buttons: [
           AppPopupButton(
@@ -189,8 +190,11 @@ class _SubscriptionPlanDetailsScreenState
             final subscription = snapshot.data!;
             final planName = subscription.planName.toUpperCase();
 
-            // Detectar si es FREE o DESCUBRE_REMORY
-            final isFreeOrDescubre = planName == "FREE" || planName == "DESCUBRE_REMORY";
+            // Estados principales
+            final bool hasEndDate = subscription.endDate != null;
+            final bool planEnded = hasEndDate && subscription.endDate!.isBefore(DateTime.now());
+            final bool planActive = !hasEndDate; // Si no tiene endDate, está activo
+            final bool isFreeOrDescubre = planName == "FREE" || planName == "DESCUBRE_REMORY";
 
             return SingleChildScrollView(
               child: Column(
@@ -225,82 +229,151 @@ class _SubscriptionPlanDetailsScreenState
                   PlanBenefitsList(permissions: _permissions),
                   const SizedBox(height: 16),
                   Center(
-                    child: (subscription.endDate != null || isFreeOrDescubre)
-                        ? Column(
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          subscription.endDate != null
-                              ? "Suscribete para seguir disfrutando de todos los beneficios de Lirium"
-                              : "Desbloquea todos los beneficios de Lirium",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: "Poppins",
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        PrimaryButton(
-                          text: "Suscribirme",
-                          color: AppColors.primary2,
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GetPremiumScreen(),
+                    child: () {
+                      if (isFreeOrDescubre) {
+                        // === Plan gratuito o sin plan ===
+                        return Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            Text(
+                              "Desbloquea todos los beneficios de Lirium",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: "Poppins",
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondary,
                               ),
-                            );
-                            if (mounted) {
-                              setState(() => _loadingPlan = true);
-                              await _loadCurrentPlan();
-                            }
-                          },
-                        ),
-                        // === NUEVO BOTÓN SOLO PARA LEGADO_ETERNO ACTIVO ===
-                        if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" && subscription.endDate == null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16.0),
-                            child: PrimaryButton(
-                              text: "Agregar espacio extra",
-                              color: AppColors.primary,
-                              onPressed: () {
-                                Navigator.push(
+                            ),
+                            const SizedBox(height: 10),
+                            PrimaryButton(
+                              text: "Suscribirme",
+                              color: AppColors.primary2,
+                              onPressed: () async {
+                                await Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ExtraStorageScreen(),
-                                  ),
+                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
                                 );
+                                if (mounted) {
+                                  setState(() => _loadingPlan = true);
+                                  await _loadCurrentPlan();
+                                }
                               },
                             ),
-                          ),
-                      ],
-                    )
-                        : Column(
-                      children: [
-                        PrimaryButton(
-                          text: "Cambiar de plan",
-                          color: AppColors.primary,
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GetPremiumScreen(),
+                          ],
+                        );
+                      }
+
+                      if (hasEndDate && !planEnded) {
+                        // === Cancelado pero todavía vigente ===
+                        return Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            Text(
+                              "Tu plan finalizará el ${DateFormat('dd/MM/yyyy').format(subscription.endDate!)}.\nPodrás volver a suscribirte una vez finalice.",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: "Poppins",
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.secondary,
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        SecondaryButton(
-                          text: "Cancelar plan",
-                          onPressed: () async {
-                            await _cancelSubscription(context);
-                          },
-                          isOutlined: true
-                        ),
-                      ],
-                    ),
+                            ),
+                            const SizedBox(height: 16),
+                            PrimaryButton(
+                              text: "Suscribirme",
+                              color: AppColors.primary2,
+                              isEnabled: false,
+                              onPressed: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
+                                );
+                                if (mounted) {
+                                  setState(() => _loadingPlan = true);
+                                  await _loadCurrentPlan();
+                                }
+                              },
+                            ),
+                          ],
+                        );
+                      }
+
+                      if (hasEndDate && planEnded) {
+                        // === Cancelado y ya terminó ===
+                        return Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            Text(
+                              "Tu plan finalizó. Vuelve a suscribirte para seguir disfrutando de los beneficios.",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: "Poppins",
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            PrimaryButton(
+                              text: "Suscribirme",
+                              color: AppColors.primary2,
+                              onPressed: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
+                                );
+                                if (mounted) {
+                                  setState(() => _loadingPlan = true);
+                                  await _loadCurrentPlan();
+                                }
+                              },
+                            ),
+                          ],
+                        );
+                      }
+
+                      if (planActive) {
+                        // === Plan activo ===
+
+                        // Determinar si el botón debe decir Upgrade o Downgrade
+                        final String normalizedPlan = subscription.planName.toUpperCase();
+                        String actionText;
+
+                        if (normalizedPlan == "CREA_REMORY" || normalizedPlan == "CREA_COMPARTE") {
+                          actionText = "Upgrade plan";
+                        }
+
+                        return Column(
+                          children: [
+                            if (normalizedPlan == "CREA_REMORY" || normalizedPlan == "CREA_COMPARTE")
+                              PrimaryButton(
+                                text: "Upgrade plan",
+                                color: AppColors.primary,
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
+                                  );
+                                  if (mounted) {
+                                    setState(() => _loadingPlan = true);
+                                    await _loadCurrentPlan();
+                                  }
+                                },
+                              ),
+                            const SizedBox(height: 16),
+                            SecondaryButton(
+                              text: "Cancelar plan",
+                              onPressed: () async {
+                                await _cancelSubscription(context);
+                                await _loadCurrentPlan();
+                              },
+                              isOutlined: true,
+                            ),
+                          ],
+                        );
+                      }
+                    }(),
                   ),
                   const SizedBox(height: 24),
                   storageUsageCard(

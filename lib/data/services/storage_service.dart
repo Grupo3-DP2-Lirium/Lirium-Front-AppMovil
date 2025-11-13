@@ -12,6 +12,24 @@ class StorageService {
   static const String _tokenKey = 'jwt_token';
   static const String _planKey = 'user_plan';
   static const String _permissionsKey = 'user_permissions';
+  static const String _extraStorageKey = 'user_extra_storage';
+
+  /// Guarda las suscripciones de almacenamiento extra
+  static Future<void> saveExtraStorageSubscriptions(List<Map<String, dynamic>> extraStorages) async {
+    await _storage.write(key: _extraStorageKey, value: jsonEncode(extraStorages));
+  }
+
+  /// Obtiene las suscripciones de almacenamiento extra
+  static Future<List<Map<String, dynamic>>> getExtraStorageSubscriptions() async {
+    final data = await _storage.read(key: _extraStorageKey);
+    if (data == null) return [];
+    return List<Map<String, dynamic>>.from(jsonDecode(data));
+  }
+
+  /// Elimina las suscripciones de almacenamiento extra
+  static Future<void> deleteExtraStorageSubscriptions() async {
+    await _storage.delete(key: _extraStorageKey);
+  }
 
   static Future<void> savePlan(String plan) async {
     await _storage.write(key: _planKey, value: plan);

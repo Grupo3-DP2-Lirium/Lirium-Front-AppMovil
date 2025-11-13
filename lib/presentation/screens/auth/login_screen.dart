@@ -128,21 +128,29 @@ class _LoginScreenState extends State<LoginScreen> {
         final token = data['token'] as String;
         final plan = data['plan'] ?? 'FREE';
         final permissions = List<String>.from(data['permissions'] ?? []);
+        final extraStorageData = data['extraStorageSubscriptions'] as List<dynamic>? ?? [];
+        final extraStorages = extraStorageData.map((e) => {
+          'planName': e['planName'],
+          'additionalStorageGb': e['additionalStorageGb'],
+          'status': e['status'],
+        }).toList();
 
         print("Token recibido: $token");
         print("Plan recibido del back: $plan");
         print("Permisos recibidos: $permissions");
+        print("Extra storages guardados: $extraStorages");
 
         // Guardar automáticamente en storage seguro
         //await StorageService.saveToken(token);
         await StorageService.savePlan(plan);
         await StorageService.savePermissions(permissions);
+        await StorageService.saveExtraStorageSubscriptions(extraStorages);
 
         httpService.setToken(access);                 // usa el token en el HttpService
         await storage.save(access: access, refresh: refresh); // persiste seguro
         await storage.saveLastEmail(_emailController.text); // asegura guardar el último correo
 
-        // ✅ CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
+        // CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
         await _registerFCMToken();
 
         _showMessage('¡Login exitoso!');
