@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../config/api_constants.dart';
 import 'storage_service.dart';
+import 'auth_event_service.dart';
 
 /// Cliente HTTP configurado con interceptores automáticos
 class HttpClient {
@@ -66,9 +68,53 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    print('❌ HTTP Error: ${err.response?.statusCode}');
+    print('❌ Response data: ${err.response?.data}');
+    
     // Si recibimos 401, el token expiró o es inválido
     if (err.response?.statusCode == 401) {
+      print('🔓 Token expirado - Limpiando datos');
       await StorageService.deleteToken();
+      AuthEventService().emit(AuthEvent.tokenExpired);
+      super.onError(err, handler);
+      return;
+    }
+    
+    // Si recibimos 403 con error ACCOUNT_SUSPENDED, cerrar sesión
+    if (err.response?.statusCode == 403) {
+      print('🚫 Recibido 403 - Verificando si es cuenta suspendida');
+      final data = err.response?.data;
+      print('🔍 Data type: ${data.runtimeType}');
+      print('🔍 Data content: $data');
+      
+      // Intentar parsear si es String
+      dynamic parsedData = data;
+      if (data is String) {
+        try {
+          parsedData = json.decode(data);
+          print('🔍 Data parseada: $parsedData');
+        } catch (e) {
+          print('⚠️ No se pudo parsear data como JSON');
+        }
+      }
+      
+      if (parsedData is Map && parsedData['error'] == 'ACCOUNT_SUSPENDED') {
+        print('🚫 CONFIRMADO: Cuenta suspendida - Cerrando sesión automáticamente');
+        await StorageService.deleteToken();
+        await StorageService.deletePlan();
+        await StorageService.deletePermissions();
+        print('📤 Emitiendo evento accountSuspended');
+        // Emitir evento para que la UI reaccione
+        AuthEventService().emit(AuthEvent.accountSuspended);
+        // NO pasar el error adelante, solo emitir el evento
+        return;
+      } else {
+        print('⚠️ 403 pero NO es cuenta suspendida');
+        print('⚠️ parsedData type: ${parsedData.runtimeType}');
+        if (parsedData is Map) {
+          print('⚠️ error key: ${parsedData['error']}');
+        }
+      }
     }
 
     super.onError(err, handler);
