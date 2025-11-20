@@ -286,6 +286,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
       final subscriptionProvider = context.read<SubscriptionProvider>();
       final maxFiles = subscriptionProvider.maxFiles; // Puede ser null = ilimitado
+      final planName = subscriptionProvider.planName;
 
       // Traer todas las reflexiones para contar archivos ya existentes
       final reflections = await _reflectionService.getAllReflections();
@@ -297,7 +298,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
       // Mostrar mensaje
       if (maxFiles == null) {
-        print('Tu plan permite adjuntar una cantidad ilimitada de archivos.');
+        print('Tu plan "$planName" permite adjuntar una cantidad ilimitada de archivos.');
       } else {
         print('Tu plan permite adjuntar hasta $maxFiles archivos.');
         print('Actualmente tienes $totalAttachedFiles archivos adjuntos en todas tus reflexiones.');
