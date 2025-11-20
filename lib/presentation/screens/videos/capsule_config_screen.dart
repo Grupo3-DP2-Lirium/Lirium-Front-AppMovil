@@ -301,7 +301,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
     return Column(
       children: [
         // Opción sin música
-        _buildMusicOption(null, 'Sin música', 'Cápsula sin fondo musical', null),
+        _buildMusicOption(null, null, 'Sin música', 'Cápsula sin fondo musical', null),
         const SizedBox(height: 8),
 
         ...provider.musicCatalog.map((track) {
@@ -309,6 +309,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: _buildMusicOption(
               track.id,
+              track.previewId,
               track.name,
               '${track.description} • ${track.duration}',
               track.id,
@@ -320,14 +321,14 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
   }
 
   Widget _buildMusicOption(
-      String? trackId, String name, String subtitle, String? previewUrl) {
-    final isSelected = _selectedMusic == trackId;
-    final isPlayingThis = _isPlaying && _currentPlayingTrack == trackId;
+      String? trackId, String? previewId, String name, String subtitle, String? previewUrl) {
+    final isSelected = _selectedMusic == previewId;
+    final isPlayingThis = _isPlaying && _currentPlayingTrack == previewId;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedMusic = trackId;
+          _selectedMusic = previewId;
         });
       },
       child: Container(
@@ -343,7 +344,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
         child: Row(
           children: [
             Icon(
-              trackId == null ? Icons.music_off : Icons.music_note,
+              previewId == null ? Icons.music_off : Icons.music_note,
               color: isSelected ? AppColors.primary : Colors.grey[600],
             ),
             const SizedBox(width: 12),
@@ -366,17 +367,17 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
                 ],
               ),
             ),
-            if (trackId != null) ...[
+            if (previewId != null) ...[
               IconButton(
                 icon: Icon(
                   isPlayingThis ? Icons.stop_circle : Icons.play_circle,
                   color: isSelected ? AppColors.primary : Colors.grey[600],
                   size: 32,
                 ),
-                onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+                onPressed: () => _toggleMusicPreview(previewId, previewUrl),
               ),
             ],
-            if (isSelected && trackId != null) const SizedBox(width: 8),
+            if (isSelected && previewId != null) const SizedBox(width: 8),
             if (isSelected)
               const Icon(Icons.check_circle, color: AppColors.primary),
           ],
