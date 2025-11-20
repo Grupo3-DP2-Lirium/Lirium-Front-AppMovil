@@ -24,8 +24,8 @@ import '../memorial/memorial_detail_screen.dart';
 import '../memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
+  final Function(int)? onTabChange;
+  const HomeScreen({super.key, this.onTabChange});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -305,14 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Mis Memoriales',
                         'Tus legados digitales con valor emocional',
                         icon: Icons.favorite_border,
-                        onSeeAll: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ProfilesScreen(),
-                            ),
-                          );
-                        },
+                          onSeeAll: () {
+                            widget.onTabChange?.call(1); // Ir al tab de Memoriales
+                          }
                       ),
                       const SizedBox(height: 16),
                       _buildMemorialsList(memorials),

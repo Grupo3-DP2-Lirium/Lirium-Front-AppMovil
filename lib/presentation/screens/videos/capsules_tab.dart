@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/capsule_model.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/capsule_card.dart';
 import 'package:flutter_frontend/presentation/screens/videos/select_memorial_capsule_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/capsule_preview_screen.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 
@@ -17,18 +19,26 @@ class CapsulesTab extends StatefulWidget {
 
 class _CapsulesTabState extends State<CapsulesTab> {
   String _selectedFilter = 'drafts'; // 'drafts' o 'published'
+  bool canUseIA = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CapsuleProvider>().loadMyCapsules();
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      final permissions = subscriptionProvider.permissions; // lista de permisos
+      setState(() {
+        canUseIA = permissions.contains('IA_FEATURES');
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final capsuleProvider = context.watch<CapsuleProvider>();
+    final subscriptionProvider = context.watch<SubscriptionProvider>();
+    canUseIA = subscriptionProvider.permissions.contains('IA_FEATURES');
 
     if (capsuleProvider.loading && capsuleProvider.capsules.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -79,19 +89,20 @@ class _CapsulesTabState extends State<CapsulesTab> {
         ),
 
         // FAB - Crear cápsula
-        Positioned(
-          bottom: 20,
-          right: 20,
-          child: FloatingActionButton.extended(
-            onPressed: () => _navigateToCreate(),
-            backgroundColor: AppColors.primary,
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Crear Cápsula',
-              style: TextStyle(color: Colors.white),
+        if (draftCapsules.isNotEmpty || publishedCapsules.isNotEmpty)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.extended(
+              onPressed: () => _navigateToCreate(),
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Crear Cápsula',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -278,7 +289,16 @@ class _CapsulesTabState extends State<CapsulesTab> {
             PrimaryButton(
               text: 'Crear mi primera cápsula',
               icon: Icons.add,
-              onPressed: () => _navigateToCreate(),
+              onPressed: () {
+                if (canUseIA) {
+                  _navigateToCreate();
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                  );
+                }
+              },
             ),
           ],
         ),

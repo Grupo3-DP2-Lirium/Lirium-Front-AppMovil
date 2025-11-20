@@ -15,6 +15,7 @@ class SubscriptionProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get extraStorage => _extraStorage;
   bool get isLoaded => _isLoaded;
   int? get maxFiles => _subscription?.maxFiles;
+  String get planName => _subscription?.planName ?? 'Free';
 
   /// Inicializa desde login
   void setFromLogin({
@@ -67,8 +68,6 @@ class SubscriptionProvider extends ChangeNotifier {
       // 1. Traer la suscripción fresca desde backend
       final fresh = await SubscriptionService().getCurrentSubscription();
       print(">>> REFRESH: Backend devolvió plan: ${fresh.planName}");
-      _subscription = fresh;
-
       // 0. Imprimir maxFiles después de actualizar
       print(">>> maxFiles DESPUÉS de refresh: ${_subscription?.maxFiles}");
 
@@ -76,7 +75,7 @@ class SubscriptionProvider extends ChangeNotifier {
       if (fresh.planId != null && fresh.planId!.isNotEmpty) {
         final perms = await SubscriptionService().getPlanPermissions(fresh.planId!);
         _permissions = perms;
-
+        _subscription = fresh;
         // Guardamos en Storage solo si no es Free
         await StorageService.savePermissions(perms);
       } else {
