@@ -6,6 +6,8 @@ import 'package:flutter_frontend/presentation/screens/videos/documentary_detail_
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../../providers/plan_provider.dart';
+
 class DocumentariesTab extends StatefulWidget {
   const DocumentariesTab({super.key});
 
@@ -273,6 +275,12 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
 
   /// Estado vacío general (sin ningún documental)
   Widget _buildEmptyState(BuildContext context) {
+    final subscriptionProvider = context.read<SubscriptionProvider>();
+    final subscription = subscriptionProvider.subscription;
+    final maxDocs =  0;
+
+    final canCreate = true;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -311,7 +319,8 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: canCreate
+                  ? () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -320,14 +329,17 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
                 ).then((_) {
                   context.read<DocumentaryProvider>().loadMyDocumentaries(force: true);
                 });
-              },
+              }
+                  : null, // deshabilitado si no puede crear
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'Crear mi primer documental',
-                style: TextStyle(color: Colors.white),
+              label: Text(
+                canCreate
+                    ? 'Crear mi primer documental'
+                    : 'No puedes crear documentales con tu plan',
+                style: const TextStyle(color: Colors.white),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: canCreate ? AppColors.primary : Colors.grey,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

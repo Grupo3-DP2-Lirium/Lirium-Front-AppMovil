@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Servicio para manejar almacenamiento seguro de tokens
 class StorageService {
@@ -13,6 +14,66 @@ class StorageService {
   static const String _planKey = 'user_plan';
   static const String _permissionsKey = 'user_permissions';
   static const String _extraStorageKey = 'user_extra_storage';
+  static const String _emailKey = 'user_email';
+  static const String _fullNameKey = 'user_full_name';
+  static const String _nameKey = 'user_name';
+
+  static Future<void> saveFullSubscriptionJson(Map<String, dynamic> json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("subscription_full_json", jsonEncode(json));
+  }
+
+  static Future<Map<String, dynamic>?> getFullSubscriptionJson() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString("subscription_full_json");
+    if (str == null) return null;
+    return jsonDecode(str);
+  }
+
+  /// Guarda el nombre completo del usuario
+  static Future<void> saveFullName(String fullName) async {
+    await _storage.write(key: _fullNameKey, value: fullName);
+  }
+
+  /// Obtiene el nombre completo del usuario
+  static Future<String?> getFullName() async {
+    return await _storage.read(key: _fullNameKey);
+  }
+
+  /// Elimina el nombre completo del usuario
+  static Future<void> deleteFullName() async {
+    await _storage.delete(key: _fullNameKey);
+  }
+
+  /// Guarda el nombre del usuario
+  static Future<void> saveName(String name) async {
+    await _storage.write(key: _nameKey, value: name);
+  }
+
+  /// Obtiene el nombre completo del usuario
+  static Future<String?> getName() async {
+    return await _storage.read(key: _nameKey);
+  }
+
+  /// Elimina el nombre completo del usuario
+  static Future<void> deleteName() async {
+    await _storage.delete(key: _nameKey);
+  }
+
+  /// Guarda el email del usuario
+  static Future<void> saveEmail(String email) async {
+    await _storage.write(key: _emailKey, value: email);
+  }
+
+  /// Obtiene el email del usuario
+  static Future<String?> getEmail() async {
+    return await _storage.read(key: _emailKey);
+  }
+
+  /// Elimina el email del usuario
+  static Future<void> deleteEmail() async {
+    await _storage.delete(key: _emailKey);
+  }
 
   /// Guarda las suscripciones de almacenamiento extra
   static Future<void> saveExtraStorageSubscriptions(List<Map<String, dynamic>> extraStorages) async {

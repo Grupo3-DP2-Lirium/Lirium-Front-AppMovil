@@ -6,14 +6,17 @@ import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import '../../../data/models/subscription_response.dart';
 import '../../../data/services/storage_service.dart';
 import '../../components/components.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialEmail});
@@ -119,24 +122,75 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
+        print("RAW JSON LOGIN RESPONSE: ${response.body}");
+
         final token = data['token'] as String;
-        final plan = data['plan'] ?? 'FREE';
+        final plan = data['subscription']?['planName'] ?? 'DESCRUBRE_LIRIUM';
         final permissions = List<String>.from(data['permissions'] ?? []);
         final extraStorageData = data['extraStorageSubscriptions'] as List<dynamic>? ?? [];
         final extraStorages = extraStorageData.map((e) => {
           'planName': e['planName'],
           'additionalStorageGb': e['additionalStorageGb'],
           'status': e['status'],
+          'startDate': e['startDate'] != null
+              ? DateTime.parse(e['startDate']).toIso8601String()
+              : null,
         }).toList();
+        final fullName = data['fullName'] as String? ?? ''; // <- nuevo
+        final name = data['name'] as String? ?? '';
 
-        print("Token recibido: $token");
-        print("Plan recibido del back: $plan");
-        print("Permisos recibidos: $permissions");
-        print("Extra storages guardados: $extraStorages");
+        //print("Token recibido: $token");
+        //print("Nombre guardado: $fullName");
+        //print("Plan recibido del back: $plan");
+        //print("Permisos recibidos: $permissions");
+        //print("Extra storages guardados: $extraStorages");
 
+        final sub = data['subscription'] as Map<String, dynamic>?;
+
+        final subscription = sub == null
+            ? SubscriptionResponse(
+          subscriptionId: null,
+          status: 'NONE',
+          frequency: '',
+          startDate: null,
+          endDate: null,
+          paymentMethod: null,
+          planId: 'FREE_PLAN',
+          planName: 'DESCUBRE_LIRIUM',
+          planDescription: 'Plan gratuito con funciones básicas.',
+          planPrice: 0,
+          planCurrency: 'USD',
+          storageLimitGb: 15,
+        )
+            : SubscriptionResponse(
+          subscriptionId: sub['subscriptionId'],
+          status: sub['status'] ?? 'NONE',
+          frequency: sub['frequency'] ?? '',
+          startDate: sub['startDate'] != null
+              ? DateTime.parse(sub['startDate'])
+              : null,
+          endDate: sub['endDate'] != null
+              ? DateTime.parse(sub['endDate'])
+              : null,
+          paymentMethod: sub['paymentMethod'],
+          planId: sub['planId'],
+          planName: sub['planName'] ?? 'DESCUBRE_LIRIUM',
+          planDescription: sub['planDescription'] ?? '',
+          planPrice: (sub['planPrice'] ?? 0).toDouble(),
+          planCurrency: sub['planCurrency'] ?? 'USD',
+          storageLimitGb: (sub['storageLimitGb'] ?? 15).toDouble(),
+          maxFiles: sub['maxFiles'],
+          maxCollaborations: sub['maxCollaborations'],
+          maxDocumentariesPerMonth: sub['maxDocumentariesPerMonth'] ?? 0,
+        );
+
+        await StorageService.saveFullSubscriptionJson(data);
         await StorageService.savePlan(plan);
         await StorageService.savePermissions(permissions);
         await StorageService.saveExtraStorageSubscriptions(extraStorages);
+        await StorageService.saveEmail(_emailController.text);
+        await StorageService.saveFullName(fullName);
+        await StorageService.saveName(name);
 
         httpService.setToken(access);
         await storage.save(access: access, refresh: refresh);
@@ -144,6 +198,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
         await _registerFCMToken();
+        print(">>> Suscripción recibida:");
+        print("Plan: ${subscription.planName}");
+        print("Cantidad máxima de archivos permitidos (maxFiles): ${sub?['maxFiles'] ?? 'Ilimitado'}");
+
+        context.read<SubscriptionProvider>().setFromLogin(
+          subscription: subscription,
+          permissions: permissions,
+          extraStorage: extraStorages,
+        );
 
         _showMessage('¡Login exitoso!');
 
