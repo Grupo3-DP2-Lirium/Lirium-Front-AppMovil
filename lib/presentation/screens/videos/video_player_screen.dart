@@ -120,18 +120,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         title: Text(widget.title),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        actions: [
-          // Botón para descargar
+        /*actions: [
+          /*// Botón para descargar
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: () => _showDownloadDialog(),
-          ),
+          ),*/
           // Botón para compartir URL
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => _shareVideo(),
           ),
-        ],
+        ],*/
       ),
       body: _buildBody(),
     );

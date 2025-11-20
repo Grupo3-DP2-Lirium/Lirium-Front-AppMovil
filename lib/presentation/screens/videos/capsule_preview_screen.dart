@@ -522,7 +522,7 @@ class _CapsulePreviewScreenState extends State<CapsulePreviewScreen> {
       'download_channel',
       'Descargas',
       description: 'Notificaciones de descarga de videos',
-      importance: Importance.high, // 🔥 Cambiado a HIGH
+      importance: Importance.high,
       showBadge: false,
     );
 
@@ -630,8 +630,11 @@ class _CapsulePreviewScreenState extends State<CapsulePreviewScreen> {
             playSound: true, // Reproducir sonido
             enableVibration: true, // Vibración
             styleInformation: BigTextStyleInformation(
-              'Toca para abrir: ${widget.capsule.title}',
-              contentTitle: 'Descarga completa',
+              //'Toca para abrir: ${widget.capsule.title}',
+              //contentTitle: 'Descarga completa',
+              'Descarga completa. Archivo guardado en carpeta Descargas.',
+              contentTitle: 'Cápsula lista',
+              summaryText: widget.capsule.title,
             ),
           ),
         ),
