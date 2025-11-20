@@ -20,7 +20,28 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
   final AuthStorage _authStorage = AuthStorage();
+
   bool _isLoggingOut = false;
+  String? _currentEmail;
+  String? _currentName;
+
+  Future<void> _loadUserData() async {
+    try {
+      final email = await StorageService.getEmail();
+      print("Email guardado del usuario: $email");
+      final name = await StorageService.getFullName();
+
+      setState(() {
+        _currentEmail = email;
+        _currentName = name;
+      });
+    } catch (e, stack) {
+      print("Error cargando usuario: $e");
+      print(stack);
+      _currentName = null;
+      _currentEmail = null;
+    }
+  }
 
   Future<void> _logout() async {
   // Mostrar diálogo de confirmación
@@ -49,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   });
 
   try {
-    // 1️⃣ Obtener email actual ANTES de limpiar
+    // 1. Obtener email actual ANTES de limpiar
     final user = await _authService.getCurrentUser();
     String? currentEmail;
     if (user != null) {
@@ -57,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     currentEmail ??= await _authStorage.getLastEmail();
 
-    // 2️⃣ Cerrar sesión en backend
+    // 2. Cerrar sesión en backend
     try {
       await _authService.logout();
     } catch (e) {
@@ -65,16 +86,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Continuar de todas formas
     }
 
-    // 3️⃣ Limpiar TODOS los tokens y storage
+    // 3️. Limpiar TODOS los tokens y storage
     await _authStorage.clear();
     await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
     
-    // 4️⃣ Guardar solo el email para prellenar
+    // 4️. Guardar solo el email para prellenar
     if (currentEmail != null && currentEmail.isNotEmpty) {
       await _authStorage.saveLastEmail(currentEmail);
     }
 
-    // 5️⃣ ✅ LIMPIAR TODOS LOS PROVIDERS
+    // 5️. LIMPIAR TODOS LOS PROVIDERS
     if (!mounted) return;
     
     // Limpiar MemorialProvider
@@ -120,6 +141,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -146,7 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 ProfileAvatar(radius: 30),
                 SizedBox(width: 16),
@@ -155,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Juan Pérez',
+                        _currentName ?? '',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -164,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'juan.perez@email.com',
+                        _currentEmail ?? '',
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],

@@ -5,6 +5,8 @@ import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
 import 'package:flutter_frontend/presentation/widgets/auth_listener_wrapper.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'providers/memorial_provider.dart';
@@ -122,6 +124,7 @@ class _RemoryAppState extends State<RemoryApp> {
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => DocumentaryProvider()),
         ChangeNotifierProvider(create: (_) => CapsuleProvider()),
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider())
       ],
       child: MaterialApp(
         title: 'Lirium',

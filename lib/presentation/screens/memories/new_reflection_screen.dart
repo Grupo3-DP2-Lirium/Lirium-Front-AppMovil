@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 
@@ -275,15 +277,42 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   Future<void> _processPickedFile(File file, ReflectionFileType type) async {
     try {
       final fileSize = await file.length();
-      
+
       // Verificar límite de almacenamiento para usuarios gratuitos
       if (!await _reflectionService.canAttachFile(fileSize)) {
         _showStorageLimitDialog();
         return;
       }
 
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      final maxFiles = subscriptionProvider.maxFiles; // Puede ser null = ilimitado
+
+      // Traer todas las reflexiones para contar archivos ya existentes
+      final reflections = await _reflectionService.getAllReflections();
+      int totalAttachedFiles = reflections.fold(
+          0, (sum, r) => sum + r.attachedFiles.length);
+
+      // Agregar también los archivos de la reflexión actual que ya seleccionaste
+      totalAttachedFiles += _attachedFiles.length;
+
+      // Mostrar mensaje
+      if (maxFiles == null) {
+        print('Tu plan permite adjuntar una cantidad ilimitada de archivos.');
+      } else {
+        print('Tu plan permite adjuntar hasta $maxFiles archivos.');
+        print('Actualmente tienes $totalAttachedFiles archivos adjuntos en todas tus reflexiones.');
+      }
+
+      // Validar cantidad actual
+      if (maxFiles != null && totalAttachedFiles >= maxFiles) {
+        _showErrorDialog(
+            'Has alcanzado el límite de $maxFiles archivos para tu plan.'
+        );
+        return;
+      }
+
       final reflectionFile = await _reflectionService.copyFileToReflectionsDirectory(file, type);
-      
+
       setState(() {
         _attachedFiles.add(reflectionFile);
       });

@@ -192,7 +192,7 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
           children: [
             const SizedBox(height: 16),
             const Text(
-              "Selecciona un plan de espacio extra a la vez:",
+              "Selecciona un plan de espacio extra:",
               style: TextStyle(
                 fontFamily: "Poppins",
                 fontSize: 16,
