@@ -264,7 +264,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.COLLABORATION:
         return Colors.indigo;
       case NotificationType.SYSTEM:
-        return Colors.grey;
+        return const Color(0xFFFF6B6B).withOpacity(0.5);
     }
   }
 
@@ -458,12 +458,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : color.withOpacity(0.05),
+          color: notification.isRead ? Colors.white : const Color(0xFFFF6B6B).withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: notification.isRead 
-                ? Colors.grey[300]! 
-                : color.withOpacity(0.3),
+            color: notification.isRead
+                ? Colors.grey[300]!
+                : const Color(0xFFFF6B6B).withOpacity(0.5), // Rosa pastel más marcado
             width: notification.isRead ? 1 : 2,
           ),
           boxShadow: [
@@ -517,8 +517,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: BoxDecoration(
-                                color: color,
+                              decoration: const BoxDecoration(
+                                color: const Color(0xFFFF6B6B),   // 🔴 Rojo siempre
                                 shape: BoxShape.circle,
                               ),
                             ),

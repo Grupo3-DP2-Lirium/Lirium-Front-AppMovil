@@ -2534,6 +2534,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                       MaterialPageRoute(
                         builder: (context) => CollaboratorsScreen(
                           memorialId: widget.memorialId,
+                          memorialName:  name,
                         ),
                       ),
                     );
