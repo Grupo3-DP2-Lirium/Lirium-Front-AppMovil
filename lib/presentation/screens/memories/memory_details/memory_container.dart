@@ -389,6 +389,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
 
       // PASO 3: Preguntar si quiere mejorar con IA
       print('🤔 Preguntando si desea mejorar con IA...');
+
       final bool? shouldEnhance = await showModalBottomSheet<bool>(
         context: context,
         shape: const RoundedRectangleBorder(
@@ -409,7 +410,8 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'La IA puede mejorar la calidad, pero tomará un rato.',
+                  'Solo se pueden subir imágenes hasta de 1MB. '
+                  'Ampliación de límite pensada próximamente… 😉',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -417,6 +419,21 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
+
+                // --- Primero: "Usar sin mejora" ---
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(modalContext, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Usar sin mejora'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // --- Segundo: "Mejorar con IA" ---
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -428,17 +445,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: () => Navigator.pop(modalContext, true),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(modalContext, false),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text('Usar sin mejora'),
                   ),
                 ),
               ],
