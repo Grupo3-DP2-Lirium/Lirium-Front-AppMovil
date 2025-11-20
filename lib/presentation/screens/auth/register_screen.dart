@@ -225,13 +225,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fontSize: 14,
                     ),
                   ),
-          SecondaryButton(
-              text: 'Inicia sesión',
-              textColor: AppColors.primary,
-              isFullWidth: false,
-              onPressed: () {
-                Navigator.pop(context);
-              },
+                  SecondaryButton(
+                      text: 'Inicia sesión',
+                      textColor: AppColors.primary,
+                      isFullWidth: false,
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
                   ),
                 ],
               ),

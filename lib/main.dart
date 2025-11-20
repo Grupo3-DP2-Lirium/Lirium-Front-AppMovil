@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
@@ -5,7 +7,10 @@ import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
 import 'package:flutter_frontend/presentation/widgets/auth_listener_wrapper.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 import 'providers/memorial_provider.dart';
 import 'presentation/screens/memorial/memorials_screen.dart';
@@ -27,6 +32,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await _initializeLocalNotifications();
+
   // Inicializar Firebase
   await Firebase.initializeApp();
 
@@ -35,6 +42,106 @@ Future<void> main() async {
 
   runApp(const RemoryApp());
 }
+
+/// Inicializa las notificaciones locales (para descargas)
+@pragma('vm:entry-point')
+void _notificationTapBackground(NotificationResponse notificationResponse) {
+  print('🔔 Background tap: ${notificationResponse.payload}');
+
+  if (notificationResponse.payload != null) {
+    final filePath = notificationResponse.payload!;
+    OpenFile.open(filePath, type: 'video/mp4').then((result) {
+      print('✅ Opened: ${result.message}');
+    }).catchError((e) {
+      print('❌ Error: $e');
+    });
+  }
+}
+
+Future<void> _initializeLocalNotifications() async {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const DarwinInitializationSettings initializationSettingsDarwin =
+  DarwinInitializationSettings();
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      print('🔔 Foreground click: ${response.payload}');
+
+      if (response.payload != null && response.payload!.isNotEmpty) {
+        final filePath = response.payload!;
+
+        try {
+          final result = await OpenFile.open(filePath, type: 'video/mp4');
+          print('✅ Opened (foreground): ${result.message}');
+        } catch (e) {
+          print('❌ Error (foreground): $e');
+        }
+      }
+    },
+    onDidReceiveBackgroundNotificationResponse: _notificationTapBackground,
+  );
+
+  print('✅ Local notifications initialized');
+}
+
+/*
+/// Inicializa las notificaciones locales (para descargas)
+Future<void> _initializeLocalNotifications() async {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: DarwinInitializationSettings(),
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      print('🔔 Notification clicked START');
+
+      if (response.payload != null && response.payload!.isNotEmpty) {
+        final filePath = response.payload!;
+        print('📂 Path: $filePath');
+
+        // Usar Future.microtask para asegurar que se ejecute
+        Future.microtask(() async {
+          try {
+            print('🚀 Intentando abrir archivo...');
+            final result = await OpenFile.open(
+              filePath,
+              type: 'video/mp4',
+            );
+            print('✅ OpenFile result: ${result.type} - ${result.message}');
+          } catch (e) {
+            print('❌ Error: $e');
+          }
+        });
+      } else {
+        print('❌ No payload');
+      }
+
+      print('🔔 Notification clicked END');
+    },
+  );
+
+  print('✅ Local notifications initialized');
+}*/
+
 
 class RemoryApp extends StatefulWidget {
   const RemoryApp({super.key});
@@ -122,6 +229,7 @@ class _RemoryAppState extends State<RemoryApp> {
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => DocumentaryProvider()),
         ChangeNotifierProvider(create: (_) => CapsuleProvider()),
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider())
       ],
       child: MaterialApp(
         title: 'Lirium',

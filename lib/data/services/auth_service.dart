@@ -35,9 +35,7 @@ class AuthService {
         await StorageService.saveToken(token);
         await StorageService.savePlan(plan);
         await StorageService.savePermissions(permissions);
-
-        //print("Plan guardado en storage: ${await StorageService.getPlan()}");
-        //print("Permisos guardados en storage: ${await StorageService.getPermissions()}");
+        await StorageService.saveEmail(email);
 
         return token;
       } else {

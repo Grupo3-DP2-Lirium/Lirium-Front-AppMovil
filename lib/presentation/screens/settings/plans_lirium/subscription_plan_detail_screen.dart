@@ -12,8 +12,11 @@ import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widg
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_storage_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_benefits_list.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/storage_use_card.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+
+import 'package:provider/provider.dart';
 // VET/pO7}
 class SubscriptionPlanDetailsScreen extends StatefulWidget {
   final double usedStorageGB;
@@ -33,50 +36,13 @@ class SubscriptionPlanDetailsScreen extends StatefulWidget {
 class _SubscriptionPlanDetailsScreenState
     extends State<SubscriptionPlanDetailsScreen> {
   final SubscriptionService _service = SubscriptionService();
-  Future<SubscriptionResponse>? _currentSubscription;
+  //Future<SubscriptionResponse>? _currentSubscription;
   bool _loadingPlan = true;
-  List<String> _permissions = [];
+  //List<String> _permissions = [];
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentPlan();
-  }
-
-  Future<void> _loadCurrentPlan() async {
-    try {
-      final plan = await StorageService.getPlan();
-      final permissions = await StorageService.getPermissions();
-
-      print("Plan guardado del usuario: $plan");
-      print("Permisos guardados del usuario: $permissions");
-
-      setState(() {
-        _permissions = permissions;
-        _currentSubscription = SubscriptionService().getCurrentSubscription();
-      });
-    } catch (e, stack) {
-      print("Error cargando plan actual: $e");
-      print(stack);
-      _currentSubscription = Future.value(
-        SubscriptionResponse(
-          subscriptionId: null,
-          status: "ERROR",
-          frequency: "",
-          startDate: null,
-          endDate: null,
-          paymentMethod: null,
-          planId: null,
-          planName: "Error al cargar",
-          planDescription: "No se pudo obtener el plan actual",
-          planPrice: 0,
-          planCurrency: "USD",
-          storageLimitGb: 0,
-        ),
-      );
-    } finally {
-      setState(() => _loadingPlan = false);
-    }
   }
 
   Future<void> _cancelSubscription(BuildContext context) async {
@@ -163,6 +129,20 @@ class _SubscriptionPlanDetailsScreenState
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     double appBarHeight = screenHeight * 0.09;
+    final subProvider = context.watch<SubscriptionProvider>();
+
+    if (!subProvider.isLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final subscription = subProvider.subscription;
+    if (subscription == null) {
+      return const Scaffold(
+        body: Center(child: Text("No se encontró suscripción.")),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -172,237 +152,249 @@ class _SubscriptionPlanDetailsScreenState
         appBarHeight: appBarHeight,
         showBackButton: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: FutureBuilder<SubscriptionResponse>(
-          future: _currentSubscription,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(
-                  child: Text(
-                      "Error cargando la suscripción: ${snapshot.error}"));
-            } else if (!snapshot.hasData) {
-              return const Center(child: Text("No se encontró suscripción."));
-            }
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Builder(
+            builder: (context) {
+              final subProvider = context.watch<SubscriptionProvider>();
+              final subscription = subProvider.subscription;
+              final permissions = subProvider.permissions;
+              final loading = subProvider.isLoaded;
 
-            final subscription = snapshot.data!;
-            final planName = subscription.planName.toUpperCase();
+              if (!loading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            // Estados principales
-            final bool hasEndDate = subscription.endDate != null;
-            final bool planEnded = hasEndDate && subscription.endDate!.isBefore(DateTime.now());
-            final bool planActive = !hasEndDate; // Si no tiene endDate, está activo
-            final bool isFreeOrDescubre = planName == "FREE" || planName == "DESCUBRE_REMORY";
+              if (subscription == null) {
+                return const Center(child: Text("No se encontró suscripción."));
+              }
 
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                currentPlanCard(
-                  hasPlan: true,
-                  planName: subscription.planName.isNotEmpty
-                      ? subscription.planName
-                      : "Sin nombre",
-                  storage: "${(subscription.storageLimitGb ?? 0).toStringAsFixed(0)} GB",
-                  startDate: subscription.startDate != null
-                      ? DateFormat('dd/MM/yyyy').format(subscription.startDate!)
-                      : "-",
-                  // Si tiene endDate, no calculamos renovación
-                  renewalDate: (subscription.endDate == null)
-                      ? (subscription.startDate != null
-                      ? (() {
-                    final nextRenewal = subscription.frequency == 'YEARLY'
-                        ? subscription.startDate!.add(const Duration(days: 365))
-                        : subscription.startDate!.add(const Duration(days: 30));
-                    return DateFormat('dd/MM/yyyy').format(nextRenewal);
-                  })()
-                      : "-")
-                      : null,
+              final planName = subscription.planName.toUpperCase();
+              final bool hasEndDate = subscription.endDate != null;
+              print("Plan recibido: '${subscription.planName}'");  // Esto muestra exactamente cómo viene el nombre
+              print("Plan normalizado: '$planName'");             // Esto muestra cómo lo normalizamos a mayúsculas
+              final bool planEnded = hasEndDate && subscription.endDate!.isBefore(DateTime.now());
+              final bool planActive = !hasEndDate;
+              final bool isFreeOrDescubre = planName == "Free" || planName == "DESCUBRE_LIRIUM";
 
-                  endDate: (subscription.endDate != null)
-                      ? DateFormat('dd/MM/yyyy').format(subscription.endDate!)
-                      : null,
-                ),
-                const SizedBox(height: 24),
-                  PlanBenefitsList(permissions: _permissions),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: () {
-                      if (isFreeOrDescubre) {
-                        // === Plan gratuito o sin plan ===
-                        return Column(
-                          children: [
-                            const SizedBox(height: 16),
-                            Text(
-                              "Desbloquea todos los beneficios de Lirium",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: "Poppins",
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondary,
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 190, // ajusta según tu card actual
+                      child: PageView(
+                        controller: PageController(viewportFraction: 0.9),
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          // Card del plan actual
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: currentPlanCard(
+                              hasPlan: true,
+                              planName: subscription.planName.isNotEmpty
+                                  ? subscription.planName
+                                  : "Sin nombre",
+                              storage: "${(subscription.storageLimitGb ?? 0).toStringAsFixed(0)} GB",
+                              startDate: subscription.startDate != null
+                                  ? DateFormat('dd/MM/yyyy').format(subscription.startDate!)
+                                  : "-",
+                              renewalDate: (subscription.endDate == null && subscription.startDate != null)
+                                  ? DateFormat('dd/MM/yyyy').format(
+                                  subscription.frequency == 'YEARLY'
+                                      ? subscription.startDate!.add(const Duration(days: 365))
+                                      : subscription.startDate!.add(const Duration(days: 30)))
+                                  : null,
+                              endDate: subscription.endDate != null
+                                  ? DateFormat('dd/MM/yyyy').format(subscription.endDate!)
+                                  : null,
+                            ),
+                          ),
+
+                          // Cards de extras
+                          ...subProvider.extraStorage.map((extra) {
+                            final start = extra["startDate"] != null ? DateTime.parse(extra["startDate"]) : null;
+                            final freq = extra["frequency"] ?? "MONTHLY"; // default si no viene frequency
+
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 12.0),
+                              child: currentPlanCard(
+                                hasPlan: true,
+                                planName: extra["planName"] ?? "Extra Storage",
+                                storage: "${extra["additionalStorageGb"] ?? 0} GB extra",
+                                startDate: start != null ? DateFormat('dd/MM/yyyy').format(start) : null,
+                                renewalDate: start != null
+                                    ? DateFormat('dd/MM/yyyy').format(
+                                    freq.toUpperCase() == 'YEARLY'
+                                        ? start.add(const Duration(days: 365))
+                                        : start.add(const Duration(days: 30)))
+                                    : null,
+                                endDate: null,
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            PrimaryButton(
-                              text: "Suscribirme",
-                              color: AppColors.primary2,
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
-                                );
-                                if (mounted) {
-                                  setState(() => _loadingPlan = true);
-                                  await _loadCurrentPlan();
-                                }
-                              },
-                            ),
-                          ],
-                        );
-                      }
-
-                      if (hasEndDate && !planEnded) {
-                        // === Cancelado pero todavía vigente ===
-                        return Column(
-                          children: [
-                            const SizedBox(height: 16),
-                            Text(
-                              "Tu plan finalizará el ${DateFormat('dd/MM/yyyy').format(subscription.endDate!)}.\nPodrás volver a suscribirte una vez finalice.",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: "Poppins",
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.secondary,
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    PlanBenefitsList(permissions: permissions),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: () {
+                        if (isFreeOrDescubre) {
+                          return Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              Text(
+                                "Desbloquea todos los beneficios de Lirium",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: "Poppins",
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.secondary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            PrimaryButton(
-                              text: "Suscribirme",
-                              color: AppColors.primary2,
-                              isEnabled: false,
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
-                                );
-                                if (mounted) {
-                                  setState(() => _loadingPlan = true);
-                                  await _loadCurrentPlan();
-                                }
-                              },
-                            ),
-                          ],
-                        );
-                      }
-
-                      if (hasEndDate && planEnded) {
-                        // === Cancelado y ya terminó ===
-                        return Column(
-                          children: [
-                            const SizedBox(height: 16),
-                            Text(
-                              "Tu plan finalizó. Vuelve a suscribirte para seguir disfrutando de los beneficios.",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: "Poppins",
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondary,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            PrimaryButton(
-                              text: "Suscribirme",
-                              color: AppColors.primary2,
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
-                                );
-                                if (mounted) {
-                                  setState(() => _loadingPlan = true);
-                                  await _loadCurrentPlan();
-                                }
-                              },
-                            ),
-                          ],
-                        );
-                      }
-
-                      if (planActive) {
-                        // === Plan activo ===
-
-                        // Determinar si el botón debe decir Upgrade o Downgrade
-                        final String normalizedPlan = subscription.planName.toUpperCase();
-                        String actionText;
-
-                        if (normalizedPlan == "CREA_REMORY" || normalizedPlan == "CREA_COMPARTE") {
-                          actionText = "Upgrade plan";
-                        }
-
-                        return Column(
-                          children: [
-                            if (normalizedPlan == "CREA_REMORY" || normalizedPlan == "CREA_COMPARTE")
+                              const SizedBox(height: 10),
                               PrimaryButton(
-                                text: "Upgrade plan",
-                                color: AppColors.primary,
+                                text: "Suscribirme",
+                                color: AppColors.primary2,
                                 onPressed: () async {
                                   await Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const GetPremiumScreen()),
+                                    MaterialPageRoute(
+                                      builder: (context) => const GetPremiumScreen(),
+                                    ),
                                   );
-                                  if (mounted) {
-                                    setState(() => _loadingPlan = true);
-                                    await _loadCurrentPlan();
-                                  }
+                                  await subProvider.refreshPlan();
                                 },
                               ),
-                            const SizedBox(height: 16),
-                            SecondaryButton(
-                              text: "Cancelar plan",
-                              onPressed: () async {
-                                await _cancelSubscription(context);
-                                await _loadCurrentPlan();
-                              },
-                              isOutlined: true,
-                            ),
-                          ],
-                        );
-                      }
-                    }(),
-                  ),
-                  const SizedBox(height: 24),
-                  storageUsageCard(
-                    usedGb: widget.usedStorageGB,
-                    maxGb: subscription.storageLimitGb ?? 0,
-                  ),
-                  // === BOTÓN AGREGAR ESPACIO EXTRA SOLO PARA LEGADO_ETERNO ACTIVO ===
-                  if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" && subscription.endDate == null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 24.0), // un poco de espacio arriba
-                      child: PrimaryButton(
-                        text: "Agregar espacio extra",
-                        color: AppColors.primary2,
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ExtraStorageScreen(),
-                            ),
+                            ],
                           );
-                        },
-                      ),
+                        }
+
+                        if (hasEndDate && !planEnded) {
+                          return Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              Text(
+                                "Tu plan finalizará el ${DateFormat('dd/MM/yyyy').format(subscription.endDate!)}.\nPodrás volver a suscribirte una vez finalice.",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: "Poppins",
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              PrimaryButton(
+                                text: "Suscribirme",
+                                color: AppColors.primary2,
+                                isEnabled: false,
+                                onPressed: () {},
+                              ),
+                            ],
+                          );
+                        }
+
+                        if (hasEndDate && planEnded) {
+                          return Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              Text(
+                                "Tu plan finalizó. Vuelve a suscribirte para seguir disfrutando de los beneficios.",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: "Poppins",
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              PrimaryButton(
+                                text: "Suscribirme",
+                                color: AppColors.primary2,
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const GetPremiumScreen(),
+                                    ),
+                                  );
+                                  await subProvider.refreshPlan();
+                                },
+                              ),
+                            ],
+                          );
+                        }
+
+                        if (planActive) {
+                          final String normalizedPlan = subscription.planName.toUpperCase();
+                          return Column(
+                            children: [
+                              if (normalizedPlan == "CREA_REMORY" || normalizedPlan == "CREA_COMPARTE")
+                                PrimaryButton(
+                                  text: "Upgrade plan",
+                                  color: AppColors.primary,
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const GetPremiumScreen(),
+                                      ),
+                                    );
+                                    await subProvider.refreshPlan();
+                                  },
+                                ),
+                              const SizedBox(height: 16),
+                              SecondaryButton(
+                                text: "Cancelar plan",
+                                onPressed: () async {
+                                  await _cancelSubscription(context);
+                                  await subProvider.refreshPlan();
+                                },
+                                isOutlined: true,
+                              ),
+                            ],
+                          );
+                        }
+
+                        return const SizedBox.shrink();
+                      }(),
                     ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+                    const SizedBox(height: 24),
+                    storageUsageCard(
+                      usedGb: widget.usedStorageGB,
+                      maxGb: subscription.storageLimitGb ?? 0,
+                    ),
+                    if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" &&
+                        subscription.endDate == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24.0),
+                          child: PrimaryButton(
+                            text: "Agregar espacio extra",
+                            color: AppColors.primary2,
+                            isEnabled: subProvider.extraStorage.isEmpty, // deshabilita si ya hay extra
+                            onPressed: subProvider.extraStorage.isEmpty
+                                ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ExtraStorageScreen(),
+                                ),
+                              );
+                            }
+                                : null,
+                          ),
+                        ),
+                  ],
+                ),
+              );
+            },
+          ),
+        )
     );
   }
 }

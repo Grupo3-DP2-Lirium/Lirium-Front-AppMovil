@@ -5,7 +5,9 @@ import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/forms/search_field.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import '../../components/components.dart';
 import 'package:provider/provider.dart';
 
@@ -77,19 +79,37 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final createdMemory = await Navigator.push<Memory>(
-            context,
-            MaterialPageRoute(builder: (_) => CreateMemoryToMemorial()),
-          );
+      floatingActionButton: Builder(
+        builder: (context) {
+          final subProvider = context.watch<SubscriptionProvider>();
+          final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
-          if (createdMemory != null) {
-            prov.agregarMemoria(createdMemory);
-          }
+          return FloatingActionButton(
+            onPressed: hasPermission
+                ? () async {
+              final createdMemory = await Navigator.push<Memory>(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
+              );
+
+              if (createdMemory != null) {
+                final prov = context.read<MemoryProvider>();
+                prov.agregarMemoria(createdMemory);
+              }
+            }
+                : () {
+              // Si no tiene permiso, lo mandamos a GetPremiumScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+              ).then((_) async {
+                await subProvider.refreshPlan();
+              });
+            },
+            backgroundColor: AppColors.primary.withOpacity(hasPermission ? 1.0 : 0.6),
+            child: const Icon(Icons.add, color: Colors.white),
+          );
         },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

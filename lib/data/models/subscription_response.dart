@@ -13,6 +13,9 @@ class SubscriptionResponse {
   final double planPrice;
   final String planCurrency;
   final double storageLimitGb;
+  final int? maxFiles;  // null = ilimitado
+  final int? maxCollaborations;
+  final int? maxDocumentariesPerMonth;
 
   SubscriptionResponse({
     required this.subscriptionId,
@@ -26,7 +29,10 @@ class SubscriptionResponse {
     required this.planDescription,
     required this.planPrice,
     required this.planCurrency,
-    required this.storageLimitGb
+    required this.storageLimitGb,
+    this.maxFiles,
+    this.maxCollaborations,
+    this.maxDocumentariesPerMonth,
   });
 
   factory SubscriptionResponse.fromJson(Map<String, dynamic> json) {
@@ -38,11 +44,14 @@ class SubscriptionResponse {
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       paymentMethod: json['paymentMethod'] ?? json['currentPaymentMethod'],
       planId: json['planId'] ?? '',
-      planName: json['planName'] ?? 'Free',
+      planName: json['planName'] ?? 'DESCUBRE_LIRIUM',
       planDescription: json['planDescription'] ?? '',
       planPrice: (json['planPrice'] ?? 0).toDouble(),
       planCurrency: json['planCurrency'] ?? 'USD',
-      storageLimitGb: (json['storageLimitGb'] ?? 15).toDouble()
+      storageLimitGb: (json['storageLimitGb'] ?? 15).toDouble(),
+      maxFiles: json['maxFiles'],
+      maxCollaborations: json['maxCollaborations'],
+      maxDocumentariesPerMonth: json['maxDocumentariesPerMonth'],
     );
   }
 }

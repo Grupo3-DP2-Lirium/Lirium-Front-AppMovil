@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/data/services/reminder_service.dart';
 import 'package:flutter_frontend/data/services/notification_service.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/domain/entities/memorial.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/domain/entities/reminder.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/widgets/reminder_carousel.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/reminders_list_screen.dart';
 import 'package:flutter_frontend/presentation/screens/notifications/notifications_screen.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
 import '../memories/my_personal_space_screen.dart';
 import '../memories/new_reflection_screen.dart';
@@ -31,10 +34,30 @@ class _HomeScreenState extends State<HomeScreen> {
   final _memorialService = MemorialService();
   final _reminderService = ReminderService();
   final _notificationService = NotificationService();
-
+  String? _currentEmail;
+  String? _currentName;
   late Future<List<Memorial>> _memorialsFuture;
   late Future<List<Reminder>> _remindersFuture;
   int _unreadNotificationsCount = 0;
+
+  Future<void> _loadUserData() async {
+    try {
+      final email = await StorageService.getEmail();
+      print("Email guardado del usuario: $email");
+      final name = await StorageService.getName();
+      print("Email guardado del usuario: $name");
+
+      setState(() {
+        _currentEmail = email;
+        _currentName = name;
+      });
+    } catch (e, stack) {
+      print("Error cargando usuario: $e");
+      print(stack);
+      _currentName = null;
+      _currentEmail = null;
+    }
+  }
 
   @override
   void initState() {
@@ -42,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _memorialsFuture = _memorialService.getMemorials();
     _remindersFuture = _reminderService.getUpcomingReminders(days: 7);
     _loadUnreadCount();
+    _loadUserData();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -58,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _goToCreateMemory() async {
-    final prov = context.read<MemoryProvider>(); // usa el provider que tengas
+    final prov = context.read<MemoryProvider>();
 
     final createdMemory = await Navigator.push<Memory>(
       context,
@@ -165,23 +189,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             RichText(
-                              text: const TextSpan(
-                                style: TextStyle(
+                              text: TextSpan(
+                                style: const TextStyle(
                                   fontSize: 24,
                                   color: AppColors.textPrimary,
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'Inter',
                                 ),
                                 children: [
-                                  TextSpan(text: 'Hola, '),
+                                  const TextSpan(text: 'Hola, '),
                                   TextSpan(
-                                    text: 'Fer',
-                                    style: TextStyle(
+                                    text: _currentName ?? '',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.primary,
                                     ),
                                   ),
-                                  TextSpan(text: ' 👋'),
+                                  const TextSpan(text: ' 👋'),
                                 ],
                               ),
                             ),
@@ -338,8 +362,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✨ ESTADO VACÍO - Primera impresión
+  // ESTADO VACÍO - Primera impresión
   Widget _buildEmptyState() {
+    final subProvider = context.watch<SubscriptionProvider>();
+    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(28),
@@ -360,7 +387,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          // Icono hero
+          const Text(
+            'Comienza tu legado digital',
+            style: AppColors.h4,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -380,17 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Título
-          const Text(
-            'Comienza tu legado digital',
-            style: AppColors.h4,
-            textAlign: TextAlign.center,
-          ),
           const SizedBox(height: 12),
-
-          // Descripción
           Text(
             'Crea tu primer memorial para preservar los recuerdos que más valoras y construye una memoria colaborativa con valor emocional',
             style: AppColors.bodyMedium.copyWith(
@@ -400,34 +422,44 @@ class _HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 28),
-
-          // CTA Button
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton(
-              onPressed: _goToCreateMemorial,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add_circle_outline, size: 22),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Crear mi primer memorial',
-                    style: AppColors.labelLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+            child: Opacity(
+              opacity: hasPremiumPermission ? 1.0 : 0.6,
+              child: ElevatedButton(
+                onPressed: hasPremiumPermission
+                    ? _goToCreateMemorial
+                    : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                  ).then((_) async {
+                    await subProvider.refreshPlan();
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_circle_outline, size: 22),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Crear mi primer memorial',
+                      style: AppColors.labelLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -436,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✨ ACCIONES RÁPIDAS
+  // ACCIONES RÁPIDAS
   Widget _buildQuickActions() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -682,43 +714,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCreateMemorialCard() {
+    final subProvider = context.watch<SubscriptionProvider>();
+    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
     return GestureDetector(
-      onTap: _goToCreateMemorial,
-      child: Container(
-        width: 170,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: AppColors.primary.withOpacity(0.08),
-          border: Border.all(
-            color: AppColors.primary.withOpacity(0.3),
-            width: 2,
+      onTap: hasPremiumPermission
+          ? _goToCreateMemorial
+          : () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+        ).then((_) async {
+          await subProvider.refreshPlan(); // refresca permisos al volver
+        });
+      },
+      child: Opacity(
+        opacity: hasPremiumPermission ? 1.0 : 0.6, // visualmente deshabilitado si no tiene permiso
+        child: Container(
+          width: 170,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: AppColors.primary.withOpacity(0.08),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(0.3),
+              width: 2,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  size: 36,
+                  color: AppColors.primary,
+                ),
               ),
-              child: const Icon(
-                Icons.add_rounded,
-                size: 36,
-                color: AppColors.primary,
+              const SizedBox(height: 16),
+              Text(
+                'Crear nuevo\nmemorial',
+                style: AppColors.labelMedium.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Crear nuevo\nmemorial',
-              style: AppColors.labelMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

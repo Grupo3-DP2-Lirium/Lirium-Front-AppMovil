@@ -9,6 +9,8 @@ import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widg
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/plan_card.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/premium_tab_selector.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/receipt_paypal.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:provider/provider.dart';
 // VET/pO7}
 
 class GetPremiumScreen extends StatefulWidget {
@@ -82,6 +84,10 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         final updatedPermissions =
         await subscriptionService.getPlanPermissions(plan['idPlan']);
         await StorageService.savePermissions(updatedPermissions);
+
+        // Refrescar Provider
+        final subscriptionProvider = context.read<SubscriptionProvider>();
+        await subscriptionProvider.refreshPlan();
 
         // Actualizar estado local del widget
         setState(() {
@@ -247,8 +253,8 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                       borderRadius: BorderRadius.circular(50),
                       child: Image.asset(
                         'assets/images/lirium_icon.png',
-                        width: 96,
-                        height: 96,
+                        width: 64,
+                        height: 64,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -266,7 +272,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                     SizedBox(
                       width: 290,
                       child: Text(
-                        "Desbloquea todo el poder de Lyrium y vive una experiencia única para preservar tu historia",
+                        "Desbloquea todo el poder de Lyrium y preserva tu historia",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Color.fromRGBO(217, 146, 147, 0.93),
