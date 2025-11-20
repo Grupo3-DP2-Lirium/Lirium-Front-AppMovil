@@ -126,6 +126,16 @@ class StorageService {
     await _storage.delete(key: _tokenKey);
   }
 
+  /// Elimina el plan del usuario
+  static Future<void> deletePlan() async {
+    await _storage.delete(key: _planKey);
+  }
+
+  /// Elimina los permisos del usuario
+  static Future<void> deletePermissions() async {
+    await _storage.delete(key: _permissionsKey);
+  }
+
   /// Elimina todos los datos guardados
   static Future<void> clearAll() async {
     await _storage.deleteAll();
