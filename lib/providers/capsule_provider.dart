@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/capsule_model.dart';
 import 'package:flutter_frontend/data/models/capsule_request.dart';
@@ -100,8 +101,29 @@ class CapsuleProvider extends ChangeNotifier {
 
       return capsule;
     } catch (e) {
-      _error = e.toString();
-      print('ERROR generating capsule: $e');
+      String message;
+
+      if (e is DioException && e.response != null) {
+        final responseData = e.response?.data;
+        if (responseData is Map<String, dynamic>) {
+          message = responseData['message'] ??
+              responseData['error'] ??
+              e.message ??
+              'Error desconocido';
+        } else {
+          message = e.message ?? 'Error desconocido';
+        }
+      } else {
+        // Para Exception lanzadas desde el servicio (Exception('mi mensaje'))
+        message = e.toString();
+        // Quitar el prefijo "Exception: " si existe
+        if (message.startsWith('Exception: ')) {
+          message = message.replaceFirst('Exception: ', '');
+        }
+      }
+
+      _error = message;
+      print('ERROR generating capsule: $_error');
       notifyListeners();
       return null;
     }
