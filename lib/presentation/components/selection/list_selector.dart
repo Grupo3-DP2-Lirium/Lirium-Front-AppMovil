@@ -43,37 +43,54 @@ class _AppDropdownFieldState extends State<AppDropdownField> {
     final offset = renderBox.localToGlobal(Offset.zero);
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: offset.dx,
-        top: offset.dy + size.height,
-        width: size.width,
-        child: Material(
-          elevation: 4,
-          color: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: widget.options.length,
-              itemBuilder: (context, index) {
-                final option = widget.options[index];
-                return ListTile(
-                  title: Text(option, style: const TextStyle(color: Colors.grey)),
-                  onTap: () {
-                    widget.controller.text = option;
-                    _removeOverlay();
-                  },
-                );
-              },
-              separatorBuilder: (_, __) => const Divider(height: 1),
+      builder: (context) => Stack(
+        children: [
+          // 🟢 Cierra al hacer tap fuera
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _removeOverlay,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
             ),
           ),
-        ),
+
+          // 🟢 Dropdown correctamente pegado al widget
+          Positioned(
+            left: offset.dx,
+            top: offset.dy + size.height,
+            width: size.width,
+            child: Material(
+              elevation: 4,
+              color: Colors.transparent,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: widget.options.length,
+                  itemBuilder: (context, index) {
+                    final option = widget.options[index];
+                    return ListTile(
+                      title: Text(option, style: const TextStyle(color: Colors.grey)),
+                      onTap: () {
+                        widget.controller.text = option;
+                        _removeOverlay();
+                      },
+                    );
+                  },
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
 

@@ -227,12 +227,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           SettingItem(
-            icon: Icons.privacy_tip,
-            title: 'Privacidad',
-            subtitle: 'Controlar quién ve tus recuerdos',
-            onTap: () {},
-          ),
-          SettingItem(
             icon: Icons.security,
             title: 'Seguridad',
             subtitle: 'Contraseña y autenticación',
@@ -267,19 +261,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     usedStorageGB: 2,
                     totalStorageGB: 500,
                   ),
-                ),
-              );
-            },
-          ),
-          SettingItem(
-            icon: Icons.monetization_on,
-            title: 'Se Premium',
-            subtitle: 'Adquiere tu plan',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const GetPremiumScreen(),
                 ),
               );
             },

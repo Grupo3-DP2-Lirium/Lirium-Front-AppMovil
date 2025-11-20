@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/components/documentary_card.dart';
 import 'package:flutter_frontend/presentation/screens/videos/select_memorial_documentary_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/documentary_detail_screen.dart';
@@ -21,6 +22,13 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DocumentaryProvider>();
+    final subscriptionProvider = context.watch<SubscriptionProvider>();
+    final maxDocs = subscriptionProvider.subscription?.maxDocumentariesPerMonth ?? 0;
+    final now = DateTime.now();
+    final totalDocsThisMonth = provider.documentaries.where((doc) {
+      final createdAt = doc.createdDate;
+      return createdAt.year == now.year && createdAt.month == now.month;
+    }).length;
 
     if (provider.loading && provider.documentaries.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -112,21 +120,34 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
           right: 20,
           child: FloatingActionButton.extended(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SelectMemorialDocumentaryScreen(),
-                ),
-              ).then((_) {
-                provider.loadMyDocumentaries(force: true);
-              });
+              if (maxDocs == 0) {
+                // Plan gratuito o sin límite → redirigir a GetPremium
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                );
+              } else if (totalDocsThisMonth < maxDocs) {
+                // Puede crear un nuevo documental
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SelectMemorialDocumentaryScreen()),
+                ).then((_) {
+                  provider.loadMyDocumentaries(force: true);
+                });
+              } else {
+                // Alcanzó límite mensual
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No puedes crear más documentales este mes')),
+                );
+              }
             },
-            backgroundColor: AppColors.primary,
             icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Crear Documental',
-              style: TextStyle(color: Colors.white),
+            label: Text('Crear Documental',
+              style: const TextStyle(color: Colors.white),
             ),
+            backgroundColor: (totalDocsThisMonth < maxDocs)
+                ? AppColors.primary  // tu rosa
+                : Colors.grey,
           ),
         ),
       ],
@@ -276,10 +297,14 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
   /// Estado vacío general (sin ningún documental)
   Widget _buildEmptyState(BuildContext context) {
     final subscriptionProvider = context.read<SubscriptionProvider>();
-    final subscription = subscriptionProvider.subscription;
-    final maxDocs =  0;
+    final documentaryProvider = context.read<DocumentaryProvider>();
 
-    final canCreate = true;
+    final maxDocs = subscriptionProvider.subscription?.maxDocumentariesPerMonth;
+    final now = DateTime.now();
+    final totalDocsThisMonth = documentaryProvider.documentaries.where((doc) {
+      final createdAt = doc.createdDate;
+      return createdAt.year == now.year && createdAt.month == now.month;
+    }).length;
 
     return Center(
       child: Padding(
@@ -319,33 +344,60 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: canCreate
-                  ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SelectMemorialDocumentaryScreen(),
-                  ),
-                ).then((_) {
-                  context.read<DocumentaryProvider>().loadMyDocumentaries(force: true);
-                });
-              }
-                  : null, // deshabilitado si no puede crear
+              onPressed: () {
+                // Si maxDocs es 0 o null → redirigir a GetScreen
+                if (maxDocs == 0 || maxDocs == null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                  );
+                } else {
+                  // Validar si puede crear según límite
+                  if (totalDocsThisMonth < maxDocs) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const SelectMemorialDocumentaryScreen()),
+                    ).then((_) {
+                      documentaryProvider.loadMyDocumentaries(force: true);
+                    });
+                  } else {
+                    // Opcional: mostrar toast o dialog que ya alcanzó límite
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'No puedes crear más documentales con tu plan')),
+                    );
+                  }
+                }
+              },
               icon: const Icon(Icons.add, color: Colors.white),
               label: Text(
-                canCreate
+                (maxDocs == 0 || maxDocs == null || totalDocsThisMonth < maxDocs)
                     ? 'Crear mi primer documental'
-                    : 'No puedes crear documentales con tu plan',
+                    : 'No puedes crear más documentales con tu plan',
                 style: const TextStyle(color: Colors.white),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: canCreate ? AppColors.primary : Colors.grey,
+                backgroundColor: (maxDocs == 0 || maxDocs == null || totalDocsThisMonth < maxDocs)
+                    ? AppColors.primary
+                    : Colors.grey,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
+            if (maxDocs != null && maxDocs > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Documentales creados este Mes: $totalDocsThisMonth / $maxDocs',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
           ],
         ),
       ),

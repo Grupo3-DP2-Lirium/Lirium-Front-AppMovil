@@ -7,7 +7,6 @@ import '../memories/memories_grid_screen.dart';
 import '../chat/chat_screen.dart';
 import '../settings/settings_screen.dart';
 import 'home_screen.dart';
-
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -18,8 +17,16 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen>{
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
+  // 👉 FUNCIÓN que permitirá cambiar de tab desde Home
+  void _changeTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  // 👉 ESTA ES LA ÚNICA LISTA VÁLIDA
+  List<Widget> get _screens => [
+    HomeScreen(onTabChange: _changeTab),   // <-- PASAMOS LA FUNCIÓN
     const ProfilesScreen(),
     const MemoriesGridScreen(),
     const VideosScreen(),

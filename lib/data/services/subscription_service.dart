@@ -117,6 +117,55 @@ class SubscriptionService {
       // Convertir JSON a entidad
       final subscriptionResponse = SubscriptionResponse.fromJson(jsonMap);
       print('DEBUG: Parsed subscription with plan: ${subscriptionResponse.planName}');
+      Future<SubscriptionResponse> getCurrentSubscription() async {
+        print('DEBUG: getCurrentSubscription() called');
+        final uri = Uri.parse("${ApiConstants.baseUrl}/subscriptions/current-subscription");
+        print('DEBUG: Making request to: $uri');
+
+        final res = await _client.get(
+          uri,
+          headers: _http.authHeaders(),
+        );
+
+        print('DEBUG: getCurrentSubscription response - Status: ${res.statusCode}, Body: ${res.body}');
+
+        if (res.statusCode == 200) {
+          final Map<String, dynamic> jsonMap = jsonDecode(res.body);
+
+          // Ver todo el JSON crudo
+          print('DEBUG: Raw JSON parsed: $jsonMap');
+
+          // Convertir JSON a entidad
+          final subscriptionResponse = SubscriptionResponse.fromJson(jsonMap);
+
+          // Imprimir todos los detalles de la suscripción
+          print('>>> Subscription Parsed <<<');
+          print('Subscription ID: ${subscriptionResponse.subscriptionId}');
+          print('Status: ${subscriptionResponse.status}');
+          print('Frequency: ${subscriptionResponse.frequency}');
+          print('StartDate: ${subscriptionResponse.startDate}');
+          print('EndDate: ${subscriptionResponse.endDate}');
+          print('PaymentMethod: ${subscriptionResponse.paymentMethod}');
+
+          print('--- Plan Details ---');
+          print('Plan ID: ${subscriptionResponse.planId}');
+          print('Plan Name: ${subscriptionResponse.planName}');
+          print('Plan Description: ${subscriptionResponse.planDescription}');
+          print('Plan Price: ${subscriptionResponse.planPrice}');
+          print('Plan Currency: ${subscriptionResponse.planCurrency}');
+          print('Storage Limit GB: ${subscriptionResponse.storageLimitGb}');
+          print('Max Files: ${subscriptionResponse.maxFiles}');
+          print('Max Collaborations: ${subscriptionResponse.maxCollaborations}');
+          print('Max Documentaries Per Month: ${subscriptionResponse.maxDocumentariesPerMonth}');
+
+          return subscriptionResponse;
+        } else {
+          throw Exception(
+            "Error fetching current subscription: ${res.statusCode} ${res.body}",
+          );
+        }
+      }
+
       return subscriptionResponse;
     } else {
       throw Exception(
