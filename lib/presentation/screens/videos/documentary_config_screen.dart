@@ -401,7 +401,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
     return Column(
       children: [
-        _buildMusicOption(null, 'Sin música', 'Documental sin fondo musical', null),
+        _buildMusicOption(null, null, 'Sin música', 'Documental sin fondo musical', null),
         const SizedBox(height: 8),
 
         ...provider.musicCatalog.map((track) {
@@ -409,6 +409,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: _buildMusicOption(
               track.id,
+              track.previewId,
               track.name,
               '${track.description} • ${track.duration}',
               track.id,
@@ -420,22 +421,20 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
   }
 
   Widget _buildMusicOption(
-      String? trackId, String name, String subtitle, String? previewUrl) {
-    final isSelected = _selectedMusic == trackId;
-    final isPlayingThis = _isPlaying && _currentPlayingTrack == trackId;
+      String? trackId, String? previewId, String name, String subtitle, String? previewUrl) {
+    final isSelected = _selectedMusic == previewId;
+    final isPlayingThis = _isPlaying && _currentPlayingTrack == previewId;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedMusic = trackId;
+          _selectedMusic = previewId;
         });
       },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withOpacity(0.1)
-              : Colors.grey[50],
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : Colors.grey[300]!,
@@ -445,7 +444,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
         child: Row(
           children: [
             Icon(
-              trackId == null ? Icons.music_off : Icons.music_note,
+              previewId == null ? Icons.music_off : Icons.music_note,
               color: isSelected ? AppColors.primary : Colors.grey[600],
             ),
             const SizedBox(width: 12),
@@ -468,17 +467,17 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
                 ],
               ),
             ),
-            if (trackId != null) ...[
+            if (previewId != null) ...[
               IconButton(
                 icon: Icon(
                   isPlayingThis ? Icons.stop_circle : Icons.play_circle,
                   color: isSelected ? AppColors.primary : Colors.grey[600],
                   size: 32,
                 ),
-                onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+                onPressed: () => _toggleMusicPreview(previewId, previewUrl),
               ),
             ],
-            if (isSelected && trackId != null) const SizedBox(width: 8),
+            if (isSelected && previewId != null) const SizedBox(width: 8),
             if (isSelected)
               const Icon(Icons.check_circle, color: AppColors.primary),
           ],

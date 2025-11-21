@@ -4,9 +4,11 @@ import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/videos/video_player_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
-import 'package:flutter_frontend/presentation/components/buttons/secondary_button.dart';
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
+
 
 class DocumentaryDetailScreen extends StatefulWidget {
   final String documentaryId;
@@ -461,10 +463,11 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
             width: double.infinity,
             height: 52,
             child: SecondaryButton(
-              text: 'Vista Previa',
+              text: 'Descargar Video',
+              icon : Icons.download,
               isOutlined: true,
               textColor: AppColors.primary,
-              onPressed: () => _openVideo(_documentary!.videoUrl!),
+              onPressed: () => _downloadVideo(_documentary!.videoUrl!),
             ),
           ),
           const SizedBox(height: 16),
@@ -529,7 +532,8 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
             width: double.infinity,
             height: 52,
             child: SecondaryButton(
-              text: 'Descargar',
+              text: 'Descargar Video',
+              icon: Icons.download,
               isOutlined: true,
               textColor: AppColors.primary,
               onPressed: () => _downloadVideo(_documentary!.videoUrl!),
@@ -632,28 +636,177 @@ class _DocumentaryDetailScreenState extends State<DocumentaryDetailScreen> {
 
   Future<void> _downloadVideo(String url) async {
     try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      // Mostrar notificación de inicio
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Descarga iniciada...'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Abriendo navegador para descargar...'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
+      // Iniciar descarga en segundo plano
+      _downloadInBackground(url);
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Error al iniciar descarga: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    }
+  }
+
+  Future<void> _downloadInBackground(String videoUrl) async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+    // Configurar el canal de notificaciones
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'download_channel',
+      'Descargas',
+      description: 'Notificaciones de descarga de videos',
+      importance: Importance.high,
+      showBadge: false,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    try {
+      // Obtener directorio
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+        final downloadPath = Directory('${directory!.path}/Downloads');
+        if (!await downloadPath.exists()) {
+          await downloadPath.create(recursive: true);
+        }
+        directory = downloadPath;
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw 'No se pudo acceder al almacenamiento';
+      }
+
+      final fileName = '${_documentary!.title.replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final savePath = '${directory.path}/$fileName';
+
+      // Mostrar notificación inicial
+      await flutterLocalNotificationsPlugin.show(
+        0,
+        'Descargando documental',
+        _documentary!.title,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.low,
+            priority: Priority.low,
+            showProgress: true,
+            maxProgress: 100,
+            progress: 0,
+            ongoing: true,
+            autoCancel: false,
+          ),
+        ),
+      );
+
+      // Descargar con Dio
+      final dio = Dio();
+      await dio.download(
+        videoUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = ((received / total) * 100).toInt();
+
+            flutterLocalNotificationsPlugin.show(
+              0,
+              'Descargando documental',
+              '${_documentary!.title} - $progress%',
+              NotificationDetails(
+                android: AndroidNotificationDetails(
+                  channel.id,
+                  channel.name,
+                  channelDescription: channel.description,
+                  importance: Importance.low,
+                  priority: Priority.low,
+                  showProgress: true,
+                  maxProgress: 100,
+                  progress: progress,
+                  ongoing: true,
+                  autoCancel: false,
+                ),
+              ),
+            );
+          }
+        },
+      );
+
+      // Cancelar notificación de progreso
+      await flutterLocalNotificationsPlugin.cancel(0);
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Mostrar notificación de descarga completa
+      await flutterLocalNotificationsPlugin.show(
+        1,
+        '✅ Descarga completa',
+        'Toca para abrir: ${_documentary!.title}',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            showProgress: false,
+            ongoing: false,
+            autoCancel: true,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            enableVibration: true,
+            styleInformation: BigTextStyleInformation(
+              'Descarga completa. Archivo guardado en carpeta Descargas.',
+              contentTitle: 'Documental listo',
+              summaryText: _documentary!.title,
+            ),
+          ),
+        ),
+        payload: savePath,
+      );
+
+      print('✅ Documental descargado en: $savePath');
+
+    } catch (e) {
+      await flutterLocalNotificationsPlugin.cancel(0);
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      await flutterLocalNotificationsPlugin.show(
+        2,
+        '❌ Error en la descarga',
+        'No se pudo descargar el documental',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        ),
+      );
+
+      print('❌ Error al descargar: $e');
     }
   }
 

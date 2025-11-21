@@ -145,7 +145,7 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                 child: AppDropdownField(
                   header: 'Año',
                   controller: _yearController,
-                  options: List.generate(50, (i) => (DateTime.now().year - i).toString()),
+                  options: List.generate(100, (i) => (DateTime.now().year - i).toString()),
                   enable: widget.isEditing,
                 ),
               ),

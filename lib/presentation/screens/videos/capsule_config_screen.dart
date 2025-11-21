@@ -301,7 +301,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
     return Column(
       children: [
         // Opción sin música
-        _buildMusicOption(null, 'Sin música', 'Cápsula sin fondo musical', null),
+        _buildMusicOption(null, null, 'Sin música', 'Cápsula sin fondo musical', null),
         const SizedBox(height: 8),
 
         ...provider.musicCatalog.map((track) {
@@ -309,6 +309,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: _buildMusicOption(
               track.id,
+              track.previewId,
               track.name,
               '${track.description} • ${track.duration}',
               track.id,
@@ -320,14 +321,14 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
   }
 
   Widget _buildMusicOption(
-      String? trackId, String name, String subtitle, String? previewUrl) {
-    final isSelected = _selectedMusic == trackId;
-    final isPlayingThis = _isPlaying && _currentPlayingTrack == trackId;
+      String? trackId, String? previewId, String name, String subtitle, String? previewUrl) {
+    final isSelected = _selectedMusic == previewId;
+    final isPlayingThis = _isPlaying && _currentPlayingTrack == previewId;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedMusic = trackId;
+          _selectedMusic = previewId;
         });
       },
       child: Container(
@@ -343,7 +344,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
         child: Row(
           children: [
             Icon(
-              trackId == null ? Icons.music_off : Icons.music_note,
+              previewId == null ? Icons.music_off : Icons.music_note,
               color: isSelected ? AppColors.primary : Colors.grey[600],
             ),
             const SizedBox(width: 12),
@@ -366,17 +367,17 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
                 ],
               ),
             ),
-            if (trackId != null) ...[
+            if (previewId != null) ...[
               IconButton(
                 icon: Icon(
                   isPlayingThis ? Icons.stop_circle : Icons.play_circle,
                   color: isSelected ? AppColors.primary : Colors.grey[600],
                   size: 32,
                 ),
-                onPressed: () => _toggleMusicPreview(trackId, previewUrl),
+                onPressed: () => _toggleMusicPreview(previewId, previewUrl),
               ),
             ],
-            if (isSelected && trackId != null) const SizedBox(width: 8),
+            if (isSelected && previewId != null) const SizedBox(width: 8),
             if (isSelected)
               const Icon(Icons.check_circle, color: AppColors.primary),
           ],
@@ -478,12 +479,7 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
         // Volver a la lista
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${provider.error ?? "Desconocido"}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _handleGenerationError(provider.error);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -497,6 +493,113 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  void _handleGenerationError(String? errorMessage) {
+    String displayMessage;
+    Color backgroundColor;
+    IconData icon;
+
+    // Detectar si es error de "no se encontraron recuerdos"
+    if (errorMessage != null &&
+        (errorMessage.toLowerCase().contains('no se encontraron recuerdos') ||
+            errorMessage.toLowerCase().contains('no memories found'))) {
+
+      // Error específico: no hay recuerdos relevantes
+      displayMessage = errorMessage; // Ya viene con sugerencias desde el backend
+      backgroundColor = Colors.orange;
+      icon = Icons.search_off;
+
+      // Mostrar diálogo con más detalles
+      _showNoMemoriesDialog(errorMessage);
+      return;
+
+    } else if (errorMessage != null && errorMessage.contains('Memorial has no visible memories')) {
+      // Memorial vacío
+      displayMessage = 'Este memorial no tiene recuerdos con archivos. Agrega algunas fotos o videos primero.';
+      backgroundColor = Colors.orange;
+      icon = Icons.photo_library_outlined;
+
+    } else {
+      // Error genérico
+      displayMessage = errorMessage ?? 'Error desconocido al generar la cápsula';
+      backgroundColor = Colors.red;
+      icon = Icons.error_outline;
+    }
+
+    // Mostrar SnackBar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                displayMessage,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showNoMemoriesDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.search_off, color: Colors.orange[700]),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'No encontramos recuerdos',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'No se encontraron recuerdos sobre "${widget.userPrompt}" en este memorial.',
+              style: const TextStyle(fontSize: 14),
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop(); // Cerrar diálogo
+              Navigator.of(context).pop(); // Volver a pantalla anterior para cambiar prompt
+            },
+            child: const Text(
+              'Intentar con otro tema',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

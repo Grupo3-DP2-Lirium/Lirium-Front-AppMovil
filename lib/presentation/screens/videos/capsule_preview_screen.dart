@@ -1,11 +1,15 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/capsule_model.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class CapsulePreviewScreen extends StatefulWidget {
   final CapsuleModel capsule;
@@ -485,23 +489,188 @@ class _CapsulePreviewScreenState extends State<CapsulePreviewScreen> {
     if (widget.capsule.videoUrl == null) return;
 
     try {
-      final uri = Uri.parse(widget.capsule.videoUrl!);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'No se pudo abrir el video';
-      }
+      // Mostrar notificación de inicio
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Descarga iniciada...'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Iniciar descarga en segundo plano
+      _downloadInBackground();
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al descargar: $e'),
+            content: Text('Error al iniciar descarga: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
+
+  Future<void> _downloadInBackground() async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+    // Configurar el canal de notificaciones
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'download_channel',
+      'Descargas',
+      description: 'Notificaciones de descarga de videos',
+      importance: Importance.high,
+      showBadge: false,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    try {
+      // Obtener directorio
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+        final downloadPath = Directory('${directory!.path}/Downloads');
+        if (!await downloadPath.exists()) {
+          await downloadPath.create(recursive: true);
+        }
+        directory = downloadPath;
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw 'No se pudo acceder al almacenamiento';
+      }
+
+      final fileName = '${widget.capsule.title.replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final savePath = '${directory.path}/$fileName';
+
+      // Mostrar notificación inicial
+      await flutterLocalNotificationsPlugin.show(
+        0, // ID para la notificación de progreso
+        'Descargando video',
+        widget.capsule.title,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.low,
+            priority: Priority.low,
+            showProgress: true,
+            maxProgress: 100,
+            progress: 0,
+            ongoing: true,
+            autoCancel: false,
+          ),
+        ),
+      );
+
+      // Descargar con Dio
+      final dio = Dio();
+      await dio.download(
+        widget.capsule.videoUrl!,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = ((received / total) * 100).toInt();
+
+            // Actualizar notificación con progreso
+            flutterLocalNotificationsPlugin.show(
+              0, // Mismo ID para actualizar la misma notificación
+              'Descargando video',
+              '${widget.capsule.title} - $progress%',
+              NotificationDetails(
+                android: AndroidNotificationDetails(
+                  channel.id,
+                  channel.name,
+                  channelDescription: channel.description,
+                  importance: Importance.low,
+                  priority: Priority.low,
+                  showProgress: true,
+                  maxProgress: 100,
+                  progress: progress,
+                  ongoing: true,
+                  autoCancel: false,
+                ),
+              ),
+            );
+          }
+        },
+      );
+
+      //PRIMERO: Cancelar la notificación de progreso
+      await flutterLocalNotificationsPlugin.cancel(0);
+
+      //ESPERAR un momento para que Android procese
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      //SEGUNDO: Mostrar nueva notificación de descarga completa con ID diferente
+      await flutterLocalNotificationsPlugin.show(
+        1, // ID diferente (1 en vez de 0)
+        'Descarga completa',
+        'Toca para abrir: ${widget.capsule.title}',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.high, // Alta importancia
+            priority: Priority.high,
+            showProgress: false,
+            ongoing: false,
+            autoCancel: true,
+            icon: '@mipmap/ic_launcher',
+            playSound: true, // Reproducir sonido
+            enableVibration: true, // Vibración
+            styleInformation: BigTextStyleInformation(
+              //'Toca para abrir: ${widget.capsule.title}',
+              //contentTitle: 'Descarga completa',
+              'Descarga completa. Archivo guardado en carpeta Descargas.',
+              contentTitle: 'Cápsula lista',
+              summaryText: widget.capsule.title,
+            ),
+          ),
+        ),
+        payload: savePath,
+      );
+
+      print('Video descargado en: $savePath');
+
+    } catch (e) {
+      // Cancelar notificación de progreso si hay error
+      await flutterLocalNotificationsPlugin.cancel(0);
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Notificación de error con ID diferente
+      await flutterLocalNotificationsPlugin.show(
+        2, // ID diferente para errores
+        'Error en la descarga',
+        'No se pudo descargar el video',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        ),
+      );
+
+      print('Error al descargar: $e');
+    }
+  }
+
 
   @override
   void dispose() {

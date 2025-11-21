@@ -3,13 +3,16 @@ import 'package:flutter_frontend/data/services/collaborator_service.dart';
 import 'package:flutter_frontend/data/models/collaborator_response.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/generate_invite_code_dialog.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/invite_by_email_dialog.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/invite_by_whatsapp_dialog.dart'; // ✅ NUEVO
 
 class CollaboratorsScreen extends StatefulWidget {
   final String memorialId;
+  final String? memorialName; // ✅ AGREGAR esto
   
   const CollaboratorsScreen({
     super.key,
     required this.memorialId,
+    required this.memorialName, // ✅ AGREGAR esto
   });
   
   @override
@@ -107,6 +110,55 @@ class _CollaboratorsScreenState extends State<CollaboratorsScreen> {
               
               const SizedBox(height: 24),
               
+              // ✅ NUEVA OPCIÓN: WhatsApp
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble,
+                    color: Color(0xFF25D366),
+                    size: 24,
+                  ),
+                ),
+                title: const Text(
+                  'Invitar por WhatsApp',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Genera un código y compártelo',
+                  style: TextStyle(fontSize: 13),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await showDialog(
+                    context: context,
+                    builder: (context) => InviteByWhatsAppDialog(
+                      memorialId: widget.memorialId,
+                      memorialName: widget.memorialName,
+                    ),
+                  );
+                  if (result == true && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invitación compartida por WhatsApp'),
+                        backgroundColor: Color(0xFF25D366),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+              
+              const Divider(height: 1),
+              
               // Opción: Email directo
               ListTile(
                 leading: Container(
@@ -180,7 +232,7 @@ class _CollaboratorsScreenState extends State<CollaboratorsScreen> {
                   final result = await showDialog<String>(
                     context: context,
                     builder: (context) => GenerateInviteCodeDialog(
-                      memorialId: widget.memorialId,
+                      memorialId: widget.memorialId,// ✅ Pasar el nombre
                       onGenerated: (code) {},
                     ),
                   );
@@ -440,7 +492,7 @@ class _CollaboratorsScreenState extends State<CollaboratorsScreen> {
   }
 }
 
-// Cards y diálogos siguen igual...
+// Los widgets _CollaboratorCard y _PermissionsDialog quedan igual...
 class _CollaboratorCard extends StatelessWidget {
   final CollaboratorResponse collaborator;
   final VoidCallback onUpdatePermissions;

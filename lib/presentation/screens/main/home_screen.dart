@@ -382,6 +382,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
+          const Text(
+            'Comienza tu legado digital',
+            style: AppColors.h4,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -400,12 +406,6 @@ class _HomeScreenState extends State<HomeScreen> {
               size: 48,
               color: AppColors.primary,
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Comienza tu legado digital',
-            style: AppColors.h4,
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(

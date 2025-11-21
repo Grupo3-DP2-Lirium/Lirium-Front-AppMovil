@@ -60,12 +60,25 @@ class CapsuleService {
 
     print('DEBUG: generateCapsule response - Status: ${res.statusCode}');
 
-    if (res.statusCode == 200) {
-      final jsonMap = jsonDecode(res.body);
+    // Intentamos decodificar cuando el backend devuelve JSON
+    final jsonMap = jsonDecode(res.body);
+
+    // Si el backend retorna un objeto con success: false -> propaga el error con el mensaje
+    if (jsonMap is Map<String, dynamic>) {
+      if (jsonMap.containsKey('success') && jsonMap['success'] == false) {
+        final serverMsg = jsonMap['error'] ?? jsonMap['message'] ?? 'Error desconocido';
+        throw Exception(serverMsg);
+      }
+
+      // Si no hay data (o es null) lanzamos excepción clara
+      if (!jsonMap.containsKey('data') || jsonMap['data'] == null) {
+        throw Exception('Respuesta inválida del servidor (sin "data")');
+      }
+
       final data = jsonMap['data'];
       return CapsuleModel.fromJson(data);
     } else {
-      throw Exception('Error generando cápsula: ${res.statusCode}');
+      throw Exception('Respuesta inválida del servidor');
     }
   }
 

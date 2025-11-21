@@ -1,13 +1,13 @@
 enum NotificationType {
-  SYSTEM,              // Notificaciones generales del sistema
-  MEMORIAL_SHARED,     // Cuando se comparte un memorial
-  COMMENT,             // Cuando alguien comenta
-  REMINDER,            // Recordatorios programados
-  SUBSCRIPTION,        // Notificaciones de suscripción (activación, renovación, vencimiento)
-  PAYMENT,             // Notificaciones de pagos (éxito, fallo)
-  DOCUMENTARY,         // Notificaciones relacionadas con documentales
-  REFLECTION,          // Notificaciones de reflexiones personales
-  COLLABORATION        
+  SYSTEM,
+  MEMORIAL_SHARED,
+  COMMENT,
+  REMINDER,
+  SUBSCRIPTION,
+  PAYMENT,
+  DOCUMENTARY,
+  REFLECTION,
+  COLLABORATION
 }
 
 class AppNotification {
@@ -39,10 +39,13 @@ class AppNotification {
       type: _parseNotificationType(json['type']),
       relatedEntityId: json['relatedEntityId'],
       isRead: json['isRead'] ?? false,
-      // ✅ CRÍTICO: El backend envía fechas SIN zona horaria, asumimos UTC
-      createdDate: DateTime.parse(json['createdDate']),
+      
+      // ✅ SOLUCIÓN: Parse con .toUtc() explícito
+      // El backend ahora envía fechas con 'Z' al final (ISO-8601 UTC)
+      // DateTime.parse() las reconoce como UTC automáticamente
+      createdDate: DateTime.parse(json['createdDate']).toUtc(),
       readDate: json['readDate'] != null 
-          ? DateTime.parse(json['readDate'])
+          ? DateTime.parse(json['readDate']).toUtc()
           : null,
     );
   }
@@ -55,8 +58,10 @@ class AppNotification {
       'type': type.toString().split('.').last,
       'relatedEntityId': relatedEntityId,
       'isRead': isRead,
-      'createdDate': createdDate.toIso8601String(),
-      if (readDate != null) 'readDate': readDate!.toIso8601String(),
+      
+      // ✅ Enviar en formato ISO-8601 UTC
+      'createdDate': createdDate.toUtc().toIso8601String(),
+      if (readDate != null) 'readDate': readDate!.toUtc().toIso8601String(),
     };
   }
 
@@ -68,8 +73,17 @@ class AppNotification {
         return NotificationType.COMMENT;
       case 'MEMORIAL_SHARED':
         return NotificationType.MEMORIAL_SHARED;
+      case 'SUBSCRIPTION':
+        return NotificationType.SUBSCRIPTION;
+      case 'PAYMENT':
+        return NotificationType.PAYMENT;
+      case 'DOCUMENTARY':
+        return NotificationType.DOCUMENTARY;
+      case 'REFLECTION':
+        return NotificationType.REFLECTION;
+      case 'COLLABORATION':
+        return NotificationType.COLLABORATION;
       case 'SYSTEM':
-        return NotificationType.SYSTEM;
       default:
         return NotificationType.SYSTEM;
     }

@@ -94,7 +94,16 @@ class _CapsulesTabState extends State<CapsulesTab> {
             bottom: 20,
             right: 20,
             child: FloatingActionButton.extended(
-              onPressed: () => _navigateToCreate(),
+              onPressed: () {
+                if (canUseIA) {
+                  _navigateToCreate();
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                  );
+                }
+              },
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(

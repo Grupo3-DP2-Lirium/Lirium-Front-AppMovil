@@ -72,6 +72,7 @@ dependencies:
   firebase_messaging: ^16.0.3
   timeago: ^3.6.0
   flutter_local_notifications: ^17.1.0
+  open_file: ^3.3.2 #para abrir el video descargado en el dispositivo
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
