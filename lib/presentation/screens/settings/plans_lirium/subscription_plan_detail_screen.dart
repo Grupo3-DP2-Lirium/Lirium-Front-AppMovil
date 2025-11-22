@@ -378,13 +378,12 @@ class _SubscriptionPlanDetailsScreenState
                             color: AppColors.primary2,
                             isEnabled: subProvider.extraStorage.isEmpty, // deshabilita si ya hay extra
                             onPressed: subProvider.extraStorage.isEmpty
-                                ? () {
-                              Navigator.push(
+                                ? () async {
+                              await Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ExtraStorageScreen(),
-                                ),
+                                MaterialPageRoute(builder: (_) => const ExtraStorageScreen()),
                               );
+                              await subProvider.refreshPlan();
                             }
                                 : null,
                           ),

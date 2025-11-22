@@ -40,6 +40,77 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         ? prov.memoriasFiltradas
         : prov.misMemorias;
 
+    Widget _buildEmptyState() {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_box_outlined,
+                  size: 64,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Aún no tienes recuerdos',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Crea un recuerdo para revivir un momento especial',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              PrimaryButton(
+                text: 'Crear mi primer recuerdo',
+                icon: Icons.add,
+                onPressed: () async {
+                  final subProvider = context.read<SubscriptionProvider>();
+                  final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
+                  if (hasPermission) {
+                    final createdMemory = await Navigator.push<Memory>(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
+                    );
+
+                    if (createdMemory != null) {
+                      final prov = context.read<MemoryProvider>();
+                      prov.agregarMemoria(createdMemory);
+                    }
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                    ).then((_) async {
+                      await subProvider.refreshPlan();
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
@@ -73,18 +144,19 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                   : prov.error != null
                   ? Center(child: Text('Error: ${prov.error}'))
                   : memoriesToShow.isEmpty
-                  ? const Center(child: Text('No memories found'))
+                  ? _buildEmptyState()
                   : _buildGridView(memoriesToShow),
             ),
           ],
         ),
       ),
-      floatingActionButton: Builder(
+      floatingActionButton: memoriesToShow.isNotEmpty
+          ? Builder(
         builder: (context) {
           final subProvider = context.watch<SubscriptionProvider>();
           final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
-          return FloatingActionButton(
+          return FloatingActionButton.extended(
             onPressed: hasPermission
                 ? () async {
               final createdMemory = await Navigator.push<Memory>(
@@ -98,7 +170,6 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
               }
             }
                 : () {
-              // Si no tiene permiso, lo mandamos a GetPremiumScreen
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
@@ -106,11 +177,16 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 await subProvider.refreshPlan();
               });
             },
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Crear Recuerdo',
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: AppColors.primary.withOpacity(hasPermission ? 1.0 : 0.6),
-            child: const Icon(Icons.add, color: Colors.white),
           );
         },
-      ),
+      )
+          : null,
     );
   }
 
