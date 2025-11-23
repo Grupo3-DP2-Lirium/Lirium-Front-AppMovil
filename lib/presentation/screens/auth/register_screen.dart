@@ -4,6 +4,7 @@ import 'package:flutter_frontend/presentation/components/inputs/custom_text_fiel
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/register_request.dart';
+import '../setup/preserve_question_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -285,11 +286,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               '¡Bienvenido ${userResponse['firstName']}! Cuenta creada exitosamente',
             ),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 2),
           ),
         );
 
-        Navigator.pop(context);
+        // Navegar a las preguntas de configuración
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PreserveQuestionScreen(),
+          ),
+        );
       }
     } catch (e) {
       setState(() {
