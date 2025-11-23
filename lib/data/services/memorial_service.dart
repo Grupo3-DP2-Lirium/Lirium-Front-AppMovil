@@ -253,4 +253,22 @@ class MemorialService {
     }
   }
 
+  /// Generar Link de Compartir
+  Future<Map<String, dynamic>> generateShareLink(String memorialId) async {
+    print('DEBUG: generateShareLink($memorialId) called');
+    final uri = Uri.parse("$baseUrl/memorials/$memorialId/share");
+    print('DEBUG: Making POST request to: $uri');
+    final res = await _client.post(
+      uri,
+      headers: _http.authHeaders(),
+    );
+    print('DEBUG: generateShareLink response - Status: ${res.statusCode}, Body: ${res.body}');
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception(
+        "Error generando link de compartir: ${res.statusCode} ${res.body}",
+      );
+    }
+  }
 }
