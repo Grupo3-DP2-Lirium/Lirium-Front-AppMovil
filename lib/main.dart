@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/auth/login_screen.dart';
+import 'package:flutter_frontend/presentation/screens/onboarding/welcome_screen.dart';
 import 'package:flutter_frontend/presentation/widgets/auth_listener_wrapper.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
@@ -435,9 +436,10 @@ class _RemoryAppState extends State<RemoryApp> {
             child: child ?? const SizedBox(),
           );
         },
-        home: const LoginScreen(),
+        home: const WelcomeScreen(), // ✅ Inicia con onboarding
         routes: {
           '/memorials': (_) => const MemorialsScreen(),
+          '/login': (_) => const LoginScreen(),
         },
       ),
     );
