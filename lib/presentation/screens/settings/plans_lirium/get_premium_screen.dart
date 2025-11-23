@@ -28,6 +28,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   List<Map<String, dynamic>> plans = [];
   final subscriptionService = SubscriptionService();
   String? currentPlan;
+  late final subProvider = context.watch<SubscriptionProvider>();
 
   Future<void> _subscribeRecurring() async {
     if (plans.isEmpty) return;
@@ -85,10 +86,6 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         await subscriptionService.getPlanPermissions(plan['idPlan']);
         await StorageService.savePermissions(updatedPermissions);
 
-        // Refrescar Provider
-        final subscriptionProvider = context.read<SubscriptionProvider>();
-        await subscriptionProvider.refreshPlan();
-
         // Actualizar estado local del widget
         setState(() {
           currentPlan = plan['name'];
@@ -99,6 +96,16 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         print("Plan actualizado: $currentPlan");
         print("Permisos actualizados: $userPermissions");
 
+        if (mounted) {
+          final subscriptionProvider = context.read<SubscriptionProvider>();
+          await subscriptionProvider.refreshPlan();
+
+          // New Capacity
+          const gbInBytes = 1024 * 1024 * 1024;
+          final newTotalBytes = plan['storageLimitGb'] * gbInBytes;
+          await StorageService.saveTotalCapacity(newTotalBytes);
+
+        }
         // Mostrar popup de éxito
         await appPopupButtonDefault(
           context: context,
@@ -109,7 +116,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
             AppPopupButton(
               text: "Aceptar",
               onPressed: () {
-                Navigator.pop(context);
+                if (mounted) Navigator.pop(context);
               },
             ),
           ],
@@ -125,7 +132,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
             AppPopupButton(
               text: "Cerrar",
               onPressed: () {
-                Navigator.pop(context);
+                if (mounted) Navigator.pop(context);
               },
             ),
           ],
@@ -149,7 +156,9 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         ],
       );
     } finally {
-      setState(() => _isLoadingPaypal = false);
+      if (mounted) {
+        setState(() => _isLoadingPaypal = false);
+      }
     }
   }
 
@@ -223,11 +232,12 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   void initState() {
     super.initState();
     _loadPlans();
-    _loadCurrentPlan();
+
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFA),
       appBar: AppBar(

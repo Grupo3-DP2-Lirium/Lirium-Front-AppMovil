@@ -12,9 +12,7 @@ class PlanCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final List<String> permissions;
-
-  // ✅ Nuevos atributos
-  final int? storageLimitGb;
+  final double? storageLimitGb;
   final int? maxCollaborations;
   final int? maxDocumentariesPerMonth;
   final String? supportLevel;

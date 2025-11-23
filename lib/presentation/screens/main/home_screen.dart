@@ -144,6 +144,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final subProvider = context.watch<SubscriptionProvider>();
+
+    if (!subProvider.isLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
@@ -293,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     // ✨ SECCIÓN: Estado vacío o acciones rápidas
                     if (memorials.isEmpty)
-                      _buildEmptyState()
+                      _buildEmptyState(subProvider)
                     else
                       _buildQuickActions(),
 
@@ -310,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
                       ),
                       const SizedBox(height: 16),
-                      _buildMemorialsList(memorials),
+                      _buildMemorialsList(memorials, subProvider),
                       const SizedBox(height: 32),
                     ],
 
@@ -358,8 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ESTADO VACÍO - Primera impresión
-  Widget _buildEmptyState() {
-    final subProvider = context.watch<SubscriptionProvider>();
+  Widget _buildEmptyState(SubscriptionProvider subProvider) {
     final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
     return Container(
@@ -586,7 +595,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ✨ LISTA DE MEMORIALES (Horizontal Carousel)
-  Widget _buildMemorialsList(List<Memorial> memorials) {
+  Widget _buildMemorialsList(List<Memorial> memorials, SubscriptionProvider subProvider) {
     return SizedBox(
       height: 220,
       child: ListView.builder(
@@ -595,7 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: memorials.length + 1,
         itemBuilder: (context, index) {
           if (index == memorials.length) {
-            return _buildCreateMemorialCard();
+            return _buildCreateMemorialCard(subProvider);
           }
 
           final memorial = memorials[index];
@@ -708,9 +717,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCreateMemorialCard() {
-    final subProvider = context.watch<SubscriptionProvider>();
+  Widget _buildCreateMemorialCard(SubscriptionProvider subProvider) {
+
     final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
 
     return GestureDetector(
       onTap: hasPremiumPermission

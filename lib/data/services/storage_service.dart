@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/extra_storage_response.dart';
+
 /// Servicio para manejar almacenamiento seguro de tokens
 class StorageService {
   static const _storage = FlutterSecureStorage(
@@ -17,6 +19,26 @@ class StorageService {
   static const String _emailKey = 'user_email';
   static const String _fullNameKey = 'user_full_name';
   static const String _nameKey = 'user_name';
+  static const String _usedSpaceKey = 'user_used_space';
+  static const String _totalCapacityKey = 'user_total_capacity';
+
+  static Future<void> saveUsedSpace(double value) async {
+    await _storage.write(key: _usedSpaceKey, value: value.toString());
+  }
+
+  static Future<double> getUsedSpace() async {
+    final str = await _storage.read(key: _usedSpaceKey);
+    return str != null ? double.tryParse(str) ?? 0.0 : 0.0;
+  }
+
+  static Future<void> saveTotalCapacity(double value) async {
+    await _storage.write(key: _totalCapacityKey, value: value.toString());
+  }
+
+  static Future<double> getTotalCapacity() async {
+    final str = await _storage.read(key: _totalCapacityKey);
+    return str != null ? double.tryParse(str) ?? 15.0 : 15.0; // default 15GB
+  }
 
   static Future<void> saveFullSubscriptionJson(Map<String, dynamic> json) async {
     final prefs = await SharedPreferences.getInstance();
@@ -81,10 +103,10 @@ class StorageService {
   }
 
   /// Obtiene las suscripciones de almacenamiento extra
-  static Future<List<Map<String, dynamic>>> getExtraStorageSubscriptions() async {
+  static Future<List<ExtraStorageResponse>> getExtraStorageSubscriptions() async {
     final data = await _storage.read(key: _extraStorageKey);
     if (data == null) return [];
-    return List<Map<String, dynamic>>.from(jsonDecode(data));
+    return List<ExtraStorageResponse>.from(jsonDecode(data));
   }
 
   /// Elimina las suscripciones de almacenamiento extra

@@ -158,6 +158,7 @@ class SubscriptionService {
           print('Max Collaborations: ${subscriptionResponse.maxCollaborations}');
           print('Max Documentaries Per Month: ${subscriptionResponse.maxDocumentariesPerMonth}');
 
+
           return subscriptionResponse;
         } else {
           throw Exception(

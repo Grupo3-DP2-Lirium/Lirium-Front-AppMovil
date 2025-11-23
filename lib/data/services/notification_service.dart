@@ -108,14 +108,21 @@ class NotificationService {
   Future<void> registerDeviceToken(String fcmToken, {String? deviceId}) async {
     final uri = Uri.parse('${ApiConstants.baseUrl}/device-tokens/register');
 
+    // 🔹 Aquí imprimimos los headers y el body
+    final headers = _http.authHeaders(includeJson: true);
+    final body = jsonEncode({
+      'fcmToken': fcmToken,
+      'deviceType': 'android',
+      if (deviceId != null) 'deviceId': deviceId,
+    });
+
+    print('🔹 RegisterDeviceToken headers: $headers');
+    print('🔹 RegisterDeviceToken body: $body');
+
     final res = await _client.post(
       uri,
-      headers: _http.authHeaders(includeJson: true),
-      body: jsonEncode({
-        'fcmToken': fcmToken,
-        'deviceType': 'android', // o 'ios' según la plataforma
-        if (deviceId != null) 'deviceId': deviceId,
-      }),
+      headers: headers,
+      body: body,
     );
 
     if (res.statusCode >= 200 && res.statusCode < 300) {

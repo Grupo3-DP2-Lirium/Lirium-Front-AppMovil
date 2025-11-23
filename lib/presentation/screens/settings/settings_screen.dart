@@ -257,10 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SubscriptionPlanDetailsScreen(
-                    usedStorageGB: 2,
-                    totalStorageGB: 500,
-                  ),
+                  builder: (context) => SubscriptionPlanDetailsScreen(),
                 ),
               );
             },

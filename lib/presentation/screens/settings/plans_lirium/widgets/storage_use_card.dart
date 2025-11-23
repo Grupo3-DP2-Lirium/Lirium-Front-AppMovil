@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 Widget storageUsageCard({
-  required double usedGb,
-  required double maxGb,
+  required double usedBytes,
+  required double maxBytes,
 }) {
+  // Convertir bytes a GB
+  final double usedGb = usedBytes / (1024 * 1024 * 1024);
+  final double maxGb = maxBytes;
   final double progress = (usedGb / maxGb).clamp(0.0, 1.0);
   final bool isFull = progress >= 0.95;
 
@@ -51,18 +54,22 @@ Widget storageUsageCard({
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              height: 10,
-              width: progress * double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isFull
-                      ? [const Color(0xFFD94E4E), const Color(0xFFE97E7E)]
-                      : [const Color(0xFFD99293), const Color(0xFFEABBBB)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  height: 10,
+                  width: progress * constraints.maxWidth, // ✅ ancho proporcional real
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isFull
+                          ? [const Color(0xFFD94E4E), const Color(0xFFE97E7E)]
+                          : [const Color(0xFFD99293), const Color(0xFFEABBBB)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                );
+              },
             ),
           ],
         ),

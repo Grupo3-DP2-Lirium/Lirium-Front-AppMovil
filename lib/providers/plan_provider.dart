@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/extra_storage_response.dart';
 import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
 import '../data/models/subscription_response.dart';
@@ -6,13 +7,18 @@ import '../data/models/subscription_response.dart';
 class SubscriptionProvider extends ChangeNotifier {
   SubscriptionResponse? _subscription;
   List<String> _permissions = [];
-  List<Map<String, dynamic>> _extraStorage = [];
+  List<ExtraStorageResponse> _extraStorage = [];
 
   bool _isLoaded = false;
 
+  Future<void> loadCurrentSubscription() async {
+    notifyListeners();
+    _isLoaded = true;
+  }
+
   SubscriptionResponse? get subscription => _subscription;
   List<String> get permissions => _permissions;
-  List<Map<String, dynamic>> get extraStorage => _extraStorage;
+  List<ExtraStorageResponse> get extraStorage => _extraStorage;
   bool get isLoaded => _isLoaded;
   int? get maxFiles => _subscription?.maxFiles;
   String get planName => _subscription?.planName ?? 'Free';
@@ -21,7 +27,7 @@ class SubscriptionProvider extends ChangeNotifier {
   void setFromLogin({
     required SubscriptionResponse? subscription,
     required List<String> permissions,
-    required List<Map<String, dynamic>> extraStorage,
+    required List<ExtraStorageResponse> extraStorage,
   }) {
     _subscription = subscription;
     _permissions = permissions;
@@ -68,20 +74,28 @@ class SubscriptionProvider extends ChangeNotifier {
       // 1. Traer la suscripción fresca desde backend
       final fresh = await SubscriptionService().getCurrentSubscription();
       print(">>> REFRESH: Backend devolvió plan: ${fresh.planName}");
-      // 0. Imprimir maxFiles después de actualizar
-      print(">>> maxFiles DESPUÉS de refresh: ${_subscription?.maxFiles}");
 
       // 2. Traer permisos del plan si existe
       if (fresh.planId != null && fresh.planId!.isNotEmpty) {
         final perms = await SubscriptionService().getPlanPermissions(fresh.planId!);
         _permissions = perms;
         _subscription = fresh;
+        _extraStorage = fresh.extraStorage ?? [];
         // Guardamos en Storage solo si no es Free
         await StorageService.savePermissions(perms);
       } else {
-        _permissions = [];
-        print("Plan Free detectado, no se actualizan permisos ni Storage");
+        // Si es free no tiene id
+        final perms = await SubscriptionService().getPlanPermissions(fresh.planId!);
+        _permissions = perms;
+        _subscription = fresh;
+        _extraStorage = fresh.extraStorage ?? [];
+        // Guardamos en Storage solo si no es Free
+        await StorageService.savePermissions(perms);
+        print("Plan Free detectado");
       }
+
+      // 0. Imprimir maxFiles después de actualizar
+      print(">>> maxFiles DESPUÉS de refresh: ${_subscription?.maxFiles}");
 
     } catch (e) {
       print("ERROR EN REFRESH PLAN: $e");

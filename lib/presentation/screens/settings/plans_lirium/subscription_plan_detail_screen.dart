@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/extra_storage_response.dart';
 import 'package:flutter_frontend/data/models/subscription_response.dart';
 import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
@@ -19,13 +20,9 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 // VET/pO7}
 class SubscriptionPlanDetailsScreen extends StatefulWidget {
-  final double usedStorageGB;
-  final double totalStorageGB;
 
   const SubscriptionPlanDetailsScreen({
     super.key,
-    required this.usedStorageGB,
-    required this.totalStorageGB,
   });
 
   @override
@@ -36,9 +33,7 @@ class SubscriptionPlanDetailsScreen extends StatefulWidget {
 class _SubscriptionPlanDetailsScreenState
     extends State<SubscriptionPlanDetailsScreen> {
   final SubscriptionService _service = SubscriptionService();
-  //Future<SubscriptionResponse>? _currentSubscription;
   bool _loadingPlan = true;
-  //List<String> _permissions = [];
 
   @override
   void initState() {
@@ -90,6 +85,10 @@ class _SubscriptionPlanDetailsScreenState
       await _service.cancelPaypalSubscription();
 
       Navigator.pop(context); // cerrar popup de carga
+      // Solo refrescar si el widget sigue montado
+      if (!mounted) return;
+      final subProvider = context.read<SubscriptionProvider>();
+      await subProvider.refreshPlan();
 
       // Mostrar popup de éxito
       await appPopupButtonDefault(
@@ -124,6 +123,37 @@ class _SubscriptionPlanDetailsScreenState
       );
     }
   }
+
+  Future<void> _cancelExtraStorage(ExtraStorageResponse extra) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("¿Deseas cancelar este extra?"),
+        content: Text(
+            "Perderás ${extra.additionalStorageGb ?? 0} GB adicionales. Esta acción no se puede deshacer."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("No")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Sí")),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      //await _service.cancelExtraStorage(extra.id);
+      await context.read<SubscriptionProvider>().refreshPlan();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Extra storage cancelado correctamente")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error al cancelar extra storage")),
+      );
+    }
+  }
+
+  double bytesToGb(double bytes) => bytes / 1024 / 1024 / 1024;
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +212,7 @@ class _SubscriptionPlanDetailsScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      height: 190, // ajusta según tu card actual
+                      height: 185, // ajusta según tu card actual
                       child: PageView(
                         controller: PageController(viewportFraction: 0.9),
                         scrollDirection: Axis.horizontal,
@@ -213,23 +243,21 @@ class _SubscriptionPlanDetailsScreenState
 
                           // Cards de extras
                           ...subProvider.extraStorage.map((extra) {
-                            final start = extra["startDate"] != null ? DateTime.parse(extra["startDate"]) : null;
-                            final freq = extra["frequency"] ?? "MONTHLY"; // default si no viene frequency
+                            final start = extra.startDate;
+                            final freq = "MONTHLY"; // default si no viene frequency
 
                             return Padding(
                               padding: const EdgeInsets.only(right: 12.0),
-                              child: currentPlanCard(
+                              child:
+                                currentPlanCard(
                                 hasPlan: true,
-                                planName: extra["planName"] ?? "Extra Storage",
-                                storage: "${extra["additionalStorageGb"] ?? 0} GB extra",
-                                startDate: start != null ? DateFormat('dd/MM/yyyy').format(start) : null,
-                                renewalDate: start != null
-                                    ? DateFormat('dd/MM/yyyy').format(
-                                    freq.toUpperCase() == 'YEARLY'
-                                        ? start.add(const Duration(days: 365))
-                                        : start.add(const Duration(days: 30)))
-                                    : null,
-                                endDate: null,
+                                planName: extra.planName,
+                                storage: "${extra.additionalStorageGb ?? 0} GB extra",
+                                startDate: extra.startDate != null ? DateFormat('dd/MM/yyyy').format(extra.startDate!) : null,
+                                isExtra: true,
+                                onCancelExtra: () async {
+                                  await _cancelExtraStorage(extra); // aquí llamas a tu función
+                                },
                               ),
                             );
                           }).toList(),
@@ -237,7 +265,13 @@ class _SubscriptionPlanDetailsScreenState
                       ),
                     ),
                     const SizedBox(height: 24),
-                    PlanBenefitsList(permissions: permissions),
+                    PlanBenefitsList(
+                        permissions: permissions,
+                        maxCollaborations: subscription.maxCollaborations,
+                        maxFilesPersonalSpace: subscription.maxFiles,
+                        maxDocumentariesPerMonth: subscription.maxDocumentariesPerMonth,
+                        supportLevel: subscription.supportLevel,
+                    ),
                     const SizedBox(height: 16),
                     Center(
                       child: () {
@@ -266,7 +300,6 @@ class _SubscriptionPlanDetailsScreenState
                                       builder: (context) => const GetPremiumScreen(),
                                     ),
                                   );
-                                  await subProvider.refreshPlan();
                                 },
                               ),
                             ],
@@ -345,7 +378,6 @@ class _SubscriptionPlanDetailsScreenState
                                         builder: (context) => const GetPremiumScreen(),
                                       ),
                                     );
-                                    await subProvider.refreshPlan();
                                   },
                                 ),
                               const SizedBox(height: 16),
@@ -353,7 +385,6 @@ class _SubscriptionPlanDetailsScreenState
                                 text: "Cancelar plan",
                                 onPressed: () async {
                                   await _cancelSubscription(context);
-                                  await subProvider.refreshPlan();
                                 },
                                 isOutlined: true,
                               ),
@@ -365,29 +396,43 @@ class _SubscriptionPlanDetailsScreenState
                       }(),
                     ),
                     const SizedBox(height: 24),
-                    storageUsageCard(
-                      usedGb: widget.usedStorageGB,
-                      maxGb: subscription.storageLimitGb ?? 0,
+                    FutureBuilder<List<double>>(
+                      future: Future.wait([
+                        StorageService.getUsedSpace(),
+                        StorageService.getTotalCapacity(),
+                      ]),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        final usedGb = bytesToGb(snapshot.data![0]);
+                        final maxGb = bytesToGb(snapshot.data![1]);
+
+                        return storageUsageCard(
+                          usedBytes: usedGb,
+                          maxBytes: maxGb,
+                        );
+                      },
                     ),
                     if (subscription.planName.toUpperCase() == "LEGADO_ETERNO" &&
-                        subscription.endDate == null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 24.0),
-                          child: PrimaryButton(
-                            text: "Agregar espacio extra",
-                            color: AppColors.primary2,
-                            isEnabled: subProvider.extraStorage.isEmpty, // deshabilita si ya hay extra
-                            onPressed: subProvider.extraStorage.isEmpty
-                                ? () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const ExtraStorageScreen()),
-                              );
-                              await subProvider.refreshPlan();
-                            }
-                                : null,
-                          ),
+                        subscription.endDate == null &&
+                        subProvider.extraStorage.length < 3) // <-- solo mostrar si tiene menos de 3 extras
+                      Padding(
+                        padding: const EdgeInsets.only(top: 24.0),
+                        child: PrimaryButton(
+                          text: "Agregar espacio extra",
+                          color: AppColors.primary2,
+                          isEnabled: true,
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => ExtraStorageScreen()),
+                            );
+                            setState(() {});
+                          },
                         ),
+                      ),
                   ],
                 ),
               );

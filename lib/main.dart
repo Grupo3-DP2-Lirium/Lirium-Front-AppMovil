@@ -12,6 +12,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
+import 'data/services/notification_service.dart';
 import 'providers/memorial_provider.dart';
 import 'presentation/screens/memorial/memorials_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
@@ -28,6 +29,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📩 Body: ${message.notification?.body}');
   print('📩 Data: ${message.data}');
 }
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -214,6 +217,17 @@ class _RemoryAppState extends State<RemoryApp> {
           print('❤️ Like notification');
           // TODO: Navegar a la memoria que recibió like
           break;
+        case 'SUBSCRIPTION':
+          final ctx = navigatorKey.currentContext;
+          if (ctx != null) {
+            final subscriptionProvider =
+            Provider.of<SubscriptionProvider>(ctx, listen: false);
+            subscriptionProvider.refreshPlan();
+            print('✅ Suscripción expirada refrescada');
+          } else {
+            print('❌ Contexto no disponible para refrescar el plan');
+          }
+          break;
         default:
           print('📨 Other notification type: $type');
           break;
@@ -232,6 +246,7 @@ class _RemoryAppState extends State<RemoryApp> {
         ChangeNotifierProvider(create: (_) => SubscriptionProvider())
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Lirium',
         debugShowCheckedModeBanner: false,
 
