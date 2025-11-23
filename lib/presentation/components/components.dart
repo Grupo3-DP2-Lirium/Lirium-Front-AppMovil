@@ -29,6 +29,7 @@ export 'layouts/question_layout.dart';
 
 // Common
 export 'common/app_illustration.dart';
-export 'common/app_title.dart';
+export 'common/app_title.dart' hide AppSubtitle;
+export 'common/app_subtitle.dart';
 export 'common/profile_avatar.dart';
 export 'common/app_colors.dart';
