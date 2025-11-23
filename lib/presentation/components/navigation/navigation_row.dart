@@ -23,15 +23,20 @@ class NavigationRow extends StatelessWidget {
     return Row(
       children: [
         if (showBackButton) ...[
-          SecondaryButton(text: backText!, onPressed: onBack),
-          const Spacer(),
+          Expanded(
+            child: SecondaryButton(
+              text: backText!,
+              onPressed: onBack,
+              isFullWidth: false,
+            ),
+          ),
+          const SizedBox(width: 16),
         ],
-        SizedBox(
-          width: 120,
+        Expanded(
           child: PrimaryButton(
             text: nextText,
             onPressed: onNext,
-            isFullWidth: false,
+            isFullWidth: true,
             height: 56,
           ),
         ),
