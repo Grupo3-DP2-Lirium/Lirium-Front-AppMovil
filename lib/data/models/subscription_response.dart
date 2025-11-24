@@ -19,6 +19,8 @@ class SubscriptionResponse {
   final int? maxCollaborations;
   final int? maxDocumentariesPerMonth;
   final String? supportLevel;
+  int documentariesPurchased;
+  int documentariesAvailable;
   final List<ExtraStorageResponse>? extraStorage;
 
   SubscriptionResponse({
@@ -38,6 +40,8 @@ class SubscriptionResponse {
     this.maxCollaborations,
     this.maxDocumentariesPerMonth,
     this.supportLevel,
+    this.documentariesAvailable=0,
+    this.documentariesPurchased=0,
     this.extraStorage
   });
 
@@ -64,6 +68,8 @@ class SubscriptionResponse {
           json['extraStorageSubscriptions']
               .map((x) => ExtraStorageResponse.fromJson(x)))
           : [],
+      documentariesAvailable: json['documentariesAvailable'] ?? 0,
+      documentariesPurchased: json['documentariesPurchased'] ?? 0,
     );
   }
 
@@ -86,6 +92,8 @@ class SubscriptionResponse {
       'maxDocumentariesPerMonth': maxDocumentariesPerMonth,
       'supportLevel': supportLevel,
       'extraStorageSubscriptions': extraStorage?.map((x) => x.toJson()).toList(),
+      'documentalesComprados': documentariesPurchased,
+      'documentalesDisponibles':documentariesAvailable,
     };
   }
 

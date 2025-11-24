@@ -124,12 +124,16 @@ class _LoginScreenState extends State<LoginScreen> {
         final name = data['name'] as String? ?? '';
         final usedSpace = (data['usedSpace'] as num?)?.toDouble() ?? 0.0;
         final totalCapacity = (data['totalCapacity'] as num?)?.toDouble() ?? 15.0; // default 15GB
+        final documentariesPurchased = (data['documentariesPurchased'] as num?)?.toInt() ?? 0;
+        final documentariesAvailable = (data['documentariesAvailable'] as num?)?.toInt() ?? 0;
 
         await StorageService.saveUsedSpace(usedSpace);
         await StorageService.saveTotalCapacity(totalCapacity);
         await StorageService.saveEmail(_emailController.text);
         await StorageService.saveFullName(fullName);
         await StorageService.saveName(name);
+        await StorageService.saveDocumentariesPurchased(documentariesPurchased);
+        await StorageService.saveDocumentariesAvailable(documentariesAvailable);
 
         httpService.setToken(access);
         await storage.save(access: access, refresh: refresh);

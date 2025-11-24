@@ -112,13 +112,9 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
         // New Capacity
         final currentTotalBytes = await StorageService.getTotalCapacity(); // BYTES
         final addedGb = (plan["additionalStorageGb"] as num).toDouble();
-
         const gbInBytes = 1024 * 1024 * 1024;
-
         final addedBytes = addedGb * gbInBytes;
-
         final newTotalBytes = currentTotalBytes + addedBytes;
-
         await StorageService.saveTotalCapacity(newTotalBytes);
 
         // Mostrar popup de éxito

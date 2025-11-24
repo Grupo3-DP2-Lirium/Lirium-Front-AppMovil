@@ -33,8 +33,8 @@ class AuthService {
 
         // Guardar automáticamente en storage seguro
         await StorageService.saveToken(token);
-        await StorageService.savePlan(plan);
-        await StorageService.savePermissions(permissions);
+        //await StorageService.savePlan(plan);
+        //await StorageService.savePermissions(permissions);
         await StorageService.saveEmail(email);
 
         return token;

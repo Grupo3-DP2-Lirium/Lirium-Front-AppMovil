@@ -13,14 +13,39 @@ class StorageService {
   );
 
   static const String _tokenKey = 'jwt_token';
-  static const String _planKey = 'user_plan';
-  static const String _permissionsKey = 'user_permissions';
-  static const String _extraStorageKey = 'user_extra_storage';
+  //static const String _planKey = 'user_plan';
+  //static const String _permissionsKey = 'user_permissions';
+  //static const String _extraStorageKey = 'user_extra_storage';
   static const String _emailKey = 'user_email';
   static const String _fullNameKey = 'user_full_name';
   static const String _nameKey = 'user_name';
   static const String _usedSpaceKey = 'user_used_space';
   static const String _totalCapacityKey = 'user_total_capacity';
+  // Claves para documentarios
+  static const String _documentariesPurchasedKey = 'user_documentaries_purchased';
+  static const String _documentariesAvailableKey = 'user_documentaries_available';
+
+  /// Guarda la cantidad de documentarios adquiridos
+  static Future<void> saveDocumentariesPurchased(int value) async {
+    await _storage.write(key: _documentariesPurchasedKey, value: value.toString());
+  }
+
+  /// Obtiene la cantidad de documentarios adquiridos
+  static Future<int> getDocumentariesPurchased() async {
+    final str = await _storage.read(key: _documentariesPurchasedKey);
+    return str != null ? int.tryParse(str) ?? 0 : 0;
+  }
+
+  /// Guarda la cantidad de documentarios disponibles
+  static Future<void> saveDocumentariesAvailable(int value) async {
+    await _storage.write(key: _documentariesAvailableKey, value: value.toString());
+  }
+
+  /// Obtiene la cantidad de documentarios disponibles
+  static Future<int> getDocumentariesAvailable() async {
+    final str = await _storage.read(key: _documentariesAvailableKey);
+    return str != null ? int.tryParse(str) ?? 0 : 0;
+  }
 
   static Future<void> saveUsedSpace(double value) async {
     await _storage.write(key: _usedSpaceKey, value: value.toString());
@@ -98,7 +123,7 @@ class StorageService {
   }
 
   /// Guarda las suscripciones de almacenamiento extra
-  static Future<void> saveExtraStorageSubscriptions(List<Map<String, dynamic>> extraStorages) async {
+  /*static Future<void> saveExtraStorageSubscriptions(List<Map<String, dynamic>> extraStorages) async {
     await _storage.write(key: _extraStorageKey, value: jsonEncode(extraStorages));
   }
 
@@ -130,7 +155,7 @@ class StorageService {
     final data = await _storage.read(key: _permissionsKey);
     if (data == null) return [];
     return List<String>.from(jsonDecode(data));
-  }
+  }*/
 
   /// Guarda el token JWT de forma segura
   static Future<void> saveToken(String token) async {
@@ -149,14 +174,14 @@ class StorageService {
   }
 
   /// Elimina el plan del usuario
-  static Future<void> deletePlan() async {
+  /*static Future<void> deletePlan() async {
     await _storage.delete(key: _planKey);
   }
 
   /// Elimina los permisos del usuario
   static Future<void> deletePermissions() async {
     await _storage.delete(key: _permissionsKey);
-  }
+  }*/
 
   /// Elimina todos los datos guardados
   static Future<void> clearAll() async {

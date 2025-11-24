@@ -14,6 +14,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 import 'data/services/notification_service.dart';
+import 'data/services/storage_service.dart';
 import 'providers/memorial_provider.dart';
 import 'presentation/screens/memorial/memorials_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
@@ -200,7 +201,7 @@ class _RemoryAppState extends State<RemoryApp> {
     await _fcmService.initialize();
 
     // ✅ Configurar callback para manejar notificaciones recibidas
-    _fcmService.onNotificationReceived = (data) {
+    _fcmService.onNotificationReceived = (data) async {
       print('📬 Notification received in app: $data');
       final type = data['type'];
 
@@ -224,8 +225,29 @@ class _RemoryAppState extends State<RemoryApp> {
             final subscriptionProvider =
             Provider.of<SubscriptionProvider>(ctx, listen: false);
             subscriptionProvider.refreshPlan();
-            print('✅ Suscripción expirada refrescada');
-          } else {
+
+            // Obtener la capacidad total actual
+            final currentTotalBytes = await StorageService.getTotalCapacity();
+
+            // Capacidad base después de expirar (15GB)
+            double gbInBytes = 1024 * 1024 * 1024;
+            double baseBytes = 15 * gbInBytes;
+
+            // Capacidad del plan que se elimina en GB, convertir a bytes
+            final removedPlanGb = subscriptionProvider.subscription?.storageLimitGb ?? 0;
+            final removedPlanBytes = removedPlanGb * gbInBytes;
+
+            // Nueva capacidad = total actual - capacidad del plan eliminado
+            double newTotalBytes = currentTotalBytes - removedPlanBytes;
+
+            // Nunca menor que la base
+            if (newTotalBytes <= 0) {
+              newTotalBytes = baseBytes;
+            }
+
+            await StorageService.saveTotalCapacity(newTotalBytes);
+          }
+          else {
             print('❌ Contexto no disponible para refrescar el plan');
           }
           break;

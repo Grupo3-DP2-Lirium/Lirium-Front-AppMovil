@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          // ✨ App Bar con diseño clean
+          // App Bar con diseño clean
           SliverAppBar(
             floating: true,
             snap: true,
@@ -305,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (memorials.isEmpty)
                       _buildEmptyState(subProvider)
                     else
-                      _buildQuickActions(),
+                      _buildQuickActions(subProvider),
 
                     const SizedBox(height: 24),
 
@@ -473,7 +473,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ACCIONES RÁPIDAS
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(SubscriptionProvider subProvider) {
+    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -492,7 +494,14 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.edit_note_outlined,
               label: 'Crear\nreflexión',
               color: AppColors.accent,
-              onTap: _goToCreateReflection,
+              onTap: hasPremiumPermission
+                  ? _goToCreateReflection
+                  : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                );
+              },
             ),
           ),
         ],
@@ -729,9 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
-        ).then((_) async {
-          await subProvider.refreshPlan(); // refresca permisos al volver
-        });
+        );
       },
       child: Opacity(
         opacity: hasPremiumPermission ? 1.0 : 0.6, // visualmente deshabilitado si no tiene permiso

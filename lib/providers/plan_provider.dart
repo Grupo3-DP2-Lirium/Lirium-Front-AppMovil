@@ -43,25 +43,6 @@ class SubscriptionProvider extends ChangeNotifier {
 
   }
 
-  /// Cargar desde Storage si quieres persistencia
-  Future<void> loadFromStorage() async {
-    _isLoaded = false;
-
-    final subscriptionJson = await StorageService.getFullSubscriptionJson();
-    final permissions = await StorageService.getPermissions() ?? [];
-    final extra = await StorageService.getExtraStorageSubscriptions() ?? [];
-
-    if (subscriptionJson != null) {
-      _subscription = SubscriptionResponse.fromJson(subscriptionJson);
-    }
-
-    _permissions = permissions;
-    _extraStorage = extra;
-
-    _isLoaded = true;
-    notifyListeners();
-  }
-
   Future<void> refreshPlan() async {
     print(">>> REFRESH PLAN START <<<");
     _isLoaded = false;
@@ -82,7 +63,7 @@ class SubscriptionProvider extends ChangeNotifier {
         _subscription = fresh;
         _extraStorage = fresh.extraStorage ?? [];
         // Guardamos en Storage solo si no es Free
-        await StorageService.savePermissions(perms);
+        //await StorageService.savePermissions(perms);
       } else {
         // Si es free no tiene id
         final perms = await SubscriptionService().getPlanPermissions(fresh.planId!);
@@ -90,7 +71,7 @@ class SubscriptionProvider extends ChangeNotifier {
         _subscription = fresh;
         _extraStorage = fresh.extraStorage ?? [];
         // Guardamos en Storage solo si no es Free
-        await StorageService.savePermissions(perms);
+        //await StorageService.savePermissions(perms);
         print("Plan Free detectado");
       }
 

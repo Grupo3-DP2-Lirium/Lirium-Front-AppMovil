@@ -79,22 +79,22 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
 
       if (result != null && result is Map && result['status'] == "success") {
         // Guardar el plan en StorageService
-        await StorageService.savePlan(plan['name']);
+        //await StorageService.savePlan(plan['name']);
 
         // Obtener y guardar los permisos actualizados
         final updatedPermissions =
         await subscriptionService.getPlanPermissions(plan['idPlan']);
-        await StorageService.savePermissions(updatedPermissions);
+        //await StorageService.savePermissions(updatedPermissions);
 
         // Actualizar estado local del widget
         setState(() {
           currentPlan = plan['name'];
         });
 
-        final userPermissions = await StorageService.getPermissions();
+        //final userPermissions = await StorageService.getPermissions();
 
         print("Plan actualizado: $currentPlan");
-        print("Permisos actualizados: $userPermissions");
+        //print("Permisos actualizados: $userPermissions");
 
         if (mounted) {
           final subscriptionProvider = context.read<SubscriptionProvider>();
@@ -190,18 +190,6 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         _isLoadingPlans = false;
       });
     }
-  }
-
-  Future<void> _loadCurrentPlan() async {
-    final plan = await StorageService.getPlan();
-    final permissions = await StorageService.getPermissions();
-
-    setState(() {
-      currentPlan = plan ?? "FREE";
-    });
-
-    print("Plan guardado del usuario: $currentPlan");
-    print("Permisos guardados del usuario: $permissions");
   }
 
   List<Map<String, dynamic>> getFilteredPlans() {
