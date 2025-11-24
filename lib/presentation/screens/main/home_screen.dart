@@ -13,6 +13,7 @@ import 'package:flutter_frontend/presentation/screens/settings/widgets/reminder_
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/reminders_list_screen.dart';
 import 'package:flutter_frontend/presentation/screens/notifications/notifications_screen.dart';
+import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
@@ -62,7 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _memorialsFuture = _memorialService.getMemorials();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MemorialProvider>().cargarMisMemoriales();
+    });
     _remindersFuture = _reminderService.getUpcomingReminders(days: 7);
     _loadUnreadCount();
     _loadUserData();
@@ -145,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final subProvider = context.watch<SubscriptionProvider>();
+    final provider = context.watch<MemorialProvider>();
 
     if (!subProvider.isLoaded) {
       return const Scaffold(
@@ -284,10 +288,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // ✨ CONTENIDO PRINCIPAL
           SliverToBoxAdapter(
-            child: FutureBuilder<List<Memorial>>(
-              future: _memorialsFuture,
-              builder: (context, memorialsSnap) {
-                if (memorialsSnap.connectionState == ConnectionState.waiting) {
+            child: Consumer<MemorialProvider>(
+              builder: (context, provider, _) {
+                final memorials = provider.misMemoriales;
+                if (provider.cargandoMis) {
                   return const Padding(
                     padding: EdgeInsets.all(40),
                     child: Center(
@@ -295,8 +299,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   );
                 }
-
-                final memorials = memorialsSnap.data ?? <Memorial>[];
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,9 +317,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Mis Memoriales',
                         'Tus legados digitales con valor emocional',
                         icon: Icons.favorite_border,
-                          onSeeAll: () {
-                            widget.onTabChange?.call(1); // Ir al tab de Memoriales
-                          }
+                        onSeeAll: () {
+                          widget.onTabChange?.call(1);
+                        },
                       ),
                       const SizedBox(height: 16),
                       _buildMemorialsList(memorials, subProvider),
@@ -350,18 +352,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
 
-                    // ✨ SECCIÓN: Crea tu contenido
-                    //_buildContentCreationSection(),
-                    //const SizedBox(height: 32),
-
-                    // ✨ SECCIÓN: Mi Espacio Personal
                     _buildPersonalSpaceCard(),
                     const SizedBox(height: 32),
                   ],
                 );
               },
             ),
-          ),
+          )
         ],
       ),
     );

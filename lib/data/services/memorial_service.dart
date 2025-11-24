@@ -6,6 +6,8 @@ import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/models/memorial_response.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/paginated_memorials.dart';
+
 class MemorialService {
   final http.Client _client;
   final HttpService _http;
@@ -143,31 +145,35 @@ class MemorialService {
     }
   }
 
-  /// Listar memoriales
-  Future<List<Memorial>> getMemorials() async {
+  /// Listar mis memoriales
+  Future<PaginatedMemorials> getMemorials({int page = 0, int size = 5}) async {
     print('DEBUG: getMemorials() called');
-    final uri = Uri.parse("$baseUrl/memorials/getMemorials");
-    print('DEBUG: Making request to: $uri');
+
+    final uri = Uri.parse("$baseUrl/memorials/getMemorials?page=$page&size=$size");
 
     final res = await _client.get(
       uri,
-      headers: _http.authHeaders(), // aquí ya incluyes token y JSON
+      headers: _http.authHeaders(),
     );
 
-    print('DEBUG: getMemorials response - Status: ${res.statusCode}, Body: ${res.body}');
     if (res.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(res.body);
-      final memorials = jsonList
-          .map((json) => MemorialResponseModel.fromJson(json).toEntity())
+      final json = jsonDecode(res.body);
+
+      final content = (json['content'] as List)
+          .map((j) => MemorialResponseModel.fromJson(j).toEntity())
           .toList();
-      print('DEBUG: Parsed ${memorials.length} memorials from response');
-      return memorials;
-    } else {
-      throw Exception(
-        "Error listando memorials: ${res.statusCode} ${res.body}",
+
+      return PaginatedMemorials(
+        items: content,
+        page: json['number'],
+        totalPages: json['totalPages'],
+        totalItems: json['totalElements'],
       );
+    } else {
+      throw Exception("Error listando memorials");
     }
   }
+
 
   Future<List<Memorial>> fetchMyMemorials() async {
       await Future.delayed(const Duration(milliseconds: 250));
