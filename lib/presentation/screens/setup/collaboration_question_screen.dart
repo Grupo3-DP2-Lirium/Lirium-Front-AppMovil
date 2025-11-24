@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/components.dart';
 import '../main/main_navigation_screen.dart';
+import '../settings/plans_lirium/get_premium_screen.dart';
 
 class CollaborationQuestionScreen extends StatefulWidget {
   const CollaborationQuestionScreen({super.key});
@@ -50,12 +51,23 @@ class _CollaborationQuestionScreenState
         text: 'Continuar',
         onPressed: selectedOption != null
             ? () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MainNavigationScreen(),
-                  ),
-                );
+                // Si elige "Sí, quiero que colaboren" -> ir a planes
+                if (selectedOption == 'Sí, quiero que colaboren') {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GetPremiumScreen(),
+                    ),
+                  );
+                } else {
+                  // Cualquier otra opción -> ir al home con plan FREE
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MainNavigationScreen(),
+                    ),
+                  );
+                }
               }
             : null,
       ),
