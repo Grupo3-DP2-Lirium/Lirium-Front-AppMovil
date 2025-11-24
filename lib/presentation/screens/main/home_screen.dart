@@ -144,11 +144,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final subProvider = context.watch<SubscriptionProvider>();
+
+    if (!subProvider.isLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          // ✨ App Bar con diseño clean
+          // App Bar con diseño clean
           SliverAppBar(
             floating: true,
             snap: true,
@@ -293,9 +303,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     // ✨ SECCIÓN: Estado vacío o acciones rápidas
                     if (memorials.isEmpty)
-                      _buildEmptyState()
+                      _buildEmptyState(subProvider)
                     else
-                      _buildQuickActions(),
+                      _buildQuickActions(subProvider),
 
                     const SizedBox(height: 24),
 
@@ -310,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
                       ),
                       const SizedBox(height: 16),
-                      _buildMemorialsList(memorials),
+                      _buildMemorialsList(memorials, subProvider),
                       const SizedBox(height: 32),
                     ],
 
@@ -358,8 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ESTADO VACÍO - Primera impresión
-  Widget _buildEmptyState() {
-    final subProvider = context.watch<SubscriptionProvider>();
+  Widget _buildEmptyState(SubscriptionProvider subProvider) {
     final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
     return Container(
@@ -464,7 +473,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ACCIONES RÁPIDAS
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(SubscriptionProvider subProvider) {
+    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -483,7 +494,14 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.edit_note_outlined,
               label: 'Crear\nreflexión',
               color: AppColors.accent,
-              onTap: _goToCreateReflection,
+              onTap: hasPremiumPermission
+                  ? _goToCreateReflection
+                  : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                );
+              },
             ),
           ),
         ],
@@ -586,7 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ✨ LISTA DE MEMORIALES (Horizontal Carousel)
-  Widget _buildMemorialsList(List<Memorial> memorials) {
+  Widget _buildMemorialsList(List<Memorial> memorials, SubscriptionProvider subProvider) {
     return SizedBox(
       height: 220,
       child: ListView.builder(
@@ -595,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: memorials.length + 1,
         itemBuilder: (context, index) {
           if (index == memorials.length) {
-            return _buildCreateMemorialCard();
+            return _buildCreateMemorialCard(subProvider);
           }
 
           final memorial = memorials[index];
@@ -708,9 +726,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCreateMemorialCard() {
-    final subProvider = context.watch<SubscriptionProvider>();
+  Widget _buildCreateMemorialCard(SubscriptionProvider subProvider) {
+
     final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
 
     return GestureDetector(
       onTap: hasPremiumPermission
@@ -719,9 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
-        ).then((_) async {
-          await subProvider.refreshPlan(); // refresca permisos al volver
-        });
+        );
       },
       child: Opacity(
         opacity: hasPremiumPermission ? 1.0 : 0.6, // visualmente deshabilitado si no tiene permiso

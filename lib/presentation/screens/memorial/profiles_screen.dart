@@ -6,6 +6,7 @@ import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_scre
 import 'package:flutter_frontend/presentation/screens/memorial/accept_invite_code_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
 import '../../components/components.dart';
 import 'package:provider/provider.dart';
 
@@ -47,8 +48,8 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   }
 
   Future<void> _loadUserPlanAndPermissions() async {
-    userPlan = await StorageService.getPlan();
-    userPermissions = await StorageService.getPermissions();
+    //userPlan = await StorageService.getPlan();
+    //userPermissions = await StorageService.getPermissions();
 
     // Setear bools según permisos
     canCreateMemorials = userPermissions?.contains('CREATE_MEMORIALS') ?? false;
@@ -98,9 +99,10 @@ class _ProfilesScreenState extends State<ProfilesScreen>
           icon: Icons.add,
           isFullWidth: true,
           onPressed: () {
+            final subProvider = context.read<SubscriptionProvider>();
+            final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
             // Verificar permisos / plan
-            final isPremium = userPermissions?.contains("CREATE_MEMORIALS") ?? false;
-            if (isPremium) {
+            if (hasPermission) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),

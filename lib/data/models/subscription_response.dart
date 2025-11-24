@@ -1,3 +1,5 @@
+import 'extra_storage_response.dart';
+
 class SubscriptionResponse {
   final String? subscriptionId;  // null si es Free
   final String status;           // ACTIVE, NONE, CANCELLED, EXPIRED
@@ -12,10 +14,14 @@ class SubscriptionResponse {
   final String planDescription;
   final double planPrice;
   final String planCurrency;
-  final double storageLimitGb;
+  final double? storageLimitGb;
   final int? maxFiles;  // null = ilimitado
   final int? maxCollaborations;
   final int? maxDocumentariesPerMonth;
+  final String? supportLevel;
+  int documentariesPurchased;
+  int documentariesAvailable;
+  final List<ExtraStorageResponse>? extraStorage;
 
   SubscriptionResponse({
     required this.subscriptionId,
@@ -33,6 +39,10 @@ class SubscriptionResponse {
     this.maxFiles,
     this.maxCollaborations,
     this.maxDocumentariesPerMonth,
+    this.supportLevel,
+    this.documentariesAvailable=0,
+    this.documentariesPurchased=0,
+    this.extraStorage
   });
 
   factory SubscriptionResponse.fromJson(Map<String, dynamic> json) {
@@ -52,6 +62,39 @@ class SubscriptionResponse {
       maxFiles: json['maxFiles'],
       maxCollaborations: json['maxCollaborations'],
       maxDocumentariesPerMonth: json['maxDocumentariesPerMonth'],
+      supportLevel: json['supportLevel'],
+      extraStorage: json['extraStorageSubscriptions'] != null
+          ? List<ExtraStorageResponse>.from(
+          json['extraStorageSubscriptions']
+              .map((x) => ExtraStorageResponse.fromJson(x)))
+          : [],
+      documentariesAvailable: json['documentariesAvailable'] ?? 0,
+      documentariesPurchased: json['documentariesPurchased'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'subscriptionId': subscriptionId,
+      'status': status,
+      'frequency': frequency,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'paymentMethod': paymentMethod,
+      'planId': planId,
+      'planName': planName,
+      'planDescription': planDescription,
+      'planPrice': planPrice,
+      'planCurrency': planCurrency,
+      'storageLimitGb': storageLimitGb,
+      'maxFiles': maxFiles,
+      'maxCollaborations': maxCollaborations,
+      'maxDocumentariesPerMonth': maxDocumentariesPerMonth,
+      'supportLevel': supportLevel,
+      'extraStorageSubscriptions': extraStorage?.map((x) => x.toJson()).toList(),
+      'documentalesComprados': documentariesPurchased,
+      'documentalesDisponibles':documentariesAvailable,
+    };
+  }
+
 }

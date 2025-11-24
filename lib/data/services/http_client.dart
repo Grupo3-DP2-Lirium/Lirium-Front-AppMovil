@@ -101,8 +101,8 @@ class AuthInterceptor extends Interceptor {
       if (parsedData is Map && parsedData['error'] == 'ACCOUNT_SUSPENDED') {
         print('🚫 CONFIRMADO: Cuenta suspendida - Cerrando sesión automáticamente');
         await StorageService.deleteToken();
-        await StorageService.deletePlan();
-        await StorageService.deletePermissions();
+        //await StorageService.deletePlan();
+        //await StorageService.deletePermissions();
         print('📤 Emitiendo evento accountSuspended');
         // Emitir evento para que la UI reaccione
         AuthEventService().emit(AuthEvent.accountSuspended);

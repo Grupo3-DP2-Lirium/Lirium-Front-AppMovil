@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/extra_storage_service.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/paypal_web_view_extra_storage.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:provider/provider.dart';
 // VET/pO7}
 
 class ExtraStorageScreen extends StatefulWidget {
@@ -33,9 +36,13 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
 
     try {
       final loadedPlans = await extraService.listExtraStoragePlans();
+      final subProvider = context.read<SubscriptionProvider>();
+      final userExtras = subProvider.extraStorage.map((e) => e.idExtraPlan).toList();
 
-      // Filtrar solo los planes válidos
-      final filteredPlans = loadedPlans.where((plan) => (plan['idExtraPlan'] ?? "").isNotEmpty).toList();
+      // Filtrar planes que no estén en los extras del usuario
+      final filteredPlans = loadedPlans
+          .where((plan) => plan['idExtraPlan'] != null && !userExtras.contains(plan['idExtraPlan']))
+          .toList();
 
       setState(() {
         plans = filteredPlans;
@@ -99,24 +106,17 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
       );
 
       if (result != null && result is Map && result['status'] == "success") {
-        // Guardar el plan en StorageService
-        /*await StorageService.savePlan(plan['name']);
+        final subProvider = context.read<SubscriptionProvider>();
+        await subProvider.refreshPlan();
 
-        // Obtener y guardar los permisos actualizados
-        final updatedPermissions =
-        await subscriptionService.getPlanPermissions(plan['idPlan']);
-        await StorageService.savePermissions(updatedPermissions);
+        // New Capacity
+        final currentTotalBytes = await StorageService.getTotalCapacity(); // BYTES
+        final addedGb = (plan["additionalStorageGb"] as num).toDouble();
+        const gbInBytes = 1024 * 1024 * 1024;
+        final addedBytes = addedGb * gbInBytes;
+        final newTotalBytes = currentTotalBytes + addedBytes;
+        await StorageService.saveTotalCapacity(newTotalBytes);
 
-        // Actualizar estado local del widget
-        setState(() {
-          currentPlan = plan['name'];
-        });
-
-        final userPermissions = await StorageService.getPermissions();
-
-        print("Plan actualizado: $currentPlan");
-        print("Permisos actualizados: $userPermissions");
-        */
         // Mostrar popup de éxito
         await appPopupButtonDefault(
           context: context,
@@ -179,7 +179,7 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomMemoryAppBar(
-        title: "Agregar espacio extra",
+        title: "Espacio extra",
         onBack: () => Navigator.pop(context),
         appBarHeight: appBarHeight,
         showBackButton: true,
@@ -192,7 +192,7 @@ class _ExtraStorageScreenState extends State<ExtraStorageScreen> {
           children: [
             const SizedBox(height: 16),
             const Text(
-              "Selecciona un plan de espacio extra:",
+              "Agrega espacio extra a tu plan para seguir preservando tu memoria:",
               style: TextStyle(
                 fontFamily: "Poppins",
                 fontSize: 16,

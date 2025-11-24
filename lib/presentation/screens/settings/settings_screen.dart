@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/storage_service.dart';
+import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_documentales_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
@@ -257,10 +258,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SubscriptionPlanDetailsScreen(
-                    usedStorageGB: 2,
-                    totalStorageGB: 500,
-                  ),
+                  builder: (context) => SubscriptionPlanDetailsScreen(),
+                ),
+              );
+            },
+          ),
+          SettingItem(
+            icon: Icons.monetization_on,
+            title: 'Extra Documentales',
+            subtitle: 'Gestiona tus documentales extra',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExtraDocumentalesScreen(),
                 ),
               );
             },

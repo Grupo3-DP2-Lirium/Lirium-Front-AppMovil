@@ -1,18 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/subscription_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../../../../../config/api_constants.dart';
 
 class PayPalWebViewScreen extends StatefulWidget {
   final String url;
-  final String planId;
-  final String frequency;
+  final int quantity; // cantidad de documentales extra a comprar
 
   const PayPalWebViewScreen({
     super.key,
     required this.url,
-    required this.planId,
-    required this.frequency,
+    required this.quantity,
   });
 
   @override
@@ -22,8 +25,6 @@ class PayPalWebViewScreen extends StatefulWidget {
 class _PayPalWebViewScreenState extends State<PayPalWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
-
-  final SubscriptionService _payPalService = SubscriptionService(); // instancia del servicio
 
   @override
   void initState() {
@@ -55,14 +56,17 @@ class _PayPalWebViewScreenState extends State<PayPalWebViewScreen> {
               }
 
               try {
-                final data = await _payPalService.capturePayPalOrder(
+                // Usando SubscriptionService
+                final subscriptionService = SubscriptionService();
+                final data = await subscriptionService.captureExtraDocumentaryOrder(
                   orderId: orderId,
-                  planId: widget.planId,
-                  frequency: widget.frequency,
-                  simulateFail: false,
-                  onLoading: (loading) => setState(() => _isLoading = loading),
+                  quantity: widget.quantity,
+                  onLoading: (isLoading) {
+                    // Aquí puedes mostrar un loader si quieres
+                  },
                 );
 
+                // Retorna resultado al frontend
                 Navigator.pop(context, data);
               } catch (e) {
                 Navigator.pop(context, {'status': 'ERROR', 'message': e.toString()});

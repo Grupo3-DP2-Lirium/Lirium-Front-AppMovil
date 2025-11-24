@@ -158,6 +158,7 @@ class SubscriptionService {
           print('Max Collaborations: ${subscriptionResponse.maxCollaborations}');
           print('Max Documentaries Per Month: ${subscriptionResponse.maxDocumentariesPerMonth}');
 
+
           return subscriptionResponse;
         } else {
           throw Exception(
@@ -250,6 +251,69 @@ class SubscriptionService {
       return jsonList.map((e) => e.toString()).toList();
     } else {
       throw Exception("Error obteniendo permisos del plan");
+    }
+  }
+
+  Future<Map<String, dynamic>> createExtraDocumentaryOrder({
+    required int quantity,
+    required double amount,
+    void Function(bool isLoading)? onLoading,
+  }) async {
+    final uri = Uri.parse("$baseUrl/paypal/create-extra-documentary-order");
+    onLoading?.call(true);
+
+    try {
+      final response = await _client.post(
+        uri,
+        headers: _http.authHeaders(includeJson: true),
+        body: jsonEncode({
+          "quantity": quantity,
+          "amount": amount,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(
+          "Error creando orden de documentales extra: "
+              "${response.statusCode} ${response.body}",
+        );
+      }
+    } finally {
+      onLoading?.call(false);
+    }
+  }
+
+  /// Capturar orden de documentales extra
+  Future<Map<String, dynamic>> captureExtraDocumentaryOrder({
+    required String orderId,
+    required int quantity,
+    void Function(bool isLoading)? onLoading,
+  }) async {
+    final uri = Uri.parse("$baseUrl/paypal/capture-extra-documentary-order");
+    onLoading?.call(true);
+
+    try {
+      final response = await _client.post(
+        uri,
+        headers: _http.authHeaders(includeJson: true),
+        body: jsonEncode({
+          "orderId": orderId,
+          "quantity": quantity,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          "Error capturando orden de documentales extra: "
+              "${response.statusCode} ${response.body}",
+        );
+      }
+    } finally {
+      onLoading?.call(false);
     }
   }
 

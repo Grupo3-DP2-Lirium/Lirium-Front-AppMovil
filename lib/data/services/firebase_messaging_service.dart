@@ -114,7 +114,7 @@ class FirebaseMessagingService {
       await _notificationService.registerDeviceToken(token);
       print('✅ Token registered successfully');
     } catch (e) {
-      print('❌ Error registering token: $e');
+      print('❌ Error registering fcm_token: $e');
     }
   }
 

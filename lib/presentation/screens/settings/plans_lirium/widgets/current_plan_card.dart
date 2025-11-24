@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 Widget currentPlanCard({
   required bool hasPlan,
@@ -6,16 +7,28 @@ Widget currentPlanCard({
   required String storage,
   String? startDate,
   String? renewalDate,
-  String? endDate, // <- nueva fecha opcional
+  String? endDate,
+  bool isExtra = false,
+  VoidCallback? onCancelExtra,
 }) {
   final bool isFree = !hasPlan || planName.toUpperCase().contains("FREE") || planName.toUpperCase().contains("DESCUBRE");
 
   // Colores según tipo de plan
-  final gradientColors = isFree
+  final gradientColors = isExtra
+      ? [AppColors.primary2, const Color(0xFF586A99)]
+      : isFree
       ? [const Color(0xFFFBE9E7), const Color(0xFFFFF3F0)]
-      : [const Color(0xFFD99293), const Color(0xFFB76E79)];
+      : [AppColors.primary, const Color(0xFFE18394)];
 
-  final icon = isFree ? Icons.card_giftcard : Icons.workspace_premium;
+  final icon = isExtra
+      ? Icons.cloud_upload
+      : isFree
+      ? Icons.card_giftcard
+      : Icons.workspace_premium;
+
+  final titleText = isExtra ? "Espacio extra" : "Tu plan actual";
+
+  final planDisplayed = isExtra ? planName : (isFree ? "Plan Descubre Lirium" : planName);
 
   return Container(
     width: double.infinity,
@@ -44,7 +57,7 @@ Widget currentPlanCard({
             Icon(icon, color: isFree ? const Color(0xFFD99293) : Colors.white, size: 26),
             const SizedBox(width: 8),
             Text(
-              "Tu plan actual",
+              titleText,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -77,14 +90,38 @@ Widget currentPlanCard({
         const SizedBox(height: 12),
 
         /// Nombre del plan
-        Text(
-          isFree ? "Plan Descubre Lirium" : planName,
-          style: TextStyle(
-            fontSize: 24,
-            fontFamily: "Poppins",
-            fontWeight: FontWeight.w700,
-            color: isFree ? const Color(0xFF303742) : Colors.white,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              planDisplayed,
+              style: TextStyle(
+                fontSize: 24,
+                fontFamily: "Poppins",
+                fontWeight: FontWeight.w700,
+                color: isFree ? const Color(0xFF303742) : Colors.white,
+              ),
+            ),
+            if (isExtra && onCancelExtra != null)
+              GestureDetector(
+                onTap: onCancelExtra,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
 
         if (isFree) ...[
@@ -106,9 +143,9 @@ Widget currentPlanCard({
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _planDateColumn("Inicio de Suscripción", startDate),
-              if (renewalDate != null && renewalDate != "-" && renewalDate!.isNotEmpty)
+              if (renewalDate != null && renewalDate != "-" && renewalDate.isNotEmpty)
                 _planDateColumn("Día de Renovación", renewalDate)
-              else if (endDate != null && endDate != "-" && endDate!.isNotEmpty)
+              else if (endDate != null && endDate != "-" && endDate.isNotEmpty)
                 _planDateColumn("Día de Cierre", endDate)
               else
                 _planDateColumn("Día de Renovación", "-"),
