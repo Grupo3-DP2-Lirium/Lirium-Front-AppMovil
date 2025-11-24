@@ -25,30 +25,34 @@ class MemorialProvider extends ChangeNotifier {
   bool get loadedMis => _loadedMis;
   bool get loadedColab => _loadedColab;
 
+  int _pageMis = 0;
+  bool _hasMoreMis = true;
+
   Future<void> cargarMisMemoriales({bool force = false}) async {
-    print('DEBUG: cargarMisMemoriales called - force: $force, _cargandoMis: $_cargandoMis, _loadedMis: $_loadedMis');
-    
-    // Si force=true, resetear el flag para forzar recarga
+
     if (force) {
-      _loadedMis = false;
-      print('DEBUG: Force reload - resetting _loadedMis');
+      _misMemoriales = [];
+      _pageMis = 0;
+      _hasMoreMis = true;
     }
-    
-    if (_cargandoMis || (_loadedMis && !force)) {
-      print('DEBUG: cargarMisMemoriales skipped - already loading or loaded');
-      return;
-    }
-    print('DEBUG: Starting to load mis memoriales...');
-    _cargandoMis = true; _errorMis = null; notifyListeners();
+
+    if (!_hasMoreMis) return;
+
+    _cargandoMis = true;
+    notifyListeners();
+
     try {
-      _misMemoriales = await _service.getMemorials();
-      _loadedMis = true;
-      print('DEBUG: Successfully loaded ${_misMemoriales.length} mis memoriales');
-    } catch (e) {
-      _errorMis = e.toString();
-      print('ERROR loading mis memoriales: $e');
+      final result = await _service.getMemorials(page: _pageMis, size: 6);
+
+      _misMemoriales.addAll(result.items);
+
+      _hasMoreMis = (result.page + 1) < result.totalPages;
+
+      _pageMis++;
+
     } finally {
-      _cargandoMis = false; notifyListeners();
+      _cargandoMis = false;
+      notifyListeners();
     }
   }
 

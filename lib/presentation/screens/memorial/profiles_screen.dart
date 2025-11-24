@@ -176,7 +176,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   }
 
   Widget _buildMisMemoriales(MemorialProvider provider) {
-    if (provider.cargandoMis) {
+    if (provider.misMemoriales.isEmpty && provider.cargandoMis) {
       return const Center(child: CircularProgressIndicator());
     }
     if (provider.errorMis != null) {
@@ -222,27 +222,48 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     return RefreshIndicator(
       onRefresh: () => provider.cargarMisMemoriales(force: true),
       color: const Color(0xFF6366F1),
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        itemCount: provider.misMemoriales.length,
-        itemBuilder: (context, index) {
-          final m = provider.misMemoriales[index];
-          return ProfileCard(
-            name: m.name,
-            description: m.description,
-            profilePhotoBase64: m.profilePhotoBase64,
-            profilePhotoUrl: m.profilePhotoUrl,
-            isShared: m.isCollaborative,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial),
-                ),
-              ).then((_) => provider.cargarMisMemoriales(force: true));
-            },
-          );
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (!provider.cargandoMis &&
+              scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+            provider.cargarMisMemoriales();
+          }
+          return false;
         },
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: provider.misMemoriales.length + 1,
+          itemBuilder: (context, index) {
+
+            // 👇 este check es CLAVE
+            if (index == provider.misMemoriales.length) {
+              return provider.cargandoMis
+                  ? const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              )
+                  : const SizedBox.shrink();
+            }
+
+            final m = provider.misMemoriales[index];
+
+            return ProfileCard(
+              name: m.name,
+              description: m.description,
+              profilePhotoBase64: m.profilePhotoBase64,
+              profilePhotoUrl: m.profilePhotoUrl,
+              isShared: m.isCollaborative,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial),
+                  ),
+                ).then((_) => provider.cargarMisMemoriales(force: true));
+              },
+            );
+          },
+        ),
       ),
     );
   }
