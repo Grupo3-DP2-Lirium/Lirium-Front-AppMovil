@@ -485,7 +485,14 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.photo_library_outlined,
               label: 'Añadir\nrecuerdo',
               color: AppColors.primary,
-              onTap: _goToCreateMemory,
+              onTap: hasPremiumPermission
+                  ? _goToCreateMemory
+                  : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                );
+              },
             ),
           ),
           const SizedBox(width: 12),
@@ -727,9 +734,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCreateMemorialCard(SubscriptionProvider subProvider) {
-
     final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
-
 
     return GestureDetector(
       onTap: hasPremiumPermission
