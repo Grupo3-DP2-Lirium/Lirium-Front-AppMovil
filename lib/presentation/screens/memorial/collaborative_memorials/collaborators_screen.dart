@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/collaborator_service.dart';
 import 'package:flutter_frontend/data/models/collaborator_response.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/generate_invite_code_dialog.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/invite_by_email_dialog.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/invite_by_whatsapp_dialog.dart'; // ✅ NUEVO
+import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/generate_invite_code_dialog.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_email_dialog.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_whatsapp_dialog.dart'; // ✅ NUEVO
 
 class CollaboratorsScreen extends StatefulWidget {
   final String memorialId;

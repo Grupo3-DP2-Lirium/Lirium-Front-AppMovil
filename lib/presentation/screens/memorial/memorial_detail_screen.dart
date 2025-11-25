@@ -2,10 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/collaborators_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/collaborators_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/edit_memorial_screen.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/services/memorial_actions.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/memorial_actions.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_details_state.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_details_widget.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/visualize_memories_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/format_type_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/theme_detail_screen.dart';
@@ -19,6 +21,11 @@ import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/memory_service.dart';
 import '../../../data/models/memory_response.dart';
+import '../../../domain/entities/memory.dart';
+import '../../../providers/memory_provider.dart';
+import '../../../providers/plan_provider.dart';
+import '../memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
+import '../settings/plans_lirium/get_premium_screen.dart';
 
 // Modos de organización de galería (HU19)
 enum OrganizationMode { formato, lineaDeTiempo, tematicas, momentos }
@@ -38,15 +45,12 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   final MemoryService _memoriesService = MemoryService();
   final MemorialService _memorialService = MemorialService();
   final MemorialActions _memorialActions = MemorialActions();
-  bool _isOwner = false; // ✅ NUEVO
-  bool _canEditMemorial = false;
-  bool _isCollaborative = false;
 
-  // Datos del memorial (cargados dinámicamente)
-  String? name;
-  String? description;
+  // Estado principal del memorial
+  MemorialDetailsState _detailsState = MemorialDetailsState();
+
   String? coverUrl;
-  String? avatarUrl;
+  // Estado de la carga
   bool isLoadingMemorial = true;
   String? memorialErrorMessage;
 
@@ -63,8 +67,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   // Estado para el nuevo diseño
   bool _showOrganizeOptions = false;
-  String _selectedFilter = 'gallery';
-  int _selectedTopTab = 0; // 0: Galería, 1: Actividad Reciente, 2: Info
+  String _selectedFilter = 'all';
+  int _selectedTopTab = 0; // 0: Actividad Reciente, 1: Videos, 2: Detalles
 
   // Datos para las diferentes vistas
   Map<String, Map<String, List<MemoryLiteResponse>>> _memoriesByCategory = {};
@@ -97,28 +101,21 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         memorialErrorMessage = null;
       });
 
-      final memorial = await _memorialService.getMemorialById(
-        widget.memorialId,
-      );
+      final memorial = await _memorialService.getMemorialById(widget.memorialId);
 
-      print('✅ Memorial cargado:');
-      print('   - ID: ${memorial.idMemorial}');
-      print('   - Nombre: ${memorial.name}');
-      print('   - isOwner: ${memorial.isOwner}'); // ✅ Log crítico
-      print('   - canEdit: ${memorial.canEdit}');
-      print('   - isColaborative: ${memorial.isCollaborative}');
-
+      // Actualizamos el state completo con todos los datos
       setState(() {
-        name = memorial.name;
-        description = memorial.description;
-        avatarUrl = memorial.profilePhoto?.fileUrl;
-        _isOwner = memorial.isOwner; // ✅ CRÍTICO: Actualizar desde backend
-        _canEditMemorial = memorial.canEdit ?? false;
+        _detailsState = MemorialDetailsState.fromResponse(memorial);
         isLoadingMemorial = false;
-        _isCollaborative = memorial.isCollaborative ?? false;
       });
 
-      print('📊 Estado actualizado - isOwner: $_isOwner');
+      // Logs opcionales
+      print('✅ Memorial cargado:');
+      print('   - ID: ${_detailsState.idMemorial}');
+      print('   - Nombre: ${_detailsState.name}');
+      print('   - isOwner: ${_detailsState.isOwner}');
+      print('   - canEdit: ${_detailsState.canEdit}');
+      print('   - isCollaborative: ${_detailsState.isCollaborative}');
     } catch (e) {
       print('❌ Error cargando memorial: $e');
       setState(() {
@@ -129,14 +126,16 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   }
 
   ImageProvider _getAvatarImage() {
-    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+    final avatarUrl = _detailsState.profilePhotoUrl;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
       // Verificar si es una imagen en base64
-      if (avatarUrl!.startsWith('data:image') || avatarUrl!.length > 500) {
+      if (avatarUrl.startsWith('data:image') || avatarUrl.length > 500) {
         try {
           // Si empieza con data:image, extraer solo la parte base64
           final base64String = avatarUrl!.contains(',')
-              ? avatarUrl!.split(',').last
-              : avatarUrl!;
+              ? avatarUrl.split(',').last
+              : avatarUrl;
           return MemoryImage(base64Decode(base64String));
         } catch (e) {
           print('Error decoding base64 image: $e');
@@ -144,7 +143,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         }
       } else {
         // Es una URL normal
-        return NetworkImage(avatarUrl!);
+        return NetworkImage(avatarUrl);
       }
     } else {
       // Usar imagen por defecto
@@ -153,6 +152,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   }
 
   ImageProvider _getCoverImage() {
+
     if (coverUrl == null || coverUrl!.isEmpty) {
       return const NetworkImage(
         'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800',
@@ -263,6 +263,17 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final subProvider = context.watch<SubscriptionProvider>();
+    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+
+    if (!subProvider.isLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     // Si está cargando el memorial, mostrar indicador
     if (isLoadingMemorial) {
       return Scaffold(
@@ -356,7 +367,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
           ),
 
           // Settings Button
-          if (_isOwner || _canEditMemorial)
+          if (_detailsState.isOwner || _detailsState.canEdit)
             Positioned(
               top: 50,
               right: 16,
@@ -394,7 +405,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
                   // Name
                   Text(
-                    name ?? 'Cargando...',
+                    _detailsState.name ?? 'Cargando...',
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -411,14 +422,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   ),
 
                   // Description
-                  if (description != null && description!.isNotEmpty)
+                  if (_detailsState.description != null && _detailsState.description!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                       child: Text(
-                        description!,
+                        _detailsState.description!,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.grey,
@@ -428,7 +439,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ),
                   const SizedBox(height: 20),
 
-                  // Top Navigation Tabs
+                  // Top Navigation Tabs (Actividad Reciente, Videos, Acerca)
                   Container(
                     height: 60,
                     decoration: BoxDecoration(
@@ -438,13 +449,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ),
                     child: Row(
                       children: [
-                        _buildTopTab(Icons.grid_view, 'Galería', 0),
-                        _buildTopTab(
-                          Icons.access_time,
-                          'Actividad Reciente',
-                          1,
-                        ),
-                        _buildTopTab(Icons.info_outline, 'Info', 2),
+                        _buildTopTab(Icons.grid_view, 'Actividad Reciente', 0),
+                        _buildTopTab(Icons.movie_filter_outlined, 'Videos', 1),
+                        _buildTopTab(Icons.emoji_objects_outlined, 'Detalles', 2),
                       ],
                     ),
                   ),
@@ -560,17 +567,19 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                           ),
                         ),
                         const SizedBox(width: 12),
+
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              // TODO: Implementar crear recuerdo
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Crear Recuerdo - Próximamente',
-                                  ),
-                                ),
-                              );
+                              if (hasPremiumPermission) {
+                                // aquí llamas a tu función real
+                                _goToCreateMemory();   // o lo que sea
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF6B6B),
@@ -588,7 +597,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
+                          )
                         ),
                       ],
                     ),
@@ -625,6 +634,21 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
+  Future<void> _goToCreateMemory() async {
+    final prov = context.read<MemoryProvider>();
+
+    final createdMemory = await Navigator.push<Memory>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CreateMemoryToMemorial(),
+      ),
+    );
+
+    if (createdMemory != null) {
+      prov.agregarMemoria(createdMemory);
+    }
+  }
+
   Widget _buildTab(String text, int index) {
     final isSelected = selectedTab == index;
     return GestureDetector(
@@ -656,6 +680,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
+  // Organizar
   Widget _buildOrganizeOption(
     String title,
     String key,
@@ -702,6 +727,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
+  // Top Bar
   Widget _buildTopTab(IconData icon, String label, int index) {
     final isSelected = _selectedTopTab == index;
     return Expanded(
@@ -713,9 +739,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
             // Cambiar el filtro según el tab seleccionado
             if (index == 0) {
-              _selectedFilter = 'gallery';
-            } else if (index == 1) {
               _selectedFilter = 'all';
+            } else if (index == 1) {
+              _selectedFilter = 'videos';
+            } else if (index == 2){
+              _selectedFilter = 'details';
             }
           });
         },
@@ -755,6 +783,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     );
   }
 
+  // Selección de Filtro
   String _getFilterTitle() {
     switch (_selectedFilter) {
       case 'all':
@@ -767,13 +796,15 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         return 'Línea de Tiempo';
       case 'themes':
         return 'Temáticas';
+      case 'details':
+        return 'Información';
       default:
-        return 'Galería';
+        return 'Actividad Reciente';
     }
   }
 
+  // Renderizar contenido según la selección
   Widget _buildGalleryContent() {
-    // Renderizar contenido según la selección
     switch (_selectedFilter) {
       case 'all':
         return _buildActivityContent();
@@ -785,6 +816,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         return _buildTimelineContent();
       case 'themes':
         return _buildThemesContent();
+      case 'details':
+        return MemorialDetailsWidget(
+          name: _detailsState.name,
+          relation: _detailsState.relation,
+          birthDate: _detailsState.birthDate,
+          gender: _detailsState.gender,
+          nickname: _detailsState.nickname,
+        );
       default:
         return _buildGalleryGridContent();
     }
@@ -1692,7 +1731,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                     ],
                   ),
                 ),
-                if (_isOwner && _canEditMemorial)
+                if (_detailsState.isOwner && _detailsState.canEdit)
                   IconButton(
                     icon: Icon(Icons.more_vert, color: Colors.grey[600]),
                     onPressed: () {
@@ -2461,11 +2500,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
   void _showMemorialOptionsMenu(BuildContext context) {
     MemorialOptionsMenu.show(
       context,
-      isOwner: _isOwner,
-      canEdit: _canEditMemorial,
-      isCollaborative: _isCollaborative,
+      isOwner: _detailsState.isOwner,
+      canEdit: _detailsState.canEdit,
+      isCollaborative: _detailsState.isCollaborative,
       memorialId: widget.memorialId,
-      memorialName: name,
+      memorialName: _detailsState.name,
       onEdit: () {
         Navigator.pop(context);
         Navigator.push(
@@ -2500,7 +2539,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
           MaterialPageRoute(
             builder: (context) => CollaboratorsScreen(
               memorialId: widget.memorialId,
-              memorialName: name,
+              memorialName: _detailsState.name,
             ),
           ),
         );

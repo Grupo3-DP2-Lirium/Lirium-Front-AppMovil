@@ -9,7 +9,7 @@ import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/web_socket_service.dart';
 import '../memories/organize_memories/timeline_screen.dart';
-import '../memorial/profiles_screen.dart';
+import '../memorial/memorials_grid_screen.dart';
 import '../memories/memories_grid_screen.dart';
 import '../chat/chat_screen.dart';
 import '../settings/settings_screen.dart';

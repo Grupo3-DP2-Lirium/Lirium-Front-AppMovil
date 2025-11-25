@@ -16,7 +16,6 @@ import 'package:provider/provider.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/storage_service.dart';
 import 'providers/memorial_provider.dart';
-import 'presentation/screens/memorial/memorials_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -460,7 +459,6 @@ class _RemoryAppState extends State<RemoryApp> {
         },
         home: const WelcomeScreen(), // ✅ Inicia con onboarding
         routes: {
-          '/memorials': (_) => const MemorialsScreen(),
           '/login': (_) => const LoginScreen(),
         },
       ),

@@ -3,7 +3,7 @@ import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memorial/accept_invite_code_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/accept_invite_code_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';

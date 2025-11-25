@@ -20,7 +20,7 @@ import 'package:provider/provider.dart';
 import '../memories/my_personal_space_screen.dart';
 import '../memories/new_reflection_screen.dart';
 import '../memories/memories_grid_screen.dart';
-import '../memorial/profiles_screen.dart';
+import '../memorial/memorials_grid_screen.dart';
 import '../memorial/memorial_detail_screen.dart';
 import '../memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 
@@ -32,12 +32,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _memorialService = MemorialService();
   final _reminderService = ReminderService();
   final _notificationService = NotificationService();
-  String? _currentEmail;
   String? _currentName;
-  late Future<List<Memorial>> _memorialsFuture;
   late Future<List<Reminder>> _remindersFuture;
   int _unreadNotificationsCount = 0;
 
@@ -49,14 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
       print("Email guardado del usuario: $name");
 
       setState(() {
-        _currentEmail = email;
         _currentName = name;
       });
     } catch (e, stack) {
       print("Error cargando usuario: $e");
       print(stack);
       _currentName = null;
-      _currentEmail = null;
     }
   }
 
@@ -148,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final subProvider = context.watch<SubscriptionProvider>();
-    final provider = context.watch<MemorialProvider>();
 
     if (!subProvider.isLoaded) {
       return const Scaffold(
