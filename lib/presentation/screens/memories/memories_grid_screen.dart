@@ -20,14 +20,36 @@ class MemoriesGridScreen extends StatefulWidget {
 }
 
 class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+
+    // Carga inicial
     Future.microtask(() {
       final prov = context.read<MemoryProvider>();
       prov.cargarMisMemorias();
     });
+  }
+
+  void _onScroll() {
+    final prov = context.read<MemoryProvider>();
+
+    // Si estamos a 200px del final y no se está cargando nada
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200 &&
+        !prov.cargando) {
+      prov.cargarMisMemorias(); // carga la siguiente página
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -133,19 +155,25 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 hintText: 'Buscar recuerdos...',
                 onChanged: (text) {
                   prov.filtrarMemorias(text);
+                  _scrollController.jumpTo(0);
                 },
               ),
             ),
 
             // Grid memories
             Expanded(
-              child: prov.cargando
-                  ? const Center(child: CircularProgressIndicator())
-                  : prov.error != null
-                  ? Center(child: Text('Error: ${prov.error}'))
-                  : memoriesToShow.isEmpty
+              child: memoriesToShow.isEmpty
                   ? _buildEmptyState()
-                  : _buildGridView(memoriesToShow),
+                  : NotificationListener<ScrollNotification>(
+                onNotification: (scrollInfo) {
+                  if (!prov.cargando &&
+                      scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                    prov.cargarMisMemorias(); // carga siguiente página
+                  }
+                  return false;
+                },
+                child: _buildGridView(memoriesToShow, prov),
+              ),
             ),
           ],
         ),
@@ -175,6 +203,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
               ).then((_) async {
                 await subProvider.refreshPlan();
+                setState(() {});
               });
             },
             icon: const Icon(Icons.add, color: Colors.white),
@@ -190,8 +219,9 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
     );
   }
 
-  Widget _buildGridView(List<Memory> memories) {
+  Widget _buildGridView(List<Memory> memories, MemoryProvider prov) {
     return GridView.builder(
+      controller: _scrollController, // importante para scroll infinito
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -199,28 +229,32 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.8,
       ),
-      itemCount: memories.length,
+      itemCount: memories.length + (prov.cargando ? 1 : 0), // si está cargando, muestra loader
       itemBuilder: (context, index) {
-        final memory = memories[index];
-        return MemoryCard(
-          memory: memory,
-          isGridView: true,
-          onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MemoryDetailScreen(memory: memory),
-              ),
-            );
-            
-            final prov = context.read<MemoryProvider>();
-
-            if (result is Memory) {
-              print('📝 Memoria actualizada');
-              prov.actualizarMemoria(index, result);
-            }
-          },
-        );
+        if (index < memories.length) {
+          final memory = memories[index];
+          return MemoryCard(
+            memory: memory,
+            isGridView: true,
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => MemoryDetailScreen(memory: memory)),
+              );
+              if (result is Memory) {
+                prov.actualizarMemoria(index, result);
+              }
+            },
+          );
+        } else {
+          // Loader final mientras carga más
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
       },
     );
   }

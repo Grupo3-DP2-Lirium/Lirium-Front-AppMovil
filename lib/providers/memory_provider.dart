@@ -26,38 +26,30 @@ class MemoryProvider extends ChangeNotifier {
   String get textoBusqueda => _textoBusqueda;
   Map<String, List<File>> get archivosLocales => _archivosLocales;
 
-  /// Cargar memorias desde el backend
+  int _pageMis = 0;
+  bool _hasMoreMis = true;
+
   Future<void> cargarMisMemorias({bool force = false}) async {
-    if (_cargando || (_loaded && !force)) return;
+
+    if (force) {
+      _misMemorias = [];
+      _memoriasFiltradas = [];
+      _pageMis = 0;
+      _hasMoreMis = true;
+    }
+    if (!_hasMoreMis) return;
 
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
-      _misMemorias = await _service.listMemoriesByAuthor();
+      final result = await _service.listMemoriesByAuthor(page: _pageMis, size: 6);
+      // forzar a lista vacía si es null
+      _misMemorias.addAll(result.items);
       _memoriasFiltradas = List.from(_misMemorias);
-      _loaded = true;
-      print("📦 Memorias cargadas desde backend: ${_misMemorias.length}");
-      // Descargar archivos para cada memoria
-      for (var m in _misMemorias) {
-        if (m.files.isNotEmpty && !_archivosLocales.containsKey(m.id)) {
-          List<File> archivos = [];
-          for (var f in m.files) {
-            if (f.url != null) {
-              try {
-                final fileLocal = await _descargarArchivo(f.url, m.id, f.originalName, f.type, f.mimeType);
-                archivos.add(fileLocal);
-              } catch (e) {
-                print("Error descargando archivo ${f.name} de ${m.title}: $e");
-              }
-            }
-          }
-          if (archivos.isNotEmpty) {
-            _archivosLocales[m.id] = archivos;
-          }
-        }
-      }
+      _hasMoreMis = (result.page + 1) < result.totalPages;
+      _pageMis++;
     } catch (e) {
       _error = e.toString();
     } finally {
