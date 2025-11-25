@@ -55,8 +55,8 @@ class MemorialOptionsMenu {
                 
                 const Divider(),
                 
-                // EDITAR: Solo si es dueño o colaborador con permiso
-                if (canEdit || isOwner)
+                // EDITAR: Solo si es dueño
+                if (isOwner)
                   _buildMenuItem(
                     icon: Icons.edit,
                     title: 'Editar memorial',
