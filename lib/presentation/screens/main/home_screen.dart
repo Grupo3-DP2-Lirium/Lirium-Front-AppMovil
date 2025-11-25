@@ -429,9 +429,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
-                  ).then((_) async {
-                    await subProvider.refreshPlan();
-                  });
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

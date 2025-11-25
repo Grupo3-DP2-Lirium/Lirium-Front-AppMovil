@@ -24,6 +24,7 @@ import '../../../data/models/memory_response.dart';
 import '../../../domain/entities/memory.dart';
 import '../../../providers/memory_provider.dart';
 import '../../../providers/plan_provider.dart';
+import '../memories/create_memory_for_a_memorial/create_memory_select_type.dart';
 import '../memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import '../settings/plans_lirium/get_premium_screen.dart';
 
@@ -102,7 +103,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
       });
 
       final memorial = await _memorialService.getMemorialById(widget.memorialId);
-
+      if (!mounted) return;
       // Actualizamos el state completo con todos los datos
       setState(() {
         _detailsState = MemorialDetailsState.fromResponse(memorial);
@@ -170,6 +171,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
 
   /// Carga las memorias del memorial desde el backend
   Future<void> _loadMemories() async {
+    if (!mounted) return;
+
     try {
       setState(() {
         isLoadingMemories = true;
@@ -182,6 +185,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         size: pageSize,
       );
 
+      if (!mounted) return;
+
       setState(() {
         if (currentPage == 0) {
           memories = response.content;
@@ -192,72 +197,12 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
         isLoadingMemories = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         errorMessage = 'Error al cargar las memorias: $e';
         isLoadingMemories = false;
       });
-    }
-  }
-
-  Future<void> _deleteMemorial(BuildContext context, String memorialId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: const Text(
-          '¿Estás seguro de que quieres eliminar este memorial?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (!(confirmed ?? false)) return;
-
-    // Mostrar loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      await MemorialService().deleteMemorial(memorialId);
-
-      // Actualizar provider
-      final provider = Provider.of<MemorialProvider>(context, listen: false);
-      provider.eliminarMemorial(memorialId);
-
-      Navigator.pop(context);
-
-      // Mostrar popup de éxito
-      await appPopupButtonDefault(
-        context: context,
-        title: "Memorial eliminado",
-        message: "El memorial ha sido eliminado correctamente",
-        buttons: [
-          AppPopupButton(
-            text: "Continuar",
-            onPressed: () {
-              Navigator.pop(context); // cierra el popup
-              Navigator.pop(context); // retrocede a la pantalla anterior
-            },
-          ),
-        ],
-      );
-    } catch (e) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error al eliminar: $e')));
     }
   }
 
@@ -415,10 +360,10 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                   const SizedBox(height: 8),
 
                   // Subtitle
-                  const Text(
-                    'Familia',
+                  Text(
+                    _detailsState.relation,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
                   ),
 
                   // Description
@@ -572,8 +517,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                           child: ElevatedButton(
                             onPressed: () {
                               if (hasPremiumPermission) {
-                                // aquí llamas a tu función real
-                                _goToCreateMemory();   // o lo que sea
+                                _goToCreateMemory();
                               } else {
                                 Navigator.push(
                                   context,
@@ -640,7 +584,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
     final createdMemory = await Navigator.push<Memory>(
       context,
       MaterialPageRoute(
-        builder: (_) => const CreateMemoryToMemorial(),
+        builder: (_) => CreateMemorySelectType(
+          memorialId: _detailsState.idMemorial,
+        ),
       ),
     );
 
@@ -1764,35 +1710,6 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
                 ),
               ),
             ),
-
-          // Botones de interacción
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Icon(Icons.favorite_border, color: Colors.grey[700]),
-                const SizedBox(width: 16),
-                Icon(Icons.chat_bubble_outline, color: Colors.grey[700]),
-                const SizedBox(width: 16),
-                Icon(Icons.share_outlined, color: Colors.grey[700]),
-                const Spacer(),
-                if (memory.location != null)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.place_outlined,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      Text(
-                        memory.location!,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
 
           // Descripción
           if (memory.description.isNotEmpty)

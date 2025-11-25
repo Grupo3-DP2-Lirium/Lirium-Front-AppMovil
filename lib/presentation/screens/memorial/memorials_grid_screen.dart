@@ -48,9 +48,6 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   }
 
   Future<void> _loadUserPlanAndPermissions() async {
-    //userPlan = await StorageService.getPlan();
-    //userPermissions = await StorageService.getPermissions();
-
     // Setear bools según permisos
     canCreateMemorials = userPermissions?.contains('CREATE_MEMORIALS') ?? false;
     canUseIA = userPermissions?.contains('IA_FEATURES') ?? false;
@@ -259,7 +256,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
                   MaterialPageRoute(
                     builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial),
                   ),
-                ).then((_) => provider.cargarMisMemoriales(force: true));
+                );
               },
             );
           },
@@ -329,10 +326,8 @@ class _ProfilesScreenState extends State<ProfilesScreen>
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial),
-                ),
-              ).then((_) => provider.cargarColaborativos(force: true));
+                MaterialPageRoute(builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial)),
+              );
             },
           );
         },

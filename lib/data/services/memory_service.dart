@@ -11,6 +11,7 @@ import '../models/memory_create_request.dart';
 import '../models/memories_organized_response.dart';
 import '../models/memories_by_type_response.dart';
 import '../models/memory_lite_response.dart';
+import '../models/paginated_memories.dart';
 
 class MemoryService {
   final http.Client _client;
@@ -146,24 +147,30 @@ class MemoryService {
   }
 
   /// List Memories from log user
-  Future<List<Memory>> listMemoriesByAuthor() async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/my-memories');
+  Future<PaginatedMemories> listMemoriesByAuthor({int page = 0, int size = 4}) async {
+    print('DEBUG: getMemories() called');
+    final uri = Uri.parse('${ApiConstants.baseUrl}/memories/my-memories?page=$page&size=$size');
 
     final res = await _client.get(
       uri,
-      headers: _http.authHeaders(includeJson: false), // Authorization + Accept
+      headers: _http.authHeaders(includeJson: false),
     );
 
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final listJson = jsonDecode(res.body) as List<dynamic>;
-      // Mapear MemoryResponse a Memory
-      return listJson
-          .map((e) => MemoryResponse.fromJson(e).toEntity())
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+
+      final content = (json['content'] as List)
+          .map((j) => MemoryResponse.fromJson(j).toEntity())
           .toList();
-    } else if (res.statusCode == 401) {
-      throw Exception('Sesión expirada (401).');
+
+      return PaginatedMemories(
+        items: content,
+        page: json['number'],
+        totalPages: json['totalPages'],
+        totalItems: json['totalElements'],
+      );
     } else {
-      throw Exception('Error ${res.statusCode}: ${res.body}');
+      throw Exception("Error listando memorials");
     }
   }
 
