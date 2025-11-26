@@ -326,6 +326,23 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   // Create a new memory (Create mode)
   Future<void> _createMemory() async {
     if (_isLoading) return;
+    // Validación: debe tener al menos un archivo
+    if (_newFiles.isEmpty) {
+      await appPopupButtonDefault(
+        context: context,
+        title: "No se puede crear el recuerdo",
+        message: "Este tipo de memoria requiere al menos una imagen o video adjunto.",
+        buttons: [
+          AppPopupButton(
+            text: "Aceptar",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      );
+      return;
+    }
     setState(() => _isLoading = true);
 
     // Mostrar popup de carga

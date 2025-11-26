@@ -87,8 +87,8 @@ class MemorialResponseModel {
       isJournal: isJournal,
       createdDate: createdDate,
       profilePhotoUrl: profilePhoto?.fileUrl,
-      isOwner: isOwner, // ✅ CRÍTICO: Pasar a la entidad
-      canEdit: canEdit, // ✅ CRÍTICO: Pasar a la entidad
+      isOwner: isOwner,
+      canEdit: canEdit,
     );
   }
 

@@ -507,8 +507,10 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                   // Campo de título
                   TextField(
                     controller: _titleController,
-                    style: theme.textTheme.titleLarge?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      color: Colors.black87,
                     ),
                     decoration: const InputDecoration(
                       hintText: 'Título',
@@ -518,7 +520,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                     textCapitalization: TextCapitalization.sentences,
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 12),
 
                   // Campo de contenido
                   Expanded(
@@ -531,7 +533,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Empezar a escribir...',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        contentPadding: EdgeInsets.only(top: 12),
                       ),
                       textCapitalization: TextCapitalization.sentences,
                     ),

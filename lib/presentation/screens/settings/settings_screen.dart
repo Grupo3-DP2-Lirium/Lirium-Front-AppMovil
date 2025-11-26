@@ -5,11 +5,14 @@ import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
+import '../../../providers/user_provider.dart';
+import '../../components/common/app_bar.dart';
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/auth_storage.dart';
 import '../auth/login_screen.dart';
 import '../reminders/notifications_settings_screen.dart';
+import 'about_app/about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,25 +26,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final AuthStorage _authStorage = AuthStorage();
 
   bool _isLoggingOut = false;
-  String? _currentEmail;
-  String? _currentName;
 
-  Future<void> _loadUserData() async {
-    try {
-      final email = await StorageService.getEmail();
-      print("Email guardado del usuario: $email");
-      final name = await StorageService.getFullName();
-
-      setState(() {
-        _currentEmail = email;
-        _currentName = name;
-      });
-    } catch (e, stack) {
-      print("Error cargando usuario: $e");
-      print(stack);
-      _currentName = null;
-      _currentEmail = null;
-    }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProvider>().loadUser();
+    });
   }
 
   Future<void> _logout() async {
@@ -142,27 +133,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final userProv = context.watch<UserProvider>();
+    final name = userProv.name ?? '';
+    final photoUrl = userProv.photoUrl;
+    final email = userProv.email ?? '';
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Configuración',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.black),
+      appBar: CustomMemoryAppBar(
+        title: 'Configuración',
+        onBack: () => Navigator.pop(context),
+        showBackButton: false,
+        appBarHeight: 70,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -176,14 +159,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Row(
               children: [
-                ProfileAvatar(radius: 30),
+                ProfileAvatar(
+                  radius: 30,
+                  photoUrl: photoUrl,
+                ),
                 SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _currentName ?? '',
+                        name,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -192,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        _currentEmail ?? '',
+                        email,
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
@@ -297,7 +283,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.info,
             title: 'Acerca de',
             subtitle: 'Versión e información de la app',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AboutScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 

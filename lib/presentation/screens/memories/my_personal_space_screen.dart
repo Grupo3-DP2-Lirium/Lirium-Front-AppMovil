@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../providers/reflection_provider.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 import 'reflection_detail_screen.dart';
 import 'new_reflection_screen.dart';
+import 'package:provider/provider.dart';
 
+// Mo
 class MyPersonalSpaceScreen extends StatefulWidget {
   const MyPersonalSpaceScreen({super.key});
 
@@ -20,8 +23,12 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
   @override
   void initState() {
     super.initState();
-    _loadReflections();
+    // cargar una sola vez
+    Future.microtask(() {
+      Provider.of<ReflectionProvider>(context, listen: false).loadReflections();
+    });
   }
+
 
   void _loadReflections() {
     _groupedReflectionsFuture = _reflectionService.getReflectionsGroupedByMonth();
@@ -83,109 +90,49 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: _refreshReflections,
-        child: FutureBuilder<Map<String, List<ReflectionModel>>>(
-          future: _groupedReflectionsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        onRefresh: () =>
+            Provider.of<ReflectionProvider>(context, listen: false)
+                .refreshReflections(),
+        child: Consumer<ReflectionProvider>(
+          builder: (context, provider, _) {
+            final reflections = provider.reflections;
+
+            // Loading inicial
+            if (provider.isLoading && reflections.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (snapshot.hasError) {
-              return ListView(
-                children: [
-                  const SizedBox(height: 48),
-                  Center(child: Text('Error: ${snapshot.error}')),
-                ],
-              );
-            }
-
-            final groupedReflections = snapshot.data!;
-            final isEmpty = groupedReflections.isEmpty || 
-                           groupedReflections.values.every((list) => list.isEmpty);
-
-            if (isEmpty) {
+            // Sin reflexiones
+            if (reflections.isEmpty) {
               return ListView(
                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
                 children: [
                   _buildHeaderCTA(),
                   const SizedBox(height: 48),
                   Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.book_outlined,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Aún no has creado ninguna reflexión',
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Comienza escribiendo tu primera reflexión personal',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        // Botón para refrescar reflexiones desde API
-                        TextButton.icon(
-                          onPressed: () async {
-                            _refreshReflections();
-                          },
-                          icon: Icon(Icons.refresh, color: Colors.blue.shade600),
-                          label: Text(
-                            'Refrescar reflexiones',
-                            style: TextStyle(color: Colors.blue.shade600),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Botón para cambiar tipo de usuario (solo para testing)
-                        TextButton.icon(
-                          onPressed: () {
-                            final currentType = _reflectionService.userType;
-                            final newType = currentType == UserType.free 
-                                ? UserType.premium 
-                                : UserType.free;
-                            _reflectionService.setUserType(newType);
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Cambiado a usuario ${newType == UserType.premium ? 'Premium' : 'Gratuito'}',
-                                ),
-                                backgroundColor: newType == UserType.premium 
-                                    ? Colors.green 
-                                    : Colors.orange,
-                              ),
-                            );
-                          },
-                          icon: Icon(
-                            _reflectionService.userType == UserType.premium 
-                                ? Icons.star 
-                                : Icons.star_border,
-                            color: Colors.amber.shade600,
-                          ),
-                          label: Text(
-                            'Usuario: ${_reflectionService.userType == UserType.premium ? 'Premium' : 'Gratuito'}',
-                            style: TextStyle(color: Colors.amber.shade600),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: Text("Aún no has creado ninguna reflexión"),
                   ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      Provider.of<ReflectionProvider>(context, listen: false)
+                          .refreshReflections();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("Refrescar"),
+                  )
                 ],
               );
             }
 
-            // Ordenar las claves de mes de forma descendente (más reciente primero)
-            final sortedMonthKeys = groupedReflections.keys.toList()
+            // Agrupar reflexiones por mes
+            final Map<String, List<ReflectionModel>> grouped = {};
+            for (final r in reflections) {
+              final key = "${r.createdDate.year}-${r.createdDate.month.toString().padLeft(2, '0')}";
+              grouped.putIfAbsent(key, () => []).add(r);
+            }
+
+            final sortedKeys = grouped.keys.toList()
               ..sort((a, b) => b.compareTo(a));
 
             return ListView(
@@ -194,24 +141,21 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
                 _buildHeaderCTA(),
                 const SizedBox(height: 16),
 
-                // Mostrar reflexiones agrupadas por mes
-                for (final monthKey in sortedMonthKeys) ...[
+                for (final key in sortedKeys) ...[
                   const SizedBox(height: 16),
                   Text(
-                    _reflectionService.getMonthLabel(DateTime.parse('$monthKey-01')),
-                    style: textTheme.headlineSmall?.copyWith(
+                    _formatMonthLabel(key),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Lista de reflexiones del mes
-                  for (final reflection in groupedReflections[monthKey]!) ...[
+                  for (final reflection in grouped[key]!) ...[
                     _buildReflectionCard(reflection),
                     const SizedBox(height: 12),
-                  ],
-                ],
+                  ]
+                ]
               ],
             );
           },
@@ -223,7 +167,7 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
   Widget _buildHeaderCTA() {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    
+
     return Column(
       children: [
         const SizedBox(height: 8),
@@ -256,19 +200,19 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final hasMedia = reflection.attachedFiles.isNotEmpty;
-    
+
     // Debug logging
     print('Reflection ${reflection.title} has ${reflection.attachedFiles.length} files:');
     for (final file in reflection.attachedFiles) {
       print('  File: ${file.fileName}, Type: ${file.fileType}, IsImage: ${file.isImage}, URL: ${file.downloadUrl}');
     }
-    
+
     final firstImageFile = reflection.attachedFiles
         .where((f) => f.isImage)
-        .isNotEmpty 
-        ? reflection.attachedFiles.firstWhere((f) => f.isImage) 
+        .isNotEmpty
+        ? reflection.attachedFiles.firstWhere((f) => f.isImage)
         : null;
-        
+
     print('FirstImageFile: ${firstImageFile?.fileName ?? 'null'}');
 
     return Card(
@@ -293,7 +237,7 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
                   borderRadius: BorderRadius.circular(8),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: firstImageFile.localPath != null 
+                    child: firstImageFile.localPath != null
                       ? Image.file(
                           File(firstImageFile.localPath!),
                           fit: BoxFit.cover,
@@ -444,12 +388,25 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
       '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     ];
-    
+
     final weekday = weekdays[date.weekday];
     final day = date.day;
     final month = months[date.month];
     final year = date.year;
-    
+
     return '$weekday, $day de $month de $year';
+  }
+
+  String _formatMonthLabel(String key) {
+    final parts = key.split("-");
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+
+    const months = [
+      '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    return "${months[month]} $year";
   }
 }
