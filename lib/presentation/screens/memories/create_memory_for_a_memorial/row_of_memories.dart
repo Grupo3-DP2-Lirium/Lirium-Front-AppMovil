@@ -43,6 +43,7 @@ class RowOfMemories extends StatelessWidget {
             MaterialPageRoute(
               builder: (context) => CreateMemorySelectType(
                 memorialId: memorial.idMemorial,
+                memorialName: memorial.nickname,
               ),
             ),
           );

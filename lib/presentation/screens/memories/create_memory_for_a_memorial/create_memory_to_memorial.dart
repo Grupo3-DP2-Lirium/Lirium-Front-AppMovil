@@ -107,6 +107,7 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
                                 MaterialPageRoute(
                                   builder: (_) => CreateMemorySelectType(
                                     memorialId: misFiltrados[index].idMemorial,
+                                    memorialName: misFiltrados[index].nickname,
                                   ),
                                 ),
                               );
@@ -146,6 +147,7 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
                                 MaterialPageRoute(
                                   builder: (_) => CreateMemorySelectType(
                                     memorialId: colabFiltrados[index].idMemorial,
+                                    memorialName: colabFiltrados[index].nickname,
                                   ),
                                 ),
                               );

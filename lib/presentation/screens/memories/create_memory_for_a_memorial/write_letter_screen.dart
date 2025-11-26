@@ -5,16 +5,17 @@ import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
 import '../../../../providers/memory_provider.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../components/common/app_pop_up.dart';
-import 'memory_success_screen.dart';
 import 'package:provider/provider.dart';
 
 /// Pantalla para escribir una carta personal
 class WriteLetterScreen extends StatefulWidget {
   final String memorialId;
+  final String memorialName;
 
   const WriteLetterScreen({
     super.key,
     required this.memorialId,
+    required this.memorialName
   });
 
   @override
@@ -100,15 +101,6 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
     );
   }
 
-  void _navigateToSuccess() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MemorySuccessScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,9 +118,9 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
             children: [
               const SizedBox(height: 32),
 
-              const Text(
-                '¿Qué te gustaría decirle?',
-                style: TextStyle(
+              Text(
+                '¿Qué te gustaría decirle a ${widget.memorialName}?',
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w600,
                   color: Colors.black,

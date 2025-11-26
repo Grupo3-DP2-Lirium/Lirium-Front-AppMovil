@@ -586,6 +586,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen>
       MaterialPageRoute(
         builder: (_) => CreateMemorySelectType(
           memorialId: _detailsState.idMemorial,
+          memorialName: _detailsState.name,
         ),
       ),
     );
