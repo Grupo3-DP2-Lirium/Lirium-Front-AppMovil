@@ -162,19 +162,26 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
 
             // Grid memories
             Expanded(
-              child: memoriesToShow.isEmpty
+              child: prov.cargando && prov.misMemorias.isEmpty
+                  ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              )
+                  : memoriesToShow.isEmpty
                   ? _buildEmptyState()
                   : NotificationListener<ScrollNotification>(
                 onNotification: (scrollInfo) {
                   if (!prov.cargando &&
                       scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
-                    prov.cargarMisMemorias(); // carga siguiente página
+                    prov.cargarMisMemorias();
                   }
                   return false;
                 },
                 child: _buildGridView(memoriesToShow, prov),
               ),
-            ),
+            )
           ],
         ),
       ),

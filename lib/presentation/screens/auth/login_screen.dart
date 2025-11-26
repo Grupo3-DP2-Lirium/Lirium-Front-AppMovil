@@ -9,11 +9,14 @@ import 'package:flutter_frontend/presentation/components/inputs/custom_text_fiel
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import '../../../data/models/user_response.dart';
 import '../../../data/services/storage_service.dart';
+import '../../../providers/user_provider.dart';
 import '../../components/components.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialEmail});
@@ -119,21 +122,22 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        // Datos básicos
-        final fullName = data['fullName'] as String? ?? '';
-        final name = data['name'] as String? ?? '';
-        final usedSpace = (data['usedSpace'] as num?)?.toDouble() ?? 0.0;
-        final totalCapacity = (data['totalCapacity'] as num?)?.toDouble() ?? 15.0; // default 15GB
-        final documentariesPurchased = (data['documentariesPurchased'] as num?)?.toInt() ?? 0;
-        final documentariesAvailable = (data['documentariesAvailable'] as num?)?.toInt() ?? 0;
+        final user = UserResponse.fromJson(data);
 
-        await StorageService.saveUsedSpace(usedSpace);
-        await StorageService.saveTotalCapacity(totalCapacity);
-        await StorageService.saveEmail(_emailController.text);
-        await StorageService.saveFullName(fullName);
-        await StorageService.saveName(name);
-        await StorageService.saveDocumentariesPurchased(documentariesPurchased);
-        await StorageService.saveDocumentariesAvailable(documentariesAvailable);
+        await StorageService.saveFullName(user.fullName);
+        await StorageService.saveName(user.name);
+        await StorageService.saveEmail(user.email);
+        await StorageService.saveUsedSpace(user.usedSpace);
+        await StorageService.saveTotalCapacity(user.totalCapacity);
+        await StorageService.saveDocumentariesPurchased(user.documentariesPurchased);
+        await StorageService.saveDocumentariesAvailable(user.documentariesAvailable);
+
+        if (user.profilePhoto != null) {
+          await StorageService.saveProfilePhotoUrl(user.profilePhoto!.fileUrl ?? "");
+        }
+
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        await userProvider.loadUser();
 
         httpService.setToken(access);
         await storage.save(access: access, refresh: refresh);

@@ -14,23 +14,22 @@ class VideosScreen extends StatefulWidget {
 }
 
 class _VideosScreenState extends State<VideosScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true;
+
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
-    // Cargar documentales y cápsulas después de montar el widget
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DocumentaryProvider>().loadMyDocumentaries();
-      context.read<CapsuleProvider>().loadMyCapsules();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     double screenHeight = MediaQuery.of(context).size.height;
     double appBarHeight = screenHeight * 0.13;
 
@@ -49,7 +48,7 @@ class _VideosScreenState extends State<VideosScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
+        children: [
           CapsulesTab(),
           DocumentariesTab(),
         ],

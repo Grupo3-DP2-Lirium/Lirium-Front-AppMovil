@@ -8,7 +8,7 @@ class ProfileAvatar extends StatefulWidget {
   final double radius;
   final IconData? placeholderIcon;
   final bool showCameraIcon;
-
+  final String? photoUrl; // 👈 NUEVO
   final void Function(File?)? onImageChanged;
 
   const ProfileAvatar({
@@ -16,6 +16,7 @@ class ProfileAvatar extends StatefulWidget {
     this.radius = 30,
     this.placeholderIcon,
     this.showCameraIcon = false,
+    this.photoUrl,
     this.onImageChanged,
   });
 
@@ -28,13 +29,12 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
-    // Pedir permisos según la fuente
     if (source == ImageSource.camera) {
       final cameraStatus = await Permission.camera.request();
       if (!cameraStatus.isGranted) return;
     } else if (source == ImageSource.gallery) {
-      final storageStatus = await Permission.photos.request(); // iOS
-      final androidStatus = await Permission.storage.request(); // Android
+      final storageStatus = await Permission.photos.request();
+      final androidStatus = await Permission.storage.request();
       if (!storageStatus.isGranted && !androidStatus.isGranted) return;
     }
 
@@ -79,16 +79,23 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? imageProvider;
+
+    if (_imageFile != null) {
+      imageProvider = FileImage(_imageFile!);
+    } else if (widget.photoUrl != null && widget.photoUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(widget.photoUrl!);
+    }
+
     return GestureDetector(
-      onTap: _showImageSourceActionSheet,
+      onTap: widget.showCameraIcon ? _showImageSourceActionSheet : null,
       child: Stack(
         children: [
           CircleAvatar(
             radius: widget.radius,
             backgroundColor: Colors.grey[300],
-            backgroundImage:
-            _imageFile != null ? FileImage(_imageFile!) : null,
-            child: _imageFile == null
+            backgroundImage: imageProvider,
+            child: imageProvider == null
                 ? Icon(
               widget.placeholderIcon ?? Icons.person,
               color: Colors.grey,

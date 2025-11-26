@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'http_client.dart';
 import 'storage_service.dart';
@@ -33,8 +35,6 @@ class AuthService {
 
         // Guardar automáticamente en storage seguro
         await StorageService.saveToken(token);
-        //await StorageService.savePlan(plan);
-        //await StorageService.savePermissions(permissions);
         await StorageService.saveEmail(email);
 
         return token;
@@ -53,19 +53,41 @@ class AuthService {
   }
 
   /// Registro de nuevo usuario
-  Future<Map<String, dynamic>> register(RegisterRequest registerRequest) async {
+  Future<Map<String, dynamic>> register(
+      RegisterRequest registerRequest,
+      String? imagePath, {
+        void Function(bool isLoading)? onLoading,
+      }) async {
+    onLoading?.call(true);
+
     try {
-      final response = await _client.post('/auth/register', data: registerRequest.toJson());
+
+      final formData = FormData.fromMap({
+        'user': jsonEncode(registerRequest.toJson()),
+        if (imagePath != null)
+          'file': await MultipartFile.fromFile(imagePath),
+      });
+
+      final response = await _client.post(
+        '/auth/register',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
 
       if (response.statusCode == 201) {
-        // El backend devuelve los datos del usuario creado
         return response.data as Map<String, dynamic>;
       } else {
         throw Exception('Registration failed: ${response.statusCode}');
       }
+
     } on DioException catch (e) {
       _handleDioError(e);
       rethrow;
+
+    } finally {
+      onLoading?.call(false);
     }
   }
 

@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import '../../../../providers/memory_provider.dart';
+import '../../../components/buttons/primary_button.dart';
+import '../../../components/common/app_pop_up.dart';
 import 'memory_success_screen.dart';
+import 'package:provider/provider.dart';
 
 /// Pantalla para escribir una carta personal
 class WriteLetterScreen extends StatefulWidget {
@@ -45,16 +49,32 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
         photoDate: DateTime.now(),
       );
 
-      await _memoryService.createMemory(
+      final createdMemoryResponse = await _memoryService.createMemory(
         request: request,
-        files: null, // Sin archivos para cartas
+        files: null,
       );
 
-      if (mounted) {
-        _showSuccess();
-        await Future.delayed(const Duration(seconds: 1));
-        _navigateToSuccess();
-      }
+      final createdMemory = createdMemoryResponse.toEntity();
+
+      Provider.of<MemoryProvider>(context, listen: false)
+          .agregarMemoria(createdMemory);
+
+      // Mostrar popup de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "Tu recuerdo ha sido creado",
+        message: "Gracias por compartir un momento más de tu historia",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cerrar popup
+              Navigator.pop(context); // retrocede al grid
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      );
     } catch (e) {
       _showError('Error al guardar la carta: $e');
     } finally {
@@ -105,8 +125,7 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
-              
-              // Pregunta principal
+
               const Text(
                 '¿Qué te gustaría decirle?',
                 style: TextStyle(
@@ -115,71 +134,45 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
                   color: Colors.black,
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Campo de texto con botón integrado
+
+              // Campo de texto
               Expanded(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey.withOpacity(0.3),
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _letterController,
-                        maxLines: null,
-                        expands: true,
-                        textAlignVertical: TextAlignVertical.top,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: 'Escribe tu mensaje aquí...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(16),
-                        ),
-                      ),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.3),
+                      width: 1,
                     ),
-                    
-                    // Botón Guardar en esquina inferior derecha
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveLetter,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          elevation: 2,
-                        ),
-                        child: Text(
-                          _isSaving ? 'Guardando...' : 'Guardar',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _letterController,
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
                     ),
-                  ],
+                    decoration: const InputDecoration(
+                      hintText: 'Escribe tu mensaje aquí...',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                  ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
+
+              // Botón PrimaryButton debajo
+              PrimaryButton(
+                text: _isSaving ? 'Guardando...' : 'Guardar',
+                onPressed: _isSaving ? null : _saveLetter,
+              ),
             ],
           ),
         ),

@@ -17,6 +17,8 @@ import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
+import '../../../providers/user_provider.dart';
+import '../../components/common/profile_avatar.dart';
 import '../memories/my_personal_space_screen.dart';
 import '../memories/new_reflection_screen.dart';
 import '../memories/memories_grid_screen.dart';
@@ -34,36 +36,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _reminderService = ReminderService();
   final _notificationService = NotificationService();
-  String? _currentName;
+
   late Future<List<Reminder>> _remindersFuture;
   int _unreadNotificationsCount = 0;
-
-  Future<void> _loadUserData() async {
-    try {
-      final email = await StorageService.getEmail();
-      print("Email guardado del usuario: $email");
-      final name = await StorageService.getName();
-      print("Email guardado del usuario: $name");
-
-      setState(() {
-        _currentName = name;
-      });
-    } catch (e, stack) {
-      print("Error cargando usuario: $e");
-      print(stack);
-      _currentName = null;
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MemorialProvider>().cargarMisMemoriales();
+      context.read<UserProvider>().loadUser();
     });
     _remindersFuture = _reminderService.getUpcomingReminders(days: 7);
     _loadUnreadCount();
-    _loadUserData();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -143,6 +128,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final subProvider = context.watch<SubscriptionProvider>();
+    final userProv = context.watch<UserProvider>();
+    final name = userProv.name ?? '';
+    final photoUrl = userProv.photoUrl;
 
     if (!subProvider.isLoaded) {
       return const Scaffold(
@@ -171,25 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       // Avatar
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: const CircleAvatar(
-                          radius: 22,
-                          backgroundImage: NetworkImage(
-                            'https://i.pravatar.cc/150?img=5',
-                          ),
-                        ),
+                      ProfileAvatar(
+                        radius: 30,
+                        photoUrl: photoUrl,
                       ),
                       const SizedBox(width: 12),
-
                       // Saludo + pregunta al lado del avatar
                       Expanded(
                         child: Column(
@@ -207,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   const TextSpan(text: 'Hola, '),
                                   TextSpan(
-                                    text: _currentName ?? '',
+                                    text: name,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.primary,

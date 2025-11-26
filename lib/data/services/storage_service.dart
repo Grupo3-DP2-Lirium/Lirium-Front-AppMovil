@@ -13,17 +13,23 @@ class StorageService {
   );
 
   static const String _tokenKey = 'jwt_token';
-  //static const String _planKey = 'user_plan';
-  //static const String _permissionsKey = 'user_permissions';
-  //static const String _extraStorageKey = 'user_extra_storage';
-  static const String _emailKey = 'user_email';
+ static const String _emailKey = 'user_email';
   static const String _fullNameKey = 'user_full_name';
   static const String _nameKey = 'user_name';
   static const String _usedSpaceKey = 'user_used_space';
   static const String _totalCapacityKey = 'user_total_capacity';
-  // Claves para documentarios
   static const String _documentariesPurchasedKey = 'user_documentaries_purchased';
   static const String _documentariesAvailableKey = 'user_documentaries_available';
+
+  static Future<void> saveProfilePhotoUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("profilePhotoUrl", url);
+  }
+
+  static Future<String?> getProfilePhotoUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("profilePhotoUrl");
+  }
 
   /// Guarda la cantidad de documentarios adquiridos
   static Future<void> saveDocumentariesPurchased(int value) async {

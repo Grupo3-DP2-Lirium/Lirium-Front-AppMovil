@@ -5,6 +5,7 @@ import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/register_request.dart';
 import '../setup/preserve_question_screen.dart';
+import 'dart:io';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  File? _profileImage;
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -62,7 +64,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   showCameraIcon: true,
                   placeholderIcon: Icons.image_outlined,
                   onImageChanged: (file) {
-                    // Imagen seleccionada - por implementar
+                    setState(() {
+                      _profileImage = file;
+                    });
                   },
                 ),
               ),
@@ -263,6 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+
       final registerRequest = RegisterRequest(
         firstName: _nameController.text.trim(),
         firstLastName: _lastNameController.text.trim(),
@@ -273,7 +278,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
       );
 
-      final userResponse = await _authService.register(registerRequest);
+      final userResponse = await _authService.register(registerRequest, _profileImage?.path);
 
       setState(() {
         _isLoading = false;

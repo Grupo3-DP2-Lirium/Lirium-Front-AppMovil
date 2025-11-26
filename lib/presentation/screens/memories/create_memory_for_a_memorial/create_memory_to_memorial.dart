@@ -33,13 +33,6 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
     });
   }
 
-  void _createMemorial(BuildContext context) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => const NewMemorialRelationScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     final memorialProvider = context.watch<MemorialProvider>();

@@ -9,6 +9,8 @@ import 'package:flutter_frontend/presentation/widgets/auth_listener_wrapper.dart
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:flutter_frontend/providers/reflection_provider.dart';
+import 'package:flutter_frontend/providers/user_provider.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:open_file/open_file.dart';
@@ -265,7 +267,9 @@ class _RemoryAppState extends State<RemoryApp> {
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(create: (_) => DocumentaryProvider()),
         ChangeNotifierProvider(create: (_) => CapsuleProvider()),
-        ChangeNotifierProvider(create: (_) => SubscriptionProvider())
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ReflectionProvider()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
