@@ -8,8 +8,12 @@ import 'write_letter_screen.dart';
 
 class CreateMemorySelectType extends StatefulWidget {
   final String memorialId;
+  final String memorialName;
 
-  const CreateMemorySelectType({super.key, required this.memorialId});
+  const CreateMemorySelectType({super.key,
+    required this.memorialId,
+    required this.memorialName,
+  });
 
   @override
   State<CreateMemorySelectType> createState() => _CreateMemorySelectTypeState();
@@ -77,7 +81,9 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => WriteLetterScreen(
-                                memorialId: widget.memorialId),
+                                memorialId: widget.memorialId,
+                                memorialName: widget.memorialName,
+                            ),
                           ),
                         ),
                       ),
