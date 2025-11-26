@@ -90,9 +90,7 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () =>
-            Provider.of<ReflectionProvider>(context, listen: false)
-                .refreshReflections(),
+        onRefresh: _refreshReflections,
         child: Consumer<ReflectionProvider>(
           builder: (context, provider, _) {
             final reflections = provider.reflections;

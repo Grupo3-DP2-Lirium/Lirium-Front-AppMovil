@@ -4,6 +4,7 @@ import 'package:flutter_frontend/data/models/documentary_request.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
+import 'package:flutter_frontend/presentation/screens/videos/videos_screen.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -567,8 +568,13 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
           ),
         );
 
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      } else {
+        // Volver a la lista
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideosScreen(),
+          ),
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${provider.error ?? "Desconocido"}'),

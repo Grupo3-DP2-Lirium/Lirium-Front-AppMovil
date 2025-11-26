@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
+import '../../../providers/reflection_provider.dart';
 
 class NewReflectionScreen extends StatefulWidget {
   final ReflectionModel? editingReflection;
@@ -352,6 +353,11 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       );
 
       await _reflectionService.saveReflection(reflection);
+
+      if (mounted) {
+        final provider = Provider.of<ReflectionProvider>(context, listen: false);
+        await provider.refreshReflections();
+      }
 
       if (!mounted) return;
       

@@ -6,9 +6,13 @@ import 'package:flutter_frontend/presentation/components/common/app_colors.dart'
 import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
 import 'package:flutter_frontend/presentation/components/inputs/filter_carousel_selector.dart';
+import 'package:flutter_frontend/presentation/screens/videos/capsules_tab.dart';
+import 'package:flutter_frontend/presentation/screens/videos/videos_screen.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 import 'package:flutter_frontend/providers/documentary_provider.dart';
 import 'package:provider/provider.dart';
+
+import 'capsule_preview_screen.dart';
 
 class CapsuleConfigScreen extends StatefulWidget {
   final String memorialId;
@@ -477,8 +481,12 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
         );
 
         // Volver a la lista
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideosScreen(),
+          ),
+        );      } else {
         _handleGenerationError(provider.error);
       }
     } else {

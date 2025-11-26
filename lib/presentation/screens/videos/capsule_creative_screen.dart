@@ -362,12 +362,11 @@ class _CapsuleCreativeScreenState extends State<CapsuleCreativeScreen> {
       );
 
       // Ir a la vista previa de esa cápsula
-      Navigator.pushAndRemoveUntil(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => CapsulePreviewScreen(capsule: started),
         ),
-            (route) => route.isFirst,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
