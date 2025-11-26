@@ -119,7 +119,7 @@ class AboutScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),),
-                    subtitle: const Text("soporte@miapp.com"),
+                    subtitle: const Text("soporte@lirium.com"),
                     onTap: _launchEmail,
                   ),
                   const Divider(height: 1),
