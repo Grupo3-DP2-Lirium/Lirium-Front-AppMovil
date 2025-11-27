@@ -15,6 +15,8 @@ class CapsuleProvider extends ChangeNotifier {
   bool _loading = false;
   bool _loadingFilters = false;
   String? _error;
+  bool _hasLoadedOnce = false;
+  bool get hasLoadedOnce => _hasLoadedOnce;
 
   Timer? _pollingTimer;
   final Set<String> _processingCapsules = {};
@@ -47,6 +49,7 @@ class CapsuleProvider extends ChangeNotifier {
 
     try {
       _capsules = await _service.getMyCapsules();
+      _hasLoadedOnce = true;
       _checkProcessingCapsules();
     } catch (e) {
       _error = e.toString();

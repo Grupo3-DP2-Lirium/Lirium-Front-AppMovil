@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/audio_player.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/image_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/video_player.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -8,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 import '../../../providers/reflection_provider.dart';
@@ -40,6 +44,9 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   List<ReflectionFile> _attachedFiles = [];
   bool _isSaving = false;
   bool _isRecording = false;
+
+  Map<String, VideoPlayerController> _videoControllers = {};
+  bool _isUploadingFile = false;
 
   @override
   void initState() {
@@ -277,6 +284,8 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
   Future<void> _processPickedFile(File file, ReflectionFileType type) async {
     try {
+      setState(() => _isUploadingFile = true);
+
       final fileSize = await file.length();
 
       // Verificar límite de almacenamiento para usuarios gratuitos
@@ -315,12 +324,30 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
       final reflectionFile = await _reflectionService.copyFileToReflectionsDirectory(file, type);
 
+      // Vista Previa del Video
+      if (type == ReflectionFileType.video) {
+        final localPath = reflectionFile.localPath;
+
+        if (localPath != null) {
+          final controller = VideoPlayerController.file(File(localPath));
+
+          await controller.initialize();
+          controller.setLooping(true);
+          controller.pause();
+
+          // Guardarlo en tu mapa de controladores
+          _videoControllers[localPath] = controller;
+        }
+      }
+
       setState(() {
         _attachedFiles.add(reflectionFile);
       });
 
     } catch (e) {
       _showErrorDialog('Error al procesar el archivo: $e');
+    } finally {
+      setState(() => _isUploadingFile = false);
     }
   }
 
@@ -656,100 +683,160 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   }
 
   Widget _buildFilePreview(ReflectionFile file, int index) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              child: file.isImage
-                  ? (file.localPath != null
-                      ? Image.file(
-                          File(file.localPath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.broken_image),
-                            );
-                          },
-                        )
-                      : file.downloadUrl.isNotEmpty
-                        ? Image.network(
-                            file.downloadUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.broken_image),
-                              );
-                            },
-                          )
-                        : Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.image),
-                          ))
-                  : Container(
-                      color: file.isAudio 
-                          ? Colors.blue.shade50 
-                          : Colors.purple.shade50,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            file.isAudio ? Icons.audiotrack : Icons.videocam,
-                            size: 24,
-                            color: file.isAudio 
-                                ? Colors.blue.shade600 
-                                : Colors.purple.shade600,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            file.isAudio ? 'Audio' : 'Video',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: file.isAudio 
-                                  ? Colors.blue.shade600 
-                                  : Colors.purple.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return GestureDetector(
+      onTap: () => _openFile(file),
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Stack(
+          children: [
+            // Contenido (imagen, video, audio) ocupa TODO el contenedor
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: SizedBox.expand(
+                child: _buildFileContent(file),
+              ),
             ),
-          ),
-          // Botón de eliminar
-          Positioned(
-            top: 4,
-            right: 4,
-            child: InkWell(
-              onTap: () => _removeAttachedFile(index),
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close,
-                  size: 14,
-                  color: Colors.white,
+            // Botón de borrar sobre la esquina superior derecha
+            Positioned(
+              top: 4,
+              right: 4,
+              child: InkWell(
+                onTap: () => _removeAttachedFile(index),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openFile(ReflectionFile file) {
+    if (file.isImage) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FullScreenImage(file: file),
+        ),
+      );
+    } else if (file.isAudio) {
+      _showAudioPlayer(file);
+    } else if (file.isVideo) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FullScreenVideoPlayer(file: file),
+        ),
+      );
+    }
+  }
+
+  void _showAudioPlayer(ReflectionFile file) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Reproducir audio"),
+        content: AudioPlayerWidget(path: file.localPath!),
+      ),
+    );
+  }
+
+
+  Widget _buildFileContent(ReflectionFile file) {
+    if (file.isImage) return _buildImagePreview(file);
+    if (file.isAudio) return _buildAudioPreview();
+    return _buildVideoPreview(file);
+  }
+
+  Widget _buildImagePreview(ReflectionFile file) {
+    if (file.localPath != null) {
+      return Image.file(
+        File(file.localPath!),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
+      );
+    }
+
+    if (file.downloadUrl.isNotEmpty) {
+      return Image.network(
+        file.downloadUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
+      );
+    }
+
+    return Container(
+      color: Colors.grey.shade200,
+      child: const Icon(Icons.image),
+    );
+  }
+
+  Widget _buildAudioPreview() {
+    return Container(
+      color: Colors.blue.shade50,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.audiotrack, size: 24, color: Colors.blue.shade600),
+          const SizedBox(height: 4),
+          Text(
+            "Audio",
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.blue.shade600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildVideoPreview(ReflectionFile file) {
+    final path = file.localPath;
+
+    // Aún no está disponible
+    if (path == null) {
+      return Container(
+        color: Colors.purple.shade50,
+        child: const Center(child: Icon(Icons.videocam)),
+      );
+    }
+
+    final controller = _videoControllers[path];
+
+    if (controller == null || !controller.value.isInitialized) {
+      return Container(
+        color: Colors.purple.shade50,
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: controller.value.size.width,
+        height: controller.value.size.height,
+        child: VideoPlayer(controller),
+      ),
+    );
+  }
+
 }

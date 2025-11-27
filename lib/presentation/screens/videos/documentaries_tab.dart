@@ -10,7 +10,9 @@ import 'package:provider/provider.dart';
 import '../../../providers/plan_provider.dart';
 
 class DocumentariesTab extends StatefulWidget {
-  const DocumentariesTab({super.key});
+  final DocumentaryProvider provider;
+
+  const DocumentariesTab(this.provider, {super.key});
 
   @override
   State<DocumentariesTab> createState() => _DocumentariesTabState();
@@ -21,7 +23,7 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<DocumentaryProvider>();
+    final provider = widget.provider;
     final subscriptionProvider = context.watch<SubscriptionProvider>();
     final maxDocs = subscriptionProvider.subscription?.maxDocumentariesPerMonth ?? 0;
     final now = DateTime.now();

@@ -8,7 +8,6 @@ import 'reflection_detail_screen.dart';
 import 'new_reflection_screen.dart';
 import 'package:provider/provider.dart';
 
-// Mo
 class MyPersonalSpaceScreen extends StatefulWidget {
   const MyPersonalSpaceScreen({super.key});
 
@@ -23,7 +22,6 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
   @override
   void initState() {
     super.initState();
-    // cargar una sola vez
     Future.microtask(() {
       Provider.of<ReflectionProvider>(context, listen: false).loadReflections();
     });

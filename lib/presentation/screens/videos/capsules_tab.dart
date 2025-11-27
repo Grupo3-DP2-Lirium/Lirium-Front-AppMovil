@@ -11,41 +11,44 @@ import 'package:provider/provider.dart';
 import 'package:flutter_frontend/providers/capsule_provider.dart';
 
 class CapsulesTab extends StatefulWidget {
-  const CapsulesTab({super.key});
+  final CapsuleProvider provider;
+
+  const CapsulesTab(this.provider, {super.key});
 
   @override
   State<CapsulesTab> createState() => _CapsulesTabState();
 }
 
 class _CapsulesTabState extends State<CapsulesTab> {
-  String _selectedFilter = 'drafts'; // 'drafts' o 'published'
+  String _selectedFilter = 'drafts'; // drafts / published
   bool canUseIA = false;
 
   @override
   void initState() {
     super.initState();
+
+    // IA permissions
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CapsuleProvider>().loadMyCapsules();
       final subscriptionProvider = context.read<SubscriptionProvider>();
-      final permissions = subscriptionProvider.permissions; // lista de permisos
+      final permissions = subscriptionProvider.permissions;
+
       setState(() {
         canUseIA = permissions.contains('IA_FEATURES');
       });
     });
   }
-
   @override
   Widget build(BuildContext context) {
-    final capsuleProvider = context.watch<CapsuleProvider>();
+    final provider = widget.provider;
     final subscriptionProvider = context.watch<SubscriptionProvider>();
     canUseIA = subscriptionProvider.permissions.contains('IA_FEATURES');
 
-    if (capsuleProvider.loading && capsuleProvider.capsules.isEmpty) {
+    if (!provider.hasLoadedOnce && provider.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final draftCapsules = capsuleProvider.draftCapsules;
-    final publishedCapsules = capsuleProvider.publishedCapsules;
+    final draftCapsules = provider.draftCapsules;
+    final publishedCapsules = provider.publishedCapsules;
 
     // Determinar qué mostrar según el filtro
     final capsulesFilteredToShow = _selectedFilter == 'drafts'
@@ -55,7 +58,7 @@ class _CapsulesTabState extends State<CapsulesTab> {
     return Stack(
       children: [
         RefreshIndicator(
-          onRefresh: () => capsuleProvider.loadMyCapsules(force: true),
+          onRefresh: () => provider.loadMyCapsules(force: true),
           child: draftCapsules.isEmpty && publishedCapsules.isEmpty
               ? _buildEmptyState()
               : Column(

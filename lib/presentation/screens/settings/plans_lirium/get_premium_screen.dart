@@ -250,7 +250,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(50),
                       child: Image.asset(
-                        'assets/images/lirium_icon.png',
+                        'assets/images/img19.jpg',
                         width: 64,
                         height: 64,
                         fit: BoxFit.cover,

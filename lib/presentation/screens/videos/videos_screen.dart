@@ -25,6 +25,19 @@ class _VideosScreenState extends State<VideosScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+
+    // cargar data después de que el widget se haya montado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final capsules = context.read<CapsuleProvider>();
+      final documentaries = context.read<DocumentaryProvider>();
+      capsules.loadMyCapsules();
+      documentaries.loadMyDocumentaries();
+    });
   }
 
   @override
@@ -32,6 +45,8 @@ class _VideosScreenState extends State<VideosScreen>
     super.build(context);
     double screenHeight = MediaQuery.of(context).size.height;
     double appBarHeight = screenHeight * 0.13;
+    final capsules = context.watch<CapsuleProvider>();
+    final documentaries = context.watch<DocumentaryProvider>();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -49,8 +64,8 @@ class _VideosScreenState extends State<VideosScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          CapsulesTab(),
-          DocumentariesTab(),
+          CapsulesTab(capsules),
+          DocumentariesTab(documentaries),
         ],
       ),
     );
