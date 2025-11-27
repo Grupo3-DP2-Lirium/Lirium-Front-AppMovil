@@ -156,7 +156,13 @@ class MemorialService {
 
     print('DEBUG: getMemorials response - Status: ${res.statusCode}, Body: ${res.body}');
     if (res.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(res.body);
+      final dynamic responseBody = jsonDecode(res.body);
+      
+      // El backend devuelve un objeto paginado: {"content": [...], "pageable": {...}}
+      final List<dynamic> jsonList = responseBody is Map 
+          ? (responseBody['content'] as List<dynamic>)
+          : responseBody as List<dynamic>;
+      
       final memorials = jsonList
           .map((json) => MemorialResponseModel.fromJson(json).toEntity())
           .toList();

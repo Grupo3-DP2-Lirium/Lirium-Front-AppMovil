@@ -14,6 +14,14 @@ class DocumentaryProvider extends ChangeNotifier {
   bool _loading = false;
   bool _loadingMusic = false;
   String? _error;
+  DateTime? _lastLoadAttempt;
+  
+  DocumentaryProvider() {
+    print('🎬 DocumentaryProvider constructor - loading: $_loading');
+    // Asegurar que siempre inicia en false
+    _loading = false;
+    _loadingMusic = false;
+  }
 
   Timer? _pollingTimer;
   final Set<String> _processingDocumentaries = {};
@@ -50,21 +58,46 @@ class DocumentaryProvider extends ChangeNotifier {
 
   /// Cargar todos los documentales del usuario
   Future<void> loadMyDocumentaries({bool force = false}) async {
-    if (_loading && !force) return;
+    print('🎬 loadMyDocumentaries called - loading: $_loading, force: $force, documentaries count: ${_documentaries.length}');
+    
+    // Protección: Si han pasado más de 2 segundos desde el último intento, resetear loading
+    if (_loading && _lastLoadAttempt != null) {
+      final timeSinceLastAttempt = DateTime.now().difference(_lastLoadAttempt!);
+      if (timeSinceLastAttempt.inSeconds > 2) {
+        print('⚠️ Resetting stuck loading state (${timeSinceLastAttempt.inSeconds}s since last attempt)');
+        _loading = false;
+      }
+    }
+    
+    // Si loading es true pero no hay timestamp, también resetear (estado corrupto)
+    if (_loading && _lastLoadAttempt == null) {
+      print('⚠️ Resetting corrupted loading state (no timestamp)');
+      _loading = false;
+    }
+    
+    if (_loading && !force) {
+      print('⚠️ Already loading, skipping...');
+      return;
+    }
 
     _loading = true;
+    _lastLoadAttempt = DateTime.now();
     _error = null;
     notifyListeners();
+    
+    print('📡 Fetching documentaries from backend...');
 
     try {
       _documentaries = await _service.getMyDocumentaries();
+      print('✅ Loaded ${_documentaries.length} documentaries');
       _checkProcessingDocumentaries();
     } catch (e) {
       _error = e.toString();
-      print('ERROR loading documentaries: $e');
+      print('❌ ERROR loading documentaries: $e');
     } finally {
       _loading = false;
       notifyListeners();
+      print('🏁 loadMyDocumentaries finished - loading: $_loading');
     }
   }
 
@@ -263,7 +296,7 @@ class DocumentaryProvider extends ChangeNotifier {
   void _startPolling() {
     if (_pollingTimer != null && _pollingTimer!.isActive) return;
 
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+    _pollingTimer = Timer.periodic(const Duration(minutes: 3), (timer) async {
       for (var documentaryId in _processingDocumentaries.toList()) {
         await refreshDocumentaryStatus(documentaryId);
       }
