@@ -20,6 +20,12 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
   String _selectedFilter = 'drafts'; // 'drafts' o 'published'
 
   @override
+  void initState() {
+    super.initState();
+    print('🎬 DocumentariesTab initState');
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<DocumentaryProvider>();
     final subscriptionProvider = context.watch<SubscriptionProvider>();
@@ -30,11 +36,24 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
       return createdAt.year == now.year && createdAt.month == now.month;
     }).length;
 
+    print('🎬 DocumentariesTab build - loading: ${provider.loading}, docs: ${provider.documentaries.length}, error: ${provider.error}');
+
     if (provider.loading && provider.documentaries.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      print('⏳ Showing loading indicator');
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Cargando documentales...'),
+          ],
+        ),
+      );
     }
 
     if (provider.error != null) {
+      print('❌ Showing error: ${provider.error}');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -48,7 +67,10 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => provider.loadMyDocumentaries(force: true),
+              onPressed: () {
+                print('🔄 Retry button pressed');
+                provider.loadMyDocumentaries(force: true);
+              },
               child: const Text('Reintentar'),
             ),
           ],
@@ -57,6 +79,7 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
     }
 
     if (provider.documentaries.isEmpty) {
+      print('📭 Showing empty state');
       return _buildEmptyState(context);
     }
 

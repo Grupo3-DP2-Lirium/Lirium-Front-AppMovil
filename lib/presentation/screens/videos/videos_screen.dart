@@ -24,7 +24,16 @@ class _VideosScreenState extends State<VideosScreen>
   @override
   void initState() {
     super.initState();
+    print('📹 VideosScreen initState');
     _tabController = TabController(length: 2, vsync: this);
+
+    // Cargar documentales y cápsulas después de montar el widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('📹 Post frame callback - calling loadMyDocumentaries');
+      context.read<DocumentaryProvider>().loadMyDocumentaries();
+      print('📹 Post frame callback - calling loadMyCapsules');
+      context.read<CapsuleProvider>().loadMyCapsules();
+    });
   }
 
   @override
