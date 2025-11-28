@@ -569,18 +569,9 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
         );
 
         // Volver a la lista
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VideosScreen(),
-          ),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${provider.error ?? "Desconocido"}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        Navigator.pop(context);
+        Navigator.pop(context);
+        Navigator.pop(context);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -26,7 +26,9 @@ class _SelectMemorialDocumentaryScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<MemorialProvider>(context, listen: false);
-      provider.cargarMisMemoriales(force: true);
+      if (provider.misMemoriales.isEmpty) {
+        provider.cargarMisMemoriales(force: true);
+      }
     });
   }
 

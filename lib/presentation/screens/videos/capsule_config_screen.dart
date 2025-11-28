@@ -480,13 +480,11 @@ class _CapsuleConfigScreenState extends State<CapsuleConfigScreen> {
           ),
         );
 
-        // Volver a la lista
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VideosScreen(),
-          ),
-        );      } else {
+        Navigator.pop(context);
+        Navigator.pop(context);
+        Navigator.pop(context);
+
+      } else {
         _handleGenerationError(provider.error);
       }
     } else {
