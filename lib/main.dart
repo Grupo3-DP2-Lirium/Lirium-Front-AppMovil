@@ -453,15 +453,16 @@ class _RemoryAppState extends State<RemoryApp> {
         ],
         supportedLocales: const [
           Locale('es'),
+          
           Locale('en'),
         ],
-        // ✅ Envolver TODA la app con AuthListenerWrapper
+        // Envolver TODA la app con AuthListenerWrapper
         builder: (context, child) {
           return AuthListenerWrapper(
             child: child ?? const SizedBox(),
           );
         },
-        home: const WelcomeScreen(), // ✅ Inicia con onboarding
+        home: const WelcomeScreen(), // Inicia con onboarding
         routes: {
           '/login': (_) => const LoginScreen(),
         },
