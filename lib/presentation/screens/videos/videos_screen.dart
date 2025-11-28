@@ -24,7 +24,9 @@ class _VideosScreenState extends State<VideosScreen>
   @override
   void initState() {
     super.initState();
+    print('📹 VideosScreen initState');
     _tabController = TabController(length: 2, vsync: this);
+
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() {});
@@ -37,6 +39,7 @@ class _VideosScreenState extends State<VideosScreen>
       final documentaries = context.read<DocumentaryProvider>();
       capsules.loadMyCapsules();
       documentaries.loadMyDocumentaries();
+
     });
   }
 

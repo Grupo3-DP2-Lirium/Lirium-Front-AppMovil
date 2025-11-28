@@ -543,17 +543,26 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
-                      color: Colors.black87,
+                      //color: Colors.black87,
                     ),
                     decoration: const InputDecoration(
                       hintText: 'Título',
+                      hintStyle: TextStyle(fontSize: 24, color: Colors.black26),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(vertical: 8),
                     ),
                     textCapitalization: TextCapitalization.sentences,
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
+
+                  Divider(
+                    color: Colors.grey,
+                    thickness: 0.2,
+                    height: 20,
+                  ),
+
+                  const SizedBox(height: 4),
 
                   // Campo de contenido
                   Expanded(
@@ -565,6 +574,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                       style: theme.textTheme.bodyLarge,
                       decoration: const InputDecoration(
                         hintText: 'Empezar a escribir...',
+                        hintStyle: TextStyle(fontSize: 16, color: Colors.black38),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.only(top: 12),
                       ),

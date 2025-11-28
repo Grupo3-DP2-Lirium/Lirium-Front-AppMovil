@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/components.dart';
 import '../auth/login_screen.dart';
 
 class LegacyScreen extends StatelessWidget {
   const LegacyScreen({super.key});
+
+  Future<void> _markOnboardingComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenOnboarding', true);
+    print('✅ Onboarding marcado como completado');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +40,14 @@ class LegacyScreen extends StatelessWidget {
           NavigationRow(
             nextText: 'Continuar',
             onBack: () => Navigator.pop(context),
-            onNext: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+            onNext: () async {
+              await _markOnboardingComplete();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
             },
           ),
           const SizedBox(height: 24),
