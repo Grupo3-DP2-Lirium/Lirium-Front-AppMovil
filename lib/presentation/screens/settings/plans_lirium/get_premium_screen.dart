@@ -320,11 +320,12 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                                 ? (plan['permissions'] as List).map((p) => p['name'].toString()).toList()
                                 : [],
                             // Atributos extra - Convertir double a int si es necesario
-                            storageLimitGb: plan['storageLimitGb'] != null 
-                                ? (plan['storageLimitGb'] is int 
-                                    ? plan['storageLimitGb'] 
-                                    : (plan['storageLimitGb'] as num).toInt())
+                            storageLimitGb: plan['storageLimitGb'] != null
+                                ? (plan['storageLimitGb'] is double
+                                ? plan['storageLimitGb'] as double
+                                : (plan['storageLimitGb'] as num).toDouble())
                                 : null,
+
                             maxCollaborations: plan['maxCollaborations'] != null
                                 ? (plan['maxCollaborations'] is int
                                     ? plan['maxCollaborations']
