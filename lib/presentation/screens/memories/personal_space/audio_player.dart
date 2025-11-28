@@ -30,23 +30,29 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       await _audioPlayer.setFilePath(widget.path);
     }
 
-    // Obtener duración
+    // Duración total
     _audioPlayer.durationStream.listen((d) {
       if (d != null) setState(() => _duration = d);
     });
 
-    // Actualizar posición
+    // Posición actual
     _audioPlayer.positionStream.listen((p) {
       setState(() => _position = p);
     });
 
-    // Detectar fin de audio
+    // Estado del player (AQUÍ SE ARREGLA EL ÍCONO)
     _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
+      final playing = state.playing;
+      final completed = state.processingState == ProcessingState.completed;
+
+      if (completed) {
         _audioPlayer.seek(Duration.zero);
         _audioPlayer.pause();
-        setState(() => _isPlaying = false);
       }
+
+      setState(() {
+        _isPlaying = playing && !completed;
+      });
     });
   }
 
@@ -62,14 +68,11 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     } else {
       await _audioPlayer.play();
     }
-    setState(() => _isPlaying = _audioPlayer.playing);
   }
 
   String _formatDuration(Duration d) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(d.inMinutes.remainder(60));
-    final seconds = twoDigits(d.inSeconds.remainder(60));
-    return "$minutes:$seconds";
+    String two(int n) => n.toString().padLeft(2, '0');
+    return "${two(d.inMinutes.remainder(60))}:${two(d.inSeconds.remainder(60))}";
   }
 
   @override
@@ -85,7 +88,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           IconButton(
             iconSize: 40,
             icon: Icon(
-              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+              _isPlaying
+                  ? Icons.pause_circle_filled
+                  : Icons.play_circle_fill,
               color: Colors.blue,
             ),
             onPressed: _togglePlay,
@@ -96,7 +101,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
               children: [
                 Slider(
                   value: _position.inSeconds.toDouble(),
-                  max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1,
+                  max: _duration.inSeconds > 0
+                      ? _duration.inSeconds.toDouble()
+                      : 1,
                   onChanged: (value) {
                     _audioPlayer.seek(Duration(seconds: value.toInt()));
                   },

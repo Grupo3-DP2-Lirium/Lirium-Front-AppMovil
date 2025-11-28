@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/video_player.dart';
 import '../../../data/models/reflection_model.dart';
 import '../../../data/services/reflection_service.dart';
 import 'new_reflection_screen.dart';
+
 
 class ReflectionDetailScreen extends StatefulWidget {
   final ReflectionModel reflection;
@@ -97,35 +99,43 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
 
   Future<void> _playAudio(ReflectionFile audio) async {
     try {
+      // Si ya se está reproduciendo este mismo audio → Pausar
       if (_isPlayingAudio && _currentlyPlayingAudioId == audio.id) {
-        // Pausar audio actual
         await _audioPlayer.pause();
         setState(() {
           _isPlayingAudio = false;
           _currentlyPlayingAudioId = null;
         });
-      } else {
-        // Reproducir nuevo audio
-        await _audioPlayer.stop();
-        if (audio.localPath != null) {
-          await _audioPlayer.play(DeviceFileSource(audio.localPath!));
-        } else if (audio.downloadUrl.isNotEmpty) {
-          await _audioPlayer.play(UrlSource(audio.downloadUrl));
-        }
-        setState(() {
-          _isPlayingAudio = true;
-          _currentlyPlayingAudioId = audio.id;
-        });
-
-        // Escuchar cuando termine la reproducción
-        _audioPlayer.onPlayerComplete.listen((_) {
-          setState(() {
-            _isPlayingAudio = false;
-            _currentlyPlayingAudioId = null;
-          });
-        });
+        return;
       }
+
+      await _audioPlayer.stop();
+
+      // Establecer la fuente correctamente según el tipo
+      if (audio.localPath != null) {
+        await _audioPlayer.setSource(DeviceFileSource(audio.localPath!));
+      } else if (audio.downloadUrl.isNotEmpty) {
+        await _audioPlayer.setSource(UrlSource(audio.downloadUrl));
+      } else {
+        throw "No hay fuente de audio disponible";
+      }
+
+      // Iniciar reproducción (esto sí funciona en todas las versiones)
+      await _audioPlayer.resume();
+
+      setState(() {
+        _isPlayingAudio = true;
+        _currentlyPlayingAudioId = audio.id;
+      });
+
+      _audioPlayer.onPlayerComplete.listen((_) {
+        setState(() {
+          _isPlayingAudio = false;
+          _currentlyPlayingAudioId = null;
+        });
+      });
     } catch (e) {
+      print("ERROR AUDIO: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al reproducir audio: $e')),
       );
@@ -533,7 +543,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
 
   Widget _buildVideoTile(ReflectionFile video) {
     final service = ReflectionService();
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -602,45 +612,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              videoFile.originalName,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.video_library,
-                  size: 80,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Reproductor de video en desarrollo',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Archivo: ${videoFile.originalName}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        builder: (_) => FullScreenVideoPlayer(file: videoFile),
       ),
     );
   }

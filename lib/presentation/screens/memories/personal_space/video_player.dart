@@ -19,11 +19,26 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.file.localPath!))
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-      });
+
+    // PRIORIDAD: local → si no existe, usa URL
+    if (widget.file.localPath != null &&
+        widget.file.localPath!.isNotEmpty &&
+        File(widget.file.localPath!).existsSync()) {
+      // VIDEO LOCAL
+      _controller = VideoPlayerController.file(
+        File(widget.file.localPath!),
+      );
+    } else {
+      // VIDEO DESDE AZURE (NETWORK)
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.file.downloadUrl),
+      );
+    }
+
+    _controller.initialize().then((_) {
+      setState(() {});
+      _controller.play();
+    });
 
     _controller.addListener(() {
       if (mounted) setState(() {});

@@ -758,7 +758,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Reproducir audio"),
         content: AudioPlayerWidget(path: file.localPath!),
       ),
     );
