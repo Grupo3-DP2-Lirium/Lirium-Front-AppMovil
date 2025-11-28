@@ -15,7 +15,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/storage_service.dart';
 import 'providers/memorial_provider.dart';
@@ -159,8 +158,6 @@ class RemoryApp extends StatefulWidget {
 
 class _RemoryAppState extends State<RemoryApp> {
   final FirebaseMessagingService _fcmService = FirebaseMessagingService();
-  bool _isFirstTime = true;
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -169,29 +166,11 @@ class _RemoryAppState extends State<RemoryApp> {
   }
 
   Future<void> _initializeApp() async {
-    // ✅ Verificar si es la primera vez
-    await _checkFirstTime();
-    
     // ✅ Paso 1: Solicitar permisos de notificación (Android 13+)
     await _requestNotificationPermissions();
 
     // ✅ Paso 2: Inicializar Firebase Messaging
     await _initializeFirebaseMessaging();
-    
-    setState(() {
-      _isLoading = false;
-    });
-  }
-  
-  Future<void> _checkFirstTime() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
-    
-    setState(() {
-      _isFirstTime = !hasSeenOnboarding;
-    });
-    
-    print('🎯 Primera vez: $_isFirstTime');
   }
 
   /// ✅ Solicita permisos de notificación al usuario
@@ -474,23 +453,16 @@ class _RemoryAppState extends State<RemoryApp> {
         ],
         supportedLocales: const [
           Locale('es'),
+          
           Locale('en'),
         ],
-        // ✅ Envolver TODA la app con AuthListenerWrapper
+        // Envolver TODA la app con AuthListenerWrapper
         builder: (context, child) {
           return AuthListenerWrapper(
             child: child ?? const SizedBox(),
           );
         },
-        home: _isLoading
-            ? const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            : _isFirstTime
-                ? const WelcomeScreen()
-                : const LoginScreen(),
+        home: const WelcomeScreen(), // Inicia con onboarding
         routes: {
           '/login': (_) => const LoginScreen(),
         },
