@@ -319,10 +319,23 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                             permissions: plan['permissions'] != null
                                 ? (plan['permissions'] as List).map((p) => p['name'].toString()).toList()
                                 : [],
-                            // Atributos extra
-                            storageLimitGb: plan['storageLimitGb'],
-                            maxCollaborations: plan['maxCollaborations'],
-                            maxDocumentariesPerMonth: plan['maxDocumentariesPerMonth'],
+                            // Atributos extra - Convertir double a int si es necesario
+                            storageLimitGb: plan['storageLimitGb'] != null
+                                ? (plan['storageLimitGb'] is double
+                                ? plan['storageLimitGb'] as double
+                                : (plan['storageLimitGb'] as num).toDouble())
+                                : null,
+
+                            maxCollaborations: plan['maxCollaborations'] != null
+                                ? (plan['maxCollaborations'] is int
+                                    ? plan['maxCollaborations']
+                                    : (plan['maxCollaborations'] as num).toInt())
+                                : null,
+                            maxDocumentariesPerMonth: plan['maxDocumentariesPerMonth'] != null
+                                ? (plan['maxDocumentariesPerMonth'] is int
+                                    ? plan['maxDocumentariesPerMonth']
+                                    : (plan['maxDocumentariesPerMonth'] as num).toInt())
+                                : null,
                             supportLevel: plan['supportLevel'],
                           ),
                         ),
