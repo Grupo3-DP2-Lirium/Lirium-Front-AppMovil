@@ -429,7 +429,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedMusic = previewId;
+          _selectedMusic = trackId; //Se envía la url de la pista real
         });
       },
       child: Container(

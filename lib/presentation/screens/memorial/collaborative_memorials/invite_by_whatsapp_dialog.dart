@@ -50,7 +50,7 @@ class _InviteByWhatsAppDialogState extends State<InviteByWhatsAppDialog> {
       final permissionsText = permissions.join('\n');
       final memorialName = widget.memorialName ?? "mi memorial";
       final message = '''
-🕊️ *Te invito a mi memorial en Lirium*
+🌸 *Te invito a mi memorial en Lirium*
 
 He creado "${memorialName}", un espacio especial para honrar y preservar recuerdos importantes, y me encantaría que formaras parte de él.
 

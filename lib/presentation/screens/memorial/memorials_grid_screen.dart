@@ -196,20 +196,63 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     if (provider.misMemoriales.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.auto_awesome, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                "No tienes memoriales aún",
-                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  size: 64,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Aún no tienes memoriales',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                "Crea tu primer memorial para empezar",
-                style: TextStyle(color: Colors.grey[500]),
+                'Crea un memorial para preservar los recuerdos de quienes más amas',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              PrimaryButton(
+                text: 'Crear mi primer memorial',
+                icon: Icons.add,
+                onPressed: () {
+                  final subProvider = context.read<SubscriptionProvider>();
+                  final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+                  // Verificar permisos / plan
+                  if (hasPermission) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                    ).then((_) async {
+                      // Se ejecuta al volver
+                      await _loadUserPlanAndPermissions();
+                    });
+                  }
+                },
               ),
             ],
           ),
@@ -289,20 +332,63 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     if (provider.colaborativos.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.group_outlined, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                "No colaboras en ningún memorial",
-                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.people_outline_outlined,
+                  size: 64,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Aún no tienes colaboraciones',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                "Ingresa un código para unirte",
-                style: TextStyle(color: Colors.grey[500]),
+                'Ingresa un código para unirte y compartir momentos especiales.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              PrimaryButton(
+                text: 'Ingresar código',
+                icon: Icons.qr_code,
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF6B4CE6),
+                    Color(0xFF8B6CEF),
+                  ],
+                ),
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AcceptInviteCodeScreen(),
+                    ),
+                  );
+
+                  if (result == true && mounted) {
+                    final provider = context.read<MemorialProvider>();
+                    provider.cargarColaborativos(force: true);
+                  }
+                },
               ),
             ],
           ),
