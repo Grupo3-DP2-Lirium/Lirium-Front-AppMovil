@@ -119,7 +119,7 @@ class _CapsulesTabState extends State<CapsulesTab> {
     );
   }
 
-  /// 🎨 Chips de filtro suaves
+  /// Chips de filtro suaves
   Widget _buildFilterChips(int draftsCount, int publishedCount) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

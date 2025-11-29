@@ -1,4 +1,5 @@
 import 'package:flutter_frontend/data/models/file_response.dart';
+import 'package:flutter_frontend/data/models/user_lite_response.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 
 
@@ -18,6 +19,10 @@ class MemoryResponse {
   final double? totalUsedSpace;
   final DateTime createdDate;
   final DateTime? updateDate;
+  final UserLiteResponse? author;
+  final List<String> categories;
+  final List<String> moments;
+  final bool esLineaTiempo;
 
   MemoryResponse({
     required this.idMemory,
@@ -34,7 +39,11 @@ class MemoryResponse {
     required this.files,
     required this.totalUsedSpace,
     required this.createdDate,
-    required this.updateDate
+    required this.updateDate,
+    required this.author,
+    required this.categories,
+    required this.moments,
+    required this.esLineaTiempo,
   });
 
   factory MemoryResponse.fromJson(Map<String, dynamic> j) => MemoryResponse(
@@ -55,6 +64,12 @@ class MemoryResponse {
     totalUsedSpace: j['totalUsedSpace'] == null ? null : (j['totalUsedSpace'] as num).toDouble(),
     createdDate: DateTime.parse(j['createdDate']),
     updateDate: j['updateDate'] != null ? DateTime.parse(j['updateDate']) : null,
+    author: j['author'] != null
+        ? UserLiteResponse.fromJson(j['author'] as Map<String, dynamic>)
+        : null,
+    categories: (j['categorias'] as List?)?.cast<String>() ?? const [],
+    moments: (j['momentos'] as List?)?.cast<String>() ?? const [],
+    esLineaTiempo: j['esLineaTiempo'] ?? false,
   );
 
   List<FileResponse> get images =>
@@ -104,7 +119,10 @@ class MemoryResponse {
       files: files.map((f) => f.toEntity()).toList(),
       totalUsedSpace: totalUsedSpace,
       createdDate: createdDate,
-      updateDate: updateDate
+      updateDate: updateDate,
+      categories: categories,
+      moments: moments,
+      esLineaTiempo: esLineaTiempo,
     );
   }
 
@@ -124,6 +142,9 @@ class MemoryResponse {
       'files': files.map((f) => f.toJson()).toList(),
       'totalUsedSpace': totalUsedSpace,
       'createdDate': createdDate.toIso8601String(),
+      'categorias': categories,
+      'momentos': moments,
+      'esLineaTiempo': esLineaTiempo,
     };
   }
 }

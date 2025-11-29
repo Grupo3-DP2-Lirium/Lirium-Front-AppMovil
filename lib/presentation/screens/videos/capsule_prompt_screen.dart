@@ -107,7 +107,7 @@ class _CapsulePromptScreenState extends State<CapsulePromptScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ✨ Campo de prompt con CustomTextArea
+              // Campo de prompt con CustomTextArea
               CustomTextArea(
                 label: 'Describe el momento',
                 hintText: 'Ej: "Cumpleaños 80 de mamá"\n"Navidad 2023 en casa"\n"Viaje a la playa en verano"',
