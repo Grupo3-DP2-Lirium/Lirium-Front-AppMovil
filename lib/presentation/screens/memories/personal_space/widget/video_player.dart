@@ -41,8 +41,14 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
     });
 
     _controller.addListener(() {
-      if (mounted) setState(() {});
+      if (_controller.value.position >= _controller.value.duration &&
+          !_controller.value.isPlaying) {
+        _controller.seekTo(Duration.zero);
+        _controller.pause();
+        if (mounted) setState(() {});
+      }
     });
+
   }
 
   @override

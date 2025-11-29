@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/video_player.dart';
-import '../../../data/models/reflection_model.dart';
-import '../../../data/services/reflection_service.dart';
-import 'new_reflection_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/video_player.dart';
+import 'package:video_player/video_player.dart';
+import '../../../../data/models/reflection_model.dart';
+import '../../../../data/services/reflection_service.dart';
+import 'new_reflection/new_reflection_screen.dart';
 
 
 class ReflectionDetailScreen extends StatefulWidget {
@@ -20,23 +21,33 @@ class ReflectionDetailScreen extends StatefulWidget {
 }
 
 class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
+  static final Map<String, VideoPlayerController> _cachedVideoControllers = {};
+
   final ReflectionService _reflectionService = ReflectionService();
   final AudioPlayer _audioPlayer = AudioPlayer();
   late ReflectionModel _reflection;
   bool _isPlayingAudio = false;
   String? _currentlyPlayingAudioId;
+  final Map<String, VideoPlayerController> _videoControllers = {};
+
 
   @override
   void initState() {
     super.initState();
     _reflection = widget.reflection;
+    //_initVideoControllers();
+    _initVideoControllersOnce(); // inicializa solo si no existe en cache
   }
 
   @override
   void dispose() {
+    for (final controller in _videoControllers.values) {
+      controller.dispose();
+    }
     _audioPlayer.dispose();
     super.dispose();
   }
+
 
   void _navigateToEdit() async {
     // Verificar si la reflexión tiene un UUID válido del backend
@@ -58,14 +69,52 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     );
 
     if (result == true && mounted) {
-      // Recargar la reflexión actualizada
       final updatedReflection = await _reflectionService.getReflectionById(_reflection.id);
       if (updatedReflection != null) {
+        // Limpiar controllers antiguos
+        for (final c in _videoControllers.values) {
+          c.dispose();
+        }
+        _videoControllers.clear();
+
         setState(() {
           _reflection = updatedReflection;
         });
+
+        // Volver a crear controladores con los nuevos archivos
+        await _initVideoControllers();
       }
     }
+  }
+
+  Future<void> _initVideoControllersOnce() async {
+    final videos = _reflection.attachedFiles.where((f) => f.isVideo);
+
+    for (final video in videos) {
+      // Si ya hay controlador en cache → usarlo
+      if (_cachedVideoControllers.containsKey(video.id)) continue;
+
+      VideoPlayerController controller;
+      if (video.localPath != null) {
+        controller = VideoPlayerController.file(File(video.localPath!));
+      } else if (video.downloadUrl.isNotEmpty) {
+        controller = VideoPlayerController.network(video.downloadUrl);
+      } else {
+        continue;
+      }
+
+      await controller.initialize();
+      controller.setLooping(false);
+      controller.pause();
+
+      _cachedVideoControllers[video.id] = controller;
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  VideoPlayerController? getControllerForVideo(ReflectionFile video) {
+    return _cachedVideoControllers[video.id];
   }
 
   void _confirmDelete() {
@@ -166,6 +215,30 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _initVideoControllers() async {
+    final videos = _reflection.attachedFiles.where((f) => f.isVideo);
+
+    for (final video in videos) {
+      VideoPlayerController controller;
+
+      if (video.localPath != null) {
+        controller = VideoPlayerController.file(File(video.localPath!));
+      } else if (video.downloadUrl.isNotEmpty) {
+        controller = VideoPlayerController.network(video.downloadUrl);
+      } else {
+        continue; // no hay fuente
+      }
+
+      await controller.initialize();
+      controller.setLooping(false);
+      controller.pause(); // deja el video en frame 0
+
+      _videoControllers[video.id] = controller;
+    }
+
+    if (mounted) setState(() {});
   }
 
   @override
@@ -542,44 +615,37 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   }
 
   Widget _buildVideoTile(ReflectionFile video) {
-    final service = ReflectionService();
+    final controller = _cachedVideoControllers[video.id]; // usa cache
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.purple.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.purple.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.videocam, color: Colors.purple.shade600),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  video.originalName,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  service.formatStorageSize(video.fileSize.toInt()),
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
+    return GestureDetector(
+      onTap: () => _showVideoPlayer(video),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AspectRatio(
+          aspectRatio: controller?.value.aspectRatio ?? 16 / 9,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (controller != null && controller.value.isInitialized)
+                VideoPlayer(controller)
+              else
+                Container(
+                  color: Colors.grey.shade200,
+                  child: const Center(
+                    child: Icon(Icons.videocam, size: 48, color: Colors.grey),
                   ),
                 ),
-              ],
-            ),
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black45,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(8),
+                child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: () => _showVideoPlayer(video),
-            icon: Icon(Icons.play_arrow, color: Colors.purple.shade600),
-          ),
-        ],
+        ),
       ),
     );
   }

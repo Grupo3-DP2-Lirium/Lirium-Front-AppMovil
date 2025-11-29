@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/audio_player.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/image_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/video_player.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/new_reflection/toolbar_widget.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/audio_player.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/image_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/video_player.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,9 +13,9 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
-import '../../../data/models/reflection_model.dart';
-import '../../../data/services/reflection_service.dart';
-import '../../../providers/reflection_provider.dart';
+import '../../../../../data/models/reflection_model.dart';
+import '../../../../../data/services/reflection_service.dart';
+import '../../../../../providers/reflection_provider.dart';
 
 class NewReflectionScreen extends StatefulWidget {
   final ReflectionModel? editingReflection;
@@ -34,13 +35,12 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   final ReflectionService _reflectionService = ReflectionService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  // Audio recording variables (usando flutter_sound como en answer_question_screen)
   FlutterSoundRecorder? _audioRecorder;
   bool _isRecorderInitialized = false;
   String? _audioPath;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTimer;
-  
+
   List<ReflectionFile> _attachedFiles = [];
   bool _isSaving = false;
   bool _isRecording = false;
@@ -148,7 +148,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     }
   }
 
-  // Métodos de inicialización y grabación de audio (basados en answer_question_screen)
   Future<void> _initializeRecorder() async {
     try {
       _audioRecorder = FlutterSoundRecorder();
@@ -614,18 +613,18 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: Icons.photo_camera_outlined,
                         tooltip: 'Cámara',
                         onPressed: _takePhoto,
                       ),
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: _isRecording ? Icons.stop : Icons.mic_none_outlined,
                         tooltip: _isRecording ? 'Detener grabación' : 'Audio',
                         onPressed: _recordAudio,
                         isRecording: _isRecording,
                       ),
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: Icons.image_outlined,
                         tooltip: 'Galería',
                         onPressed: _pickFromGallery,
@@ -637,31 +636,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildToolbarButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-    bool isRecording = false,
-  }) {
-    return Container(
-      decoration: isRecording 
-          ? BoxDecoration(
-              color: Colors.red.shade100,
-              shape: BoxShape.circle,
-            )
-          : null,
-      child: IconButton(
-        tooltip: tooltip,
-        icon: Icon(
-          icon,
-          color: isRecording ? Colors.red : null,
-        ),
-        onPressed: onPressed,
-        iconSize: 24,
       ),
     );
   }
@@ -684,7 +658,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
           children: _attachedFiles.asMap().entries.map((entry) {
             final index = entry.key;
             final file = entry.value;
-            
             return _buildFilePreview(file, index);
           }).toList(),
         ),
@@ -762,7 +735,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       ),
     );
   }
-
 
   Widget _buildFileContent(ReflectionFile file) {
     if (file.isImage) return _buildImagePreview(file);
