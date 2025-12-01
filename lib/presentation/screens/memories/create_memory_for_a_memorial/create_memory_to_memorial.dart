@@ -102,7 +102,7 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
                           child: MemorialCard(
                             memorial: misFiltrados[index],
                             onTap: () {
-                              Navigator.push(
+                              Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => CreateMemorySelectType(
@@ -142,7 +142,7 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
                           child: MemorialCard(
                             memorial: colabFiltrados[index],
                             onTap: () {
-                              Navigator.push(
+                              Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => CreateMemorySelectType(

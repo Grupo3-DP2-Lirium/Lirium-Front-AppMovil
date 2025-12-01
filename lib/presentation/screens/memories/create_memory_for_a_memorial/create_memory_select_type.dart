@@ -96,9 +96,18 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                             ),
                           );
 
-                          // ✅ Solo cerrar SelectType si viene desde memorial
-                          if (result != null && mounted && widget.isFromMemorial) {
-                            Navigator.pop(context, result);
+                          if (result != null) {
+                            if (widget.isFromMemorial) {
+                              // caso: venimos desde el memorial -> cerramos CreateMemorySelectType devolviendo el result
+                              Navigator.pop(context, result);
+                            } else {
+                              // caso: venimos desde el flujo "Recuerdos" -> debemos cerrar
+                              // 1) CreateMemorySelectType (esta pantalla)
+                              // 2) SelectMemorial (la pantalla anterior)
+                              // y devolver el result al caller original (por ejemplo, MemoriesGrid)
+                              Navigator.pop(context);            // cierra CreateMemorySelectType
+                              Navigator.pop(context, result);    // cierra SelectMemorial y devuelve el resultado
+                            }
                           }
                         },
                       ),
