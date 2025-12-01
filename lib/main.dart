@@ -446,6 +446,19 @@ class _RemoryAppState extends State<RemoryApp> {
               ),
             ),
           ),
+
+          cardColor: Colors.white,
+          cardTheme: CardThemeData(
+            color: Colors.white,
+            elevation: 2,
+            shadowColor: Colors.grey.withOpacity(0.1),
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.transparent, width: 0),
+            ),
+          ),
+
         ),
         //debugShowCheckedModeBanner: false,
         localizationsDelegates: const [

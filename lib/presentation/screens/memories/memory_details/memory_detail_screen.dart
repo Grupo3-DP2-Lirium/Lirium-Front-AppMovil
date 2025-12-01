@@ -331,6 +331,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   // Create a new memory (Create mode)
   Future<void> _createMemory() async {
     if (_isLoading) return;
+
     // Validación: debe tener al menos un archivo
     if (_newFiles.isEmpty) {
       await appPopupButtonDefault(
@@ -348,6 +349,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       );
       return;
     }
+
     setState(() => _isLoading = true);
 
     // Mostrar popup de carga
@@ -372,66 +374,39 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
 
       final filesToUpload = _newFiles.isNotEmpty ? _newFiles : null;
 
-      final createdMemory = await _service.createMemory(
+      // 🔧 FIX: Obtener MemoryResponse del servidor
+      final createdMemoryResponse = await _service.createMemory(
         request: request,
         files: filesToUpload,
       );
 
-      print("📦 Memory creada con ID: ${createdMemory.idMemory}");
+      print("📦 Memory creada con ID: ${createdMemoryResponse.idMemory}");
+      print("📡 Files desde servidor:");
+      for (var i = 0; i < createdMemoryResponse.files.length; i++) {
+        final file = createdMemoryResponse.files[i];
+        print("   - File $i:");
+        print("     * Type: ${file.fileType}");
+        print("     * URL: ${file.fileUrl}");
+        print("     * downloadUrl: ${file.downloadUrl}");
+      }
 
-      // Construir archivos locales
-      final newFilesAsMemoryFiles = _newFiles.map((f) {
-        final ext = f.path
-            .split('.')
-            .last
-            .toLowerCase();
-        String type;
-        String mimeType;
-        if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) {
-          type = 'image';
-          mimeType = 'image/$ext';
-        } else if (['mp4', 'mov', 'avi', 'mkv'].contains(ext)) {
-          type = 'video';
-          mimeType = 'video/$ext';
-        } else if (['mp3', 'm4a', 'wav', 'aac', 'ogg'].contains(ext)) {
-          type = 'audio';
-          mimeType = 'audio/$ext';
-        } else {
-          type = 'file';
-          mimeType = 'application/octet-stream';
-        }
-        return File(
-          id: "",
-          name: f.path
-              .split('/')
-              .last,
-          originalName: f.path
-              .split('/')
-              .last,
-          type: type,
-          mimeType: mimeType,
-          size: 0,
-          url: f.path,
-          uploadedDate: DateTime.now(),
-        );
-      }).toList();
+      // 🔧 FIX: Convertir MemoryResponse a Memory entity (esto usa las URLs del servidor)
+      final createdMemory = createdMemoryResponse.toEntity();
 
-      // Actualizar el memory original con los files nuevos
-      _originalMemory = _originalMemory.copyWith(
-        id: createdMemory.idMemory,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        files: newFilesAsMemoryFiles,
-        photoDate: _photoController.date,
-        latitude: _locationController.latitude,
-        longitude: _locationController.longitude,
-      );
+      print("✅ Memory entity convertida:");
+      for (var i = 0; i < createdMemory.files.length; i++) {
+        final file = createdMemory.files[i];
+        print("   - File $i URL: ${file.url}");
+      }
+
+      // Actualizar el memory original con la versión del servidor
+      _originalMemory = createdMemory;
 
       // Actualizar provider
       final provider = Provider.of<MemoryProvider>(context, listen: false);
       provider.agregarMemoria(_originalMemory);
 
-      // NUEVO: Agregar en MemoriesByMemorialProvider
+      // NUEVO: Agregar en MemoriesByMemorialProvider con la versión del servidor
       final memoriesProvider = context.read<MemoriesByMemorialProvider>();
       memoriesProvider.addMemory(_originalMemory);
 
@@ -451,9 +426,8 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
           AppPopupButton(
             text: "Continuar",
             onPressed: () {
-              Navigator.pop(context); // cerrar el popup
-              Navigator.pop(context); // retrocede al grid
-              Navigator.pop(context);
+              Navigator.pop(context); // Cerrar popup
+              Navigator.pop(context, _originalMemory); // Regresar con el memory creado
             },
           ),
         ],

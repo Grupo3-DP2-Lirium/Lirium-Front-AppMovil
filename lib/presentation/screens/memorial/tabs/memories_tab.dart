@@ -45,11 +45,21 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
   @override
   void initState() {
     super.initState();
-    // Cargar memorias usando el provider
+    // FIX: Cargar memorias con validación de memorial correcto
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<MemoriesByMemorialProvider>();
-      if (!provider.loaded) {
-        provider.loadMemories(memorialId: widget.memorialId);
+
+      // Solo cargar si:
+      // 1. No está cargado aún, O
+      // 2. Es un memorial diferente
+      final needsLoad = !provider.loaded ||
+          provider.currentMemorialId != widget.memorialId;
+
+      if (needsLoad) {
+        print('📡 Cargando memorias para memorial: ${widget.memorialId}');
+        provider.loadMemories(memorialId: widget.memorialId, force: true);
+      } else {
+        print('✅ Memorias ya cargadas para este memorial');
       }
     });
   }
@@ -319,7 +329,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
                 )
               else
                 Image.network(
-                  file.downloadUrl ?? '',
+                  file.fileUrl ?? '',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: Colors.grey[100],
@@ -431,7 +441,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
               )
             else
               Image.network(
-                file.downloadUrl ?? '',
+                file.fileUrl ?? '',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: Colors.grey[100],
@@ -567,7 +577,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
             final MemoryResponse memory = entry['memory'] as MemoryResponse;
 
             // URL segura evitando null
-            final imageUrl = file.downloadUrl;
+            final imageUrl = file.fileUrl;
 
             return ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -722,8 +732,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
       for (final memory in memories) {
         for (final file in memory.files) {
-          if (file.isImage && file.downloadUrl != null) {
-            return file.downloadUrl;
+          if (file.isImage && file.fileUrl != null) {
+            return file.fileUrl;
           }
         }
       }
@@ -1105,8 +1115,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       String? previewUrl;
       for (final memory in memories) {
         for (final file in memory.files) {
-          if (file.isImage && file.downloadUrl != null) {
-            previewUrl = file.downloadUrl;
+          if (file.isImage && file.fileUrl != null) {
+            previewUrl = file.fileUrl;
             break;
           }
         }
@@ -1270,8 +1280,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       String? previewUrl;
       for (final memory in memories) {
         for (final file in memory.files) {
-          if (file.isImage && file.downloadUrl != null) {
-            previewUrl = file.downloadUrl;
+          if (file.isImage && file.fileUrl != null) {
+            previewUrl = file.fileUrl;
             break;
           }
         }
@@ -1396,46 +1406,43 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       }
     }
 
-    Color _getCategoryColor(String category) {
-      switch (category.toLowerCase()) {
-        case 'familia':
-          return Colors.blue;
-        case 'amigos':
-          return Colors.green;
-        case 'pareja':
-          return Colors.pink;
-        case 'infancia':
-          return Colors.purple;
-        case 'juventud':
-          return Colors.indigo;
-        case 'adultez':
-          return Colors.blueGrey;
-        case 'viajes':
-          return Colors.orange;
-        case 'celebraciones':
-          return Colors.amber;
-        case 'trabajo':
-          return Colors.teal;
-        case 'comunidad':
-          return Colors.cyan;
-        case 'arte_cultura':
-        case 'arte y cultura':
-          return Colors.deepPurple;
-        case 'fe_espiritualidad':
-        case 'fe y espiritualidad':
-          return Colors.deepOrange;
-        case 'salud_bienestar':
-        case 'salud y bienestar':
-          return Colors.lightGreen;
-        case 'despedidas_duelo':
-        case 'despedidas y duelo':
-          return Colors.grey;
-        case 'legado':
-          return Colors.brown;
-        default:
-          return Colors.blueGrey;
-      }
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'familia':
+        return Colors.blue.shade700;
+      case 'amigos':
+        return Colors.green.shade700;
+      case 'pareja':
+        return Colors.pink.shade600;
+      case 'infancia':
+        return Colors.purple.shade600;
+      case 'juventud':
+        return Colors.indigo.shade600;
+      case 'adultez':
+        return Colors.blueGrey.shade700;
+      case 'viajes':
+        return Colors.orange.shade700;
+      case 'celebraciones':
+        return Colors.amber.shade700;
+      case 'trabajo':
+        return Colors.teal.shade700;
+      case 'comunidad':
+        return Colors.cyan.shade700; // cyan oscuro → raro, pero queda muy bien
+      case 'arte y cultura':
+        return Colors.deepPurple.shade600;
+      case 'fe y espiritualidad':
+        return Colors.deepOrange.shade700;
+      case 'salud y bienestar':
+        return Colors.lightGreen.shade700; // antes era muy claro → ahora perfecto
+      case 'despedidas y duelo':
+        return Colors.grey.shade700;
+      case 'legado':
+        return Colors.brown.shade700;
+      default:
+        return Colors.blueGrey.shade600;
     }
+  }
+
 
     String _formatCategoryMomentName(String category) {
       // Convertir snake_case a formato legible
@@ -1483,42 +1490,40 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       }
     }
 
-    Color _getMomentColor(String moment) {
-      switch (moment.toLowerCase().replaceAll('_', ' ')) {
-        case 'amor afecto':
-        case 'amor':
-        case 'afecto':
-          return Colors.red;
-        case 'gratitud':
-          return Colors.orange;
-        case 'nostalgia':
-          return Colors.purple;
-        case 'alegria':
-        case 'alegría':
-          return Colors.yellow;
-        case 'tristeza':
-          return Colors.blue;
-        case 'orgullo':
-          return Colors.amber;
-        case 'superacion':
-        case 'superación':
-          return Colors.green;
-        case 'reflexion':
-        case 'reflexión':
-          return Colors.indigo;
-        case 'fe':
-          return Colors.deepPurple;
-        case 'paz':
-          return Colors.teal;
-        case 'asombro':
-          return Colors.pink;
-        default:
-          return Colors.blueGrey;
-      }
+  Color _getMomentColor(String moment) {
+    switch (moment.toLowerCase().replaceAll('_', ' ')) {
+      case 'amor afecto':
+      case 'amor':
+      case 'afecto':
+        return Colors.red.shade600;
+      case 'gratitud':
+        return Colors.orange.shade700;
+      case 'nostalgia':
+        return Colors.purple.shade600;
+      case 'alegria':
+        return Colors.amber.shade700; // amarillo oscuro → muy legible
+      case 'tristeza':
+        return Colors.blue.shade700; // azul intenso
+      case 'orgullo':
+        return Colors.deepOrange.shade600;
+      case 'superación':
+        return Colors.green.shade700; // verde oscuro y visible
+      case 'reflexión':
+        return Colors.indigo.shade600; // azul-morado fuerte
+      case 'fe':
+        return Colors.deepPurple.shade600;
+      case 'paz':
+        return Colors.teal.shade700;
+      case 'asombro':
+        return Colors.pink.shade600;
+      default:
+        return Colors.blueGrey.shade600;
     }
+  }
 
 
-    // ============ HELPERS ============
+
+  // ============ HELPERS ============
     Widget _buildEmptyState(String message, IconData icon) {
       return Center(
         child: Column(

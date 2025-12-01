@@ -50,6 +50,21 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    // FIX: Limpiar provider ANTES de cargar datos del nuevo memorial
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final provider = context.read<MemoriesByMemorialProvider>();
+
+        // Si es un memorial diferente al actual, limpiar
+        if (provider.currentMemorialId != null &&
+            provider.currentMemorialId != widget.memorialId) {
+          print('🧹 Limpiando provider - memorial anterior: ${provider.currentMemorialId}');
+          provider.clear();
+        }
+      }
+    });
+
     _loadMemorialData();
     _scrollController.addListener(_onScroll);
   }
@@ -57,6 +72,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+
     super.dispose();
   }
 
@@ -74,23 +90,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
         memorialErrorMessage = null;
       });
 
-      // Cargar memorial y memorias en paralelo
-      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
-
-      await Future.wait([
-        _memorialService.getMemorialById(widget.memorialId).then((memorial) {
-          if (mounted) {
-            setState(() {
-              _detailsState = MemorialDetailsState.fromResponse(memorial);
-            });
-          }
-        }),
-        memoriesProvider.loadMemories(memorialId: widget.memorialId, force: true),
-      ]);
-
+      final memorial = await _memorialService.getMemorialById(widget.memorialId);
       if (!mounted) return;
 
       setState(() {
+        _detailsState = MemorialDetailsState.fromResponse(memorial);
         isLoadingMemorial = false;
       });
     } catch (e) {
@@ -285,19 +289,36 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   }
 
   Future<void> _goToCreateMemory() async {
-    final prov = context.read<MemoryProvider>();
     final createdMemory = await Navigator.push<Memory>(
       context,
       MaterialPageRoute(
         builder: (_) => CreateMemorySelectType(
           memorialId: _detailsState.idMemorial,
           memorialName: _detailsState.name,
+          isFromMemorial: true,
         ),
       ),
     );
-    if (createdMemory != null) {
-      prov.agregarMemoria(createdMemory);
 
+    if (createdMemory != null && mounted) {
+
+      print('🆕 Memoria creada recibida:');
+      print('   - ID: ${createdMemory.id}');
+      print('   - Título: ${createdMemory.title}');
+      print('   - Files: ${createdMemory.files.length}');
+      print('- Momentos: ${createdMemory.moments.length}');
+      print('- Categorías: ${createdMemory.categories.length}');
+
+      for (var i = 0; i < createdMemory.files.length; i++) {
+        final file = createdMemory.files[i];
+        print('   - File $i:');
+        print('     * Type: ${file.type}');
+        print('     * URL: ${file.url}');
+        print('     * downloadUrl: ${file.url}');
+        print('     * Tiene URL? ${file.url != null && file.url!.isNotEmpty}');
+      }
+
+      // Agregar al provider
       final memoriesProvider = context.read<MemoriesByMemorialProvider>();
       memoriesProvider.addMemory(createdMemory);
     }

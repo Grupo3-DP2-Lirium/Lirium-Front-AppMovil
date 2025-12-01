@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/buttons/rectangle_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_title.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/select_category.dart';
@@ -9,10 +10,12 @@ import 'write_letter_screen.dart';
 class CreateMemorySelectType extends StatefulWidget {
   final String memorialId;
   final String memorialName;
+  final bool isFromMemorial;
 
   const CreateMemorySelectType({super.key,
     required this.memorialId,
     required this.memorialName,
+    this.isFromMemorial = false,
   });
 
   @override
@@ -60,8 +63,8 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                         icon: Icons.photo_camera,
                         label: "Subir fotos y videos",
                         size: 120,
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          final result = await Navigator.push<Memory>(
                             context,
                             MaterialPageRoute(
                               builder: (_) => MemoryDetailScreen(
@@ -71,21 +74,33 @@ class _CreateMemorySelectTypeState extends State<CreateMemorySelectType> {
                               ),
                             ),
                           );
+
+                          // ✅ Solo cerrar SelectType si viene desde memorial
+                          if (result != null && mounted && widget.isFromMemorial) {
+                            Navigator.pop(context, result);
+                          }
                         },
                       ),
                       RectangleButton(
                         icon: Icons.edit,
                         label: "Escribir carta",
                         size: 120,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => WriteLetterScreen(
+                        onTap: () async {
+                          final result = await Navigator.push<Memory>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => WriteLetterScreen(
                                 memorialId: widget.memorialId,
                                 memorialName: widget.memorialName,
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+
+                          // ✅ Solo cerrar SelectType si viene desde memorial
+                          if (result != null && mounted && widget.isFromMemorial) {
+                            Navigator.pop(context, result);
+                          }
+                        },
                       ),
                       RectangleButton(
                         icon: Icons.monitor_heart,

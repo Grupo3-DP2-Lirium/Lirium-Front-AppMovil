@@ -151,6 +151,7 @@ class MemoryResponse {
       'categorias': categories,
       'momentos': moments,
       'esLineaTiempo': esLineaTiempo,
+      'author': author?.toJson(),
     };
   }
 }

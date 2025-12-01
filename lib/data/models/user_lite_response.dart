@@ -16,4 +16,12 @@ class UserLiteResponse {
       profilePhotoUrl: json['profilePhotoUrl'] as String?,
     );
   }
+
+  toJson() {
+    return {
+      'idUser': idUser,
+      'name': name,
+      'profilePhotoUrl': profilePhotoUrl,
+    };
+  }
 }

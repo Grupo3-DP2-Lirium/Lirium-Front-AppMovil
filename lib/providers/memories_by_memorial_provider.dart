@@ -18,6 +18,9 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
   String? _error;
   bool _loaded = false;
 
+  // Trackear qué memorial está cargado
+  String? _currentMemorialId;
+
   // Paginación
   int _page = 0;
   final int _pageSize = 10;
@@ -50,27 +53,57 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
   int get currentPage => _page;
   int get pageSize => _pageSize;
 
+  // Getter para el memorial actual
+  String? get currentMemorialId => _currentMemorialId;
+
   // -------------------------
   // Acciones / API
   // -------------------------
   /// Carga inicial o siguiente página de memorias para un memorial específico.
   /// Si [force] es true reinicia el listado.
   Future<void> loadMemories({ required String memorialId, bool force = false }) async {
-    if (force) {
-      _memories.clear();
-      _page = 0;
-      _hasMore = true;
-      _loaded = false;
-      _error = null;
+    // 🔧 FIX: Si es un memorial diferente, auto-limpiar
+    if (_currentMemorialId != null && _currentMemorialId != memorialId) {
+      if (kDebugMode) {
+        print('⚠️ Memorial cambió de $_currentMemorialId a $memorialId - limpiando...');
+      }
+      _clearState();
     }
 
-    if (!_hasMore) return;
+    // 🔧 FIX: Si ya está cargado el mismo memorial y no es forzado, no cargar de nuevo
+    if (_currentMemorialId == memorialId && _loaded && !force) {
+      if (kDebugMode) {
+        print('ℹ️ Memorial $memorialId ya está cargado - skipping');
+      }
+      return;
+    }
+
+    if (force) {
+      if (kDebugMode) {
+        print('🔄 Forzando recarga para memorial $memorialId');
+      }
+      _clearState();
+    }
+
+    if (!_hasMore && !force) {
+      if (kDebugMode) {
+        print('ℹ️ No hay más páginas para cargar');
+      }
+      return;
+    }
+
+    //  Guardar el memorial actual
+    _currentMemorialId = memorialId;
 
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
+      if (kDebugMode) {
+        print('📡 Cargando memorias: memorialId=$memorialId, page=$_page, size=$_pageSize');
+      }
+
       final response = await _service.listMemories(
         memorialId: memorialId,
         page: _page,
@@ -80,6 +113,10 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
       // response.content es List<MemoryResponse>
       final List<MemoryResponse> raw = response.content;
       final nuevos = raw.map((r) => r.toEntity()).toList();
+
+      if (kDebugMode) {
+        print('✅ Recibidas ${nuevos.length} memorias - Total acumulado: ${_memories.length + nuevos.length}');
+      }
 
       _memories.addAll(nuevos);
 
@@ -95,8 +132,7 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
     } catch (e, st) {
       _error = e.toString();
       if (kDebugMode) {
-        // útil para debugging en dev
-        print('MemoriesByMemorialProvider.loadMemories ERROR: $e\n$st');
+        print('❌ MemoriesByMemorialProvider.loadMemories ERROR: $e\n$st');
       }
     } finally {
       _loading = false;
@@ -117,7 +153,18 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
 
   /// Agregar memoria localmente (ej: tras crear una nueva memoria)
   void addMemory(Memory m) {
+    // Verificar que no exista ya (evitar duplicados)
+    if (_memories.any((existing) => existing.id == m.id)) {
+      if (kDebugMode) {
+        print('⚠️ Memoria ${m.id} ya existe - no se agrega duplicada');
+      }
+      return;
+    }
+
     _memories.insert(0, m);
+    if (kDebugMode) {
+      print('➕ Memoria ${m.id} agregada localmente');
+    }
     notifyListeners();
   }
 
@@ -126,6 +173,9 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
     final idx = _memories.indexWhere((m) => m.id == id);
     if (idx >= 0) {
       _memories[idx] = updated;
+      if (kDebugMode) {
+        print('✏️ Memoria $id actualizada localmente');
+      }
       notifyListeners();
     }
   }
@@ -138,6 +188,16 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
 
   /// Limpiar todo el estado del provider
   void clear() {
+    if (kDebugMode) {
+      print('🧹 Limpiando provider completamente');
+    }
+    _clearState();
+    _currentMemorialId = null; // También limpiar el memorial actual
+    notifyListeners();
+  }
+
+  /// Helper privado para limpiar estado sin notificar
+  void _clearState() {
     _memories.clear();
     _loading = false;
     _error = null;
@@ -145,6 +205,5 @@ class MemoriesByMemorialProvider extends ChangeNotifier {
     _page = 0;
     _hasMore = true;
     _searchText = '';
-    notifyListeners();
   }
 }
