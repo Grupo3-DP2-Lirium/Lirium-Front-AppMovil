@@ -567,10 +567,15 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ GALERÍA ============
   Widget _buildGalleryGridContent() {
-    final memoriesWithImages = memories.where((m) => m.files.any((f) => f.isImage)).toList();
-    if (memoriesWithImages.isEmpty) {
+    // 1. Obtener TODAS las imágenes de TODAS las memorias
+    final allImages = memories
+        .expand((m) => m.files.where((f) => f.isImage)) // Expande todas las imágenes
+        .toList();
+
+    if (allImages.isEmpty) {
       return _buildEmptyState('No hay imágenes', Icons.image_not_supported);
     }
+
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -578,9 +583,9 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: memoriesWithImages.length,
+      itemCount: allImages.length, // Total de imágenes
       itemBuilder: (context, index) {
-        final imageFile = memoriesWithImages[index].files.firstWhere((f) => f.isImage);
+        final imageFile = allImages[index];
         return ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.network(imageFile.downloadUrl, fit: BoxFit.cover),
@@ -591,21 +596,48 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ FORMATO ============
   Widget _buildFormatTypeContent() {
-    if (_memoriesByType == null) {
-      _loadMemoriesByType();
+    if (isLoadingMemories) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    if (_isLoadingSpecialData) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    // Agrupar memorias por tipo de archivo desde las memorias ya cargadas
+    final Map<String, List<MemoryResponse>> memoriesByFormat = {
+      'image': [],
+      'video': [],
+      'audio': [],
+      'letter': [],
+    };
+
+    for (final memory in memories) {
+      // Verificar si es una carta
+      final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+          (memory.files.isEmpty && memory.description.isNotEmpty);
+
+      if (isLetter) {
+        memoriesByFormat['letter']!.add(memory);
+      }
+
+      // Verificar archivos
+      for (final file in memory.files) {
+        if (file.fileType == 'image' && !memoriesByFormat['image']!.contains(memory)) {
+          memoriesByFormat['image']!.add(memory);
+        }
+        if (file.fileType == 'video' && !memoriesByFormat['video']!.contains(memory)) {
+          memoriesByFormat['video']!.add(memory);
+        }
+        if (file.fileType == 'audio' && !memoriesByFormat['audio']!.contains(memory)) {
+          memoriesByFormat['audio']!.add(memory);
+        }
+      }
     }
 
-    final Map<String, List<dynamic>> types =
-        (_memoriesByType?.memoriesByType as Map<String, dynamic>?)
-            ?.map((k, v) => MapEntry(k, List<dynamic>.from(v))) ??
-            {};
+    // Filtrar formatos vacíos
+    final hasPhotos = memoriesByFormat['image']!.isNotEmpty;
+    final hasVideos = memoriesByFormat['video']!.isNotEmpty;
+    final hasAudios = memoriesByFormat['audio']!.isNotEmpty;
+    final hasLetters = memoriesByFormat['letter']!.isNotEmpty;
 
-    if (types.isEmpty) {
+    if (!hasPhotos && !hasVideos && !hasAudios && !hasLetters) {
       return _buildEmptyState('No hay formatos', Icons.image_aspect_ratio);
     }
 
@@ -613,43 +645,65 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         children: [
-          if (types.containsKey('image')) ...[
+          if (hasPhotos) ...[
             _buildFormatTypeItem(
               icon: Icons.photo_library_rounded,
               title: 'Fotos',
-              count: '${types['image']!.length} recuerdos',
+              count: '${memoriesByFormat['image']!.length} recuerdos',
               color: Colors.blue,
+              memories: memoriesByFormat['image']!,
+              previewUrl: _getPreviewUrl(memoriesByFormat['image']!),
             ),
             const SizedBox(height: 12),
           ],
-          if (types.containsKey('video')) ...[
+          if (hasVideos) ...[
             _buildFormatTypeItem(
               icon: Icons.videocam_rounded,
               title: 'Videos',
-              count: '${types['video']!.length} recuerdos',
+              count: '${memoriesByFormat['video']!.length} recuerdos',
               color: Colors.green,
+              memories: memoriesByFormat['video']!,
+              previewUrl: _getPreviewUrl(memoriesByFormat['video']!),
             ),
             const SizedBox(height: 12),
           ],
-          if (types.containsKey('audio')) ...[
+          if (hasAudios) ...[
             _buildFormatTypeItem(
               icon: Icons.audiotrack_rounded,
               title: 'Audios',
-              count: '${types['audio']!.length} recuerdos',
+              count: '${memoriesByFormat['audio']!.length} recuerdos',
               color: Colors.red,
+              memories: memoriesByFormat['audio']!,
+              previewUrl: _getPreviewUrl(memoriesByFormat['audio']!),
             ),
             const SizedBox(height: 12),
           ],
-          if (types.containsKey('document'))
+          if (hasLetters)
             _buildFormatTypeItem(
-              icon: Icons.description_rounded,
-              title: 'Documentos',
-              count: '${types['document']!.length} recuerdos',
-              color: Colors.orange,
+              icon: Icons.mail_rounded,
+              title: 'Cartas',
+              count: '${memoriesByFormat['letter']!.length} recuerdos',
+              color: Colors.purple,
+              memories: memoriesByFormat['letter']!,
+              previewUrl: null, // Las cartas no tienen preview de imagen
             ),
         ],
       ),
     );
+  }
+
+  // Helper para obtener URL de preview
+  String? _getPreviewUrl(List<MemoryResponse> memories) {
+    if (memories.isEmpty) return null;
+
+    for (final memory in memories) {
+      for (final file in memory.files) {
+        if (file.isImage && file.downloadUrl != null) {
+          return file.downloadUrl;
+        }
+      }
+    }
+    return null;
   }
 
   Widget _buildFormatTypeItem({
@@ -657,54 +711,31 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     required String title,
     required String count,
     required Color color,
+    required List<MemoryResponse> memories,
+    String? previewUrl,
   }) {
-    String? previewUrl;
-    if (_memoriesByType != null) {
-      final typeKey = title.toLowerCase() == 'fotos'
-          ? 'image'
-          : title.toLowerCase() == 'videos'
-          ? 'video'
-          : title.toLowerCase() == 'audios'
-          ? 'audio'
-          : 'document';
-
-      final memoriesOfType = _memoriesByType!.memoriesByType[typeKey];
-      if (memoriesOfType != null && memoriesOfType.isNotEmpty) {
-        final firstMemory = memoriesOfType.first;
-        if (firstMemory.files.isNotEmpty) {
-          previewUrl = firstMemory.files.first.downloadUrl;
-        }
-      }
-    }
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          final typeKey = title.toLowerCase() == 'fotos'
-              ? 'image'
-              : title.toLowerCase() == 'videos'
-              ? 'video'
-              : title.toLowerCase() == 'audios'
-              ? 'audio'
-              : 'document';
-
-          if (_memoriesByType != null) {
-            final memoriesOfType = _memoriesByType!.memoriesByType[typeKey];
-            if (memoriesOfType != null && memoriesOfType.isNotEmpty) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FormatTypeDetailScreen(
-                    title: title,
-                    memories: memoriesOfType,
-                    color: color,
-                  ),
-                ),
-              );
-            }
+          if (memories.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No hay recuerdos en este formato')),
+            );
+            return;
           }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FormatTypeDetailScreen(
+                title: title,
+                memories: memories,
+                color: color,
+              ),
+            ),
+          );
         },
         child: Container(
           padding: const EdgeInsets.all(16),
