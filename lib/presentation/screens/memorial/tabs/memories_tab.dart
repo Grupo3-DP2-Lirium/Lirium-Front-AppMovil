@@ -338,21 +338,16 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Mostrar thumbnail para videos o imagen normal
-              if (file.isVideo && file.thumbnailUrl != null)
-                Image.network(
-                  file.thumbnailUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.grey[900],
-                    child: const Center(
-                      child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
+              // Para videos, mostrar fondo oscuro con ícono
+              if (file.isVideo)
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple[300]!, Colors.pink[300]!],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
                   ),
-                )
-              else if (file.isVideo)
-                Container(
-                  color: Colors.grey[900],
                   child: const Center(
                     child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
                   ),
@@ -455,21 +450,16 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Mostrar thumbnail para videos o imagen normal
-            if (file.isVideo && file.thumbnailUrl != null)
-              Image.network(
-                file.thumbnailUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey[900],
-                  child: const Center(
-                    child: Icon(Icons.videocam_rounded, size: 32, color: Colors.white70),
+            // Para videos, mostrar fondo oscuro con ícono
+            if (file.isVideo)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.purple[300]!, Colors.pink[300]!],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
-              )
-            else if (file.isVideo)
-              Container(
-                color: Colors.grey[900],
                 child: const Center(
                   child: Icon(Icons.videocam_rounded, size: 32, color: Colors.white70),
                 ),
