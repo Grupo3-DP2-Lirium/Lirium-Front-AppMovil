@@ -4,8 +4,11 @@ import 'package:flutter_frontend/data/models/memory_lite_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/models/memories_by_type_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/domain/entities/file.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_filter_chips.dart';
+import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/format_type_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/theme_detail_screen.dart';
 
@@ -47,6 +50,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     FilterChipData(key: 'images', label: 'Formato', icon: Icons.image_rounded),
     FilterChipData(key: 'timeline', label: 'Línea de Tiempo', icon: Icons.timeline_rounded),
     FilterChipData(key: 'themes', label: 'Temáticas', icon: Icons.category_rounded),
+    FilterChipData(key: 'moments', label: 'Momentos', icon: Icons.ac_unit_rounded),
   ];
 
   @override
@@ -124,6 +128,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         return _buildTimelineContent();
       case 'themes':
         return _buildThemesContent();
+      case 'moments': //pendiente
+        return _buildThemesContent();
       default:
         return _buildActivityContent();
     }
@@ -157,87 +163,90 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey[200]!, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Avatar + Autor + Fecha
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  backgroundImage: memory.author?.profilePhotoUrl != null
-                      ? NetworkImage(memory.author!.profilePhotoUrl!)
-                      : null,
-                  child: memory.author?.profilePhotoUrl == null
-                      ? const Icon(Icons.person, color: AppColors.primary, size: 20)
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        memory.author?.name ?? 'Usuario',
-                        style: AppColors.labelLarge.copyWith(fontSize: 15),
-                      ),
-                      Text(
-                        _formatTimeAgo(memory.createdDate),
-                        style: AppColors.labelSmall.copyWith(fontSize: 12),
-                      ),
-                    ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _navigateToMemoryDetail(memory),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Avatar + Autor + Fecha
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundImage: memory.author?.profilePhotoUrl != null
+                        ? NetworkImage(memory.author!.profilePhotoUrl!)
+                        : null,
+                    child: memory.author?.profilePhotoUrl == null
+                        ? const Icon(Icons.person, color: AppColors.primary, size: 20)
+                        : null,
                   ),
-                ),
-                // Badge de tipo
-                //_buildTypeBadge(memory.type),
-              ],
-            ),
-          ),
-
-          // Título y descripción
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (memory.title.isNotEmpty) ...[
-                  Text(
-                    memory.title,
-                    style: AppColors.h6.copyWith(fontSize: 17),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          memory.author?.name ?? 'Usuario',
+                          style: AppColors.labelLarge.copyWith(fontSize: 15),
+                        ),
+                        Text(
+                          _formatTimeAgo(memory.createdDate),
+                          style: AppColors.labelSmall.copyWith(fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  // Badge de tipo
+                  _buildTypeBadgeForMemory(memory),
                 ],
-                if (memory.description.isNotEmpty)
-                  Text(
-                    memory.description,
-                    style: AppColors.bodyMedium,
-                    maxLines: isTextOnly ? 10 : 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
+              ),
             ),
-          ),
 
-          // Media content
-          if (hasImages || hasVideos) ...[
-            const SizedBox(height: 12),
-            _buildMediaGrid(memory.files),
-          ],
-
-          // Audio player
-          if (hasAudio) ...[
-            const SizedBox(height: 12),
+            // Título y descripción
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildAudioPlayer(memory.files.firstWhere((f) => f.fileType == 'audio')),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (memory.title.isNotEmpty) ...[
+                    Text(
+                      memory.title,
+                      style: AppColors.h6.copyWith(fontSize: 17),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (memory.description.isNotEmpty)
+                    Text(
+                      memory.description,
+                      style: AppColors.bodyMedium,
+                      maxLines: isTextOnly ? 10 : 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
-          ],
 
-          // Footer: Tags, categorías
-          /*if (memory.categories.isNotEmpty || memory.moments.isNotEmpty) ...[
+            // Media content
+            if (hasImages || hasVideos) ...[
+              const SizedBox(height: 12),
+              _buildMediaGrid(memory.files),
+            ],
+
+            // Audio player
+            if (hasAudio) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildAudioPlayer(memory.files.firstWhere((f) => f.fileType == 'audio')),
+              ),
+            ],
+
+            // Footer: Tags, categorías
+            /*if (memory.categorias.isNotEmpty || memory.momentos.isNotEmpty) ...[
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -245,43 +254,40 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ...memory.categories.map((cat) => _buildTag(cat, Icons.category_rounded, Colors.blue)),
-                  ...memory.moments.map((mom) => _buildTag(mom, Icons.favorite_rounded, Colors.pink)),
+                  ...memory.categorias.map((cat) => _buildTag(cat, Icons.category_rounded, Colors.blue)),
+                  ...memory.momentos.map((mom) => _buildTag(mom, Icons.favorite_rounded, Colors.pink)),
                 ],
               ),
             ),
-          ] else */
-          const SizedBox(height: 16),
-        ],
+          ] else*/
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTypeBadge(String type) {
+  Widget _buildTypeBadgeForMemory(MemoryResponse memory) {
     IconData icon;
     Color color;
     String label;
 
-    switch (type.toUpperCase()) {
-      case 'SPONTANEOUS':
-        icon = Icons.flash_on_rounded;
-        color = Colors.orange;
-        label = 'Espontáneo';
-        break;
-      case 'LETTER':
-        icon = Icons.mail_rounded;
-        color = Colors.purple;
-        label = 'Carta';
-        break;
-      case 'QUESTION':
-        icon = Icons.help_rounded;
-        color = Colors.teal;
-        label = 'Pregunta';
-        break;
-      default:
-        icon = Icons.photo_album_rounded;
-        color = AppColors.primary;
-        label = 'Recuerdo';
+    // Detectar tipo basado en la memoria individual
+    final isLetter = memory.title.toLowerCase().contains('carta personal');
+    final isQuestion = memory.type.toUpperCase() == 'QUESTION_RESPONSE';
+
+    if (isQuestion) {
+      icon = Icons.help_rounded;
+      color = Colors.teal;
+      label = 'Pregunta';
+    } else if (isLetter) {
+      icon = Icons.mail_rounded;
+      color = Colors.purple;
+      label = 'Carta';
+    } else {
+      icon = Icons.photo_album_rounded;
+      color = AppColors.primary;
+      label = 'Recuerdo';
     }
 
     return Container(
@@ -332,21 +338,45 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                file.downloadUrl ?? '',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey[100],
-                  child: const Icon(Icons.image_not_supported),
+              // Mostrar thumbnail para videos o imagen normal
+              if (file.isVideo && file.thumbnailUrl != null)
+                Image.network(
+                  file.thumbnailUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey[900],
+                    child: const Center(
+                      child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
+                    ),
+                  ),
+                )
+              else if (file.isVideo)
+                Container(
+                  color: Colors.grey[900],
+                  child: const Center(
+                    child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
+                  ),
+                )
+              else
+                Image.network(
+                  file.downloadUrl ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey[100],
+                    child: const Icon(Icons.image_not_supported),
+                  ),
                 ),
-              ),
+              // Overlay de play para videos
               if (file.isVideo)
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
+                      colors: [
+                        Colors.black.withOpacity(0.3),
+                        Colors.black.withOpacity(0.6),
+                      ],
                     ),
                   ),
                   child: const Center(
@@ -425,21 +455,45 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              file.downloadUrl ?? '',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: Colors.grey[100],
-                child: const Icon(Icons.image_not_supported, size: 32),
+            // Mostrar thumbnail para videos o imagen normal
+            if (file.isVideo && file.thumbnailUrl != null)
+              Image.network(
+                file.thumbnailUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey[900],
+                  child: const Center(
+                    child: Icon(Icons.videocam_rounded, size: 32, color: Colors.white70),
+                  ),
+                ),
+              )
+            else if (file.isVideo)
+              Container(
+                color: Colors.grey[900],
+                child: const Center(
+                  child: Icon(Icons.videocam_rounded, size: 32, color: Colors.white70),
+                ),
+              )
+            else
+              Image.network(
+                file.downloadUrl ?? '',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey[100],
+                  child: const Icon(Icons.image_not_supported, size: 32),
+                ),
               ),
-            ),
+            // Overlay de play para videos
             if (file.isVideo)
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.4)],
+                    colors: [
+                      Colors.black.withOpacity(0.2),
+                      Colors.black.withOpacity(0.5),
+                    ],
                   ),
                 ),
                 child: const Center(
@@ -490,31 +544,6 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
             ),
           ),
           Icon(Icons.volume_up_rounded, color: AppColors.primary),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTag(String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: AppColors.labelSmall.copyWith(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ],
       ),
     );
@@ -1117,5 +1146,45 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       default:
         return Colors.grey;
     }
+  }
+
+  void _navigateToMemoryDetail(MemoryResponse memory) {
+    // Convertir MemoryResponse a Memory entity
+    final memoryEntity = Memory(
+      id: memory.idMemory,
+      type: memory.type,
+      title: memory.title,
+      description: memory.description ?? '',
+      photoDate: memory.photoDate != null ? DateTime.parse(memory.photoDate.toString()) : null,
+      location: memory.location,
+      visible: memory.visible,
+      tags: memory.tags ?? [],
+      associatedQuestion: memory.associatedQuestion,
+      files: memory.files.map((f) => File(
+        id: f.idFile,
+        name: f.fileName,
+        originalName: f.originalFileName,
+        type: f.fileType,
+        mimeType: f.mimeType,
+        size: f.fileSize,
+        url: f.fileUrl,
+        uploadedDate: f.uploadedDate != null ? DateTime.parse(f.uploadedDate.toString()) : DateTime.now(),
+      )).toList(),
+      totalUsedSpace: memory.totalUsedSpace,
+      createdDate: memory.createdDate != null ? DateTime.parse(memory.createdDate.toString()) : DateTime.now(),
+      updateDate: memory.updateDate != null ? DateTime.parse(memory.updateDate.toString()) : null,
+      latitude: memory.latitude,
+      longitude: memory.longitude,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemoryDetailScreen(
+          memory: memoryEntity,
+          mode: MemoryMode.view,
+        ),
+      ),
+    );
   }
 }
