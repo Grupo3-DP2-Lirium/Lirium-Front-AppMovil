@@ -72,7 +72,6 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-
     super.dispose();
   }
 
@@ -141,8 +140,8 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
                 onTabChanged: (index) => setState(() => _selectedTopTab = index),
               ),
 
-              // Contenido de los tabs
-              SliverFillRemaining(
+              // Esto permite que el contenido sea parte del mismo scroll
+              SliverToBoxAdapter(
                 child: _buildTabContent(),
               ),
             ],
@@ -163,18 +162,25 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
     switch (_selectedTopTab) {
       case 0:
         return MemoriesTab(
-          memorialId: widget.memorialId
+          memorialId: widget.memorialId,
+          //IMPORTANTE: Pasar el scrollController para que no tenga scroll propio
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
         );
       case 1:
         return VideosTab(
-          memorialId: widget.memorialId
-          //memoriesService: _memoriesService,
+          memorialId: widget.memorialId,
+          //IMPORTANTE: Pasar el scrollController para que no tenga scroll propio
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
         );
       case 2:
         return InfoTab(detailsState: _detailsState);
       default:
         return MemoriesTab(
-          memorialId: widget.memorialId
+          memorialId: widget.memorialId,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
         );
     }
   }
@@ -301,7 +307,6 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
     );
 
     if (createdMemory != null && mounted) {
-
       print('🆕 Memoria creada recibida:');
       print('   - ID: ${createdMemory.id}');
       print('   - Título: ${createdMemory.title}');

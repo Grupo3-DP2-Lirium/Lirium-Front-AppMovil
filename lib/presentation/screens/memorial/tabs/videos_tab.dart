@@ -9,10 +9,14 @@ import 'package:provider/provider.dart';
 
 class VideosTab extends StatefulWidget {
   final String memorialId;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   const VideosTab({
     super.key,
-    required this.memorialId
+    required this.memorialId,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
@@ -26,11 +30,23 @@ class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixi
   @override
   void initState() {
     super.initState();
-    // Cargar memorias usando el provider
+    // Cuando carga el memorial y antes que termine
+    // de cargar los recuerdos cambiar a esta tab, carga el doble de recuerdos
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<MemoriesByMemorialProvider>();
-      if (!provider.loaded) {
-        provider.loadMemories(memorialId: widget.memorialId);
+
+      // Solo cargar si:
+      // 1. No está cargado aún, O
+      // 2. Es un memorial diferente
+      final needsLoad = !provider.loaded ||
+          provider.currentMemorialId != widget.memorialId;
+
+      if (needsLoad) {
+        print('📡 Cargando memorias para memorial: ${widget.memorialId}');
+        provider.loadMemories(memorialId: widget.memorialId, force: true);
+      } else {
+        print('✅ Memorias ya cargadas para este memorial');
       }
     });
   }
@@ -54,6 +70,8 @@ class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixi
         }
 
         return ListView.builder(
+          shrinkWrap: widget.shrinkWrap, // para arreglar el scroll
+          physics: widget.physics, //// para arreglar el scroll
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: memoriesWithVideos.length,
           itemBuilder: (context, index) => _buildVideoCard(memoriesWithVideos[index]),

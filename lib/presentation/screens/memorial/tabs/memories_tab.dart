@@ -16,10 +16,14 @@ import 'package:provider/provider.dart';
 
 class MemoriesTab extends StatefulWidget {
   final String memorialId;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   const MemoriesTab({
     super.key,
     required this.memorialId,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   @override
@@ -78,7 +82,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         ),
 
         // Contenido según filtro
-        Expanded(child: _buildFilteredContent()),
+        _buildFilteredContent(),
       ],
     );
   }
@@ -107,16 +111,22 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     return Consumer<MemoriesByMemorialProvider>(
       builder: (context, provider, _) {
         if (provider.loading && provider.memories.isEmpty) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40.0),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          );
         }
         if (provider.memories.isEmpty) {
           return _buildEmptyState('No hay recuerdos', Icons.photo_library_outlined);
         }
 
-        // Convertir Memory entities a MemoryResponse para mantener compatibilidad
         final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
 
         return ListView.separated(
+          shrinkWrap: widget.shrinkWrap,
+          physics: widget.physics,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: memories.length,
           separatorBuilder: (_, __) => const SizedBox(height: 16),
@@ -562,6 +572,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         }
 
         return GridView.builder(
+          shrinkWrap: widget.shrinkWrap,
+          physics: widget.physics,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
@@ -861,6 +873,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
             });
 
             return ListView.builder(
+              shrinkWrap: widget.shrinkWrap,
+              physics: widget.physics,
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 140),
               itemCount: timelineMemories.length + 1, // +1 para el banner
               itemBuilder: (context, index) {
