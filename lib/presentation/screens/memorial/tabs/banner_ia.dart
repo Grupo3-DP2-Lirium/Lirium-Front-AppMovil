@@ -65,7 +65,7 @@ class AIGeneratedBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'A partir de los recuerdos de $memorialName. Puede no ser completamente preciso.',
+                  'A partir de los recuerdos compartidos. Puede no ser completamente preciso.',
                   style: AppColors.labelSmall.copyWith(
                     color: Colors.grey[600],
                     fontSize: 11,

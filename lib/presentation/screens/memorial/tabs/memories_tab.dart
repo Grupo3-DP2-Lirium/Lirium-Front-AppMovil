@@ -818,8 +818,8 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
           return Padding(
             padding: const EdgeInsets.only(left: 0, right: 0, top: 0, bottom: 8),
             child: AIGeneratedBanner(
-              memorialName: 'Juanita',
-              accentColor: AppColors.secondary,
+              memorialName: '',
+              accentColor: AppColors.secondary2,
             ),
           );
         }
@@ -981,17 +981,14 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     return '${date.day} de ${months[date.month - 1]} de ${date.year}';
   }
 
-  // ============ TEMÁTICAS ============
+  // ============ TEMÁTICAS (CATEGORÍAS) ============
   Widget _buildThemesContent() {
-    // Agrupar memorias por categoría desde las memorias ya cargadas
     final Map<String, List<MemoryResponse>> memoriesByCategory = {};
 
     for (final memory in memories) {
       if (memory.categories != null && memory.categories!.isNotEmpty) {
         for (final categoria in memory.categories!) {
           final categoryLower = categoria.toLowerCase();
-
-          // Excluir "otros" (fallback)
           if (categoryLower == 'otros') continue;
 
           if (!memoriesByCategory.containsKey(categoria)) {
@@ -1008,28 +1005,36 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       return _buildEmptyState('No hay temáticas', Icons.category);
     }
 
-    // Ordenar por cantidad de recuerdos (mayor a menor)
     final sortedEntries = memoriesByCategory.entries.toList()
       ..sort((a, b) => b.value.length.compareTo(a.value.length));
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
       child: Column(
-        children: sortedEntries.map((entry) {
-          final category = entry.key;
-          final categoryMemories = entry.value;
+        children: [
+          // Banner de IA al inicio (se scrollea con el contenido)
+          AIGeneratedBanner(
+            memorialName: '',
+            accentColor: AppColors.secondary2,
+          ),
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildThemeItem(
-              icon: _getCategoryIcon(category),
-              title: _formatCategoryName(category),
-              count: '${categoryMemories.length} recuerdo${categoryMemories.length > 1 ? 's' : ''}',
-              color: _getCategoryColor(category),
-              memories: categoryMemories,
-            ),
-          );
-        }).toList(),
+          // Lista de categorías
+          ...sortedEntries.map((entry) {
+            final category = entry.key;
+            final categoryMemories = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildThemeItem(
+                icon: _getCategoryIcon(category),
+                title: _formatCategoryName(category),
+                count: '${categoryMemories.length} recuerdo${categoryMemories.length > 1 ? 's' : ''}',
+                color: _getCategoryColor(category),
+                memories: categoryMemories,
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
@@ -1131,15 +1136,12 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ MOMENTOS ============
   Widget _buildMomentsContent() {
-    // Agrupar memorias por momento desde las memorias ya cargadas
     final Map<String, List<MemoryResponse>> memoriesByMoment = {};
 
     for (final memory in memories) {
       if (memory.moments != null && memory.moments!.isNotEmpty) {
         for (final momento in memory.moments!) {
           final momentLower = momento.toLowerCase();
-
-          // Excluir "cotidiano" (fallback)
           if (momentLower == 'cotidiano') continue;
 
           if (!memoriesByMoment.containsKey(momento)) {
@@ -1156,28 +1158,36 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       return _buildEmptyState('No hay momentos especiales', Icons.favorite);
     }
 
-    // Ordenar por cantidad de recuerdos (mayor a menor)
     final sortedEntries = memoriesByMoment.entries.toList()
       ..sort((a, b) => b.value.length.compareTo(a.value.length));
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
       child: Column(
-        children: sortedEntries.map((entry) {
-          final moment = entry.key;
-          final momentMemories = entry.value;
+        children: [
+          // Banner de IA al inicio (se scrollea con el contenido)
+          AIGeneratedBanner(
+            memorialName: '',
+            accentColor: AppColors.secondary2,
+          ),
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildMomentItem(
-              icon: _getMomentIcon(moment),
-              title: _formatMomentName(moment),
-              count: '${momentMemories.length} recuerdo${momentMemories.length > 1 ? 's' : ''}',
-              color: _getMomentColor(moment),
-              memories: momentMemories,
-            ),
-          );
-        }).toList(),
+          // Lista de momentos
+          ...sortedEntries.map((entry) {
+            final moment = entry.key;
+            final momentMemories = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildMomentItem(
+                icon: _getMomentIcon(moment),
+                title: _formatMomentName(moment),
+                count: '${momentMemories.length} recuerdo${momentMemories.length > 1 ? 's' : ''}',
+                color: _getMomentColor(moment),
+                memories: momentMemories,
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }

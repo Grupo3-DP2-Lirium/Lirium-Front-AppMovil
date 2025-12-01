@@ -33,10 +33,10 @@ class MemorialFilterChips extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.secondary.withOpacity(0.12) : Colors.white,
+                color: isSelected ? AppColors.secondary2.withOpacity(0.12) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? AppColors.secondary.withOpacity(0.4) : Colors.grey[300]!,
+                  color: isSelected ? AppColors.secondary2.withOpacity(0.4) : Colors.grey[300]!,
                   width: 1.5,
                 ),
               ),
@@ -46,14 +46,14 @@ class MemorialFilterChips extends StatelessWidget {
                   Icon(
                     filter.icon,
                     size: 18,
-                    color: isSelected ? AppColors.secondary : AppColors.textSecondary,
+                    color: isSelected ? AppColors.secondary2 : AppColors.textSecondary,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     filter.label,
                     style: AppColors.labelMedium.copyWith(
                       fontSize: 13,
-                      color: isSelected ? AppColors.secondary : AppColors.textSecondary,
+                      color: isSelected ? AppColors.secondary2 : AppColors.textSecondary,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
