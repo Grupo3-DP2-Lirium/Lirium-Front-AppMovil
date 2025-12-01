@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
@@ -560,12 +561,16 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ GALERÍA ============
   Widget _buildGalleryGridContent() {
-    // 1. Obtener TODAS las imágenes de TODAS las memorias
-    final allImages = memories
-        .expand((m) => m.files.where((f) => f.isImage)) // Expande todas las imágenes
+    // 1. Crear lista de pares {file, memory} para mantener la relación
+    final allImageEntries = memories
+        .expand(
+          (m) => m.files
+          .where((f) => f.isImage)
+          .map((f) => {'file': f, 'memory': m}),
+    )
         .toList();
 
-    if (allImages.isEmpty) {
+    if (allImageEntries.isEmpty) {
       return _buildEmptyState('No hay imágenes', Icons.image_not_supported);
     }
 
@@ -576,16 +581,57 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: allImages.length, // Total de imágenes
+      itemCount: allImageEntries.length,
       itemBuilder: (context, index) {
-        final imageFile = allImages[index];
+        final entry = allImageEntries[index];
+
+        // Extraer file y memory con tipado fuerte
+        final FileResponse file = entry['file'] as FileResponse;
+        final MemoryResponse memory = entry['memory'] as MemoryResponse;
+
+        // URL segura evitando null
+        final imageUrl = file.downloadUrl;
+
         return ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.network(imageFile.downloadUrl, fit: BoxFit.cover),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                try {
+                  _navigateToMemoryDetail(memory);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error abriendo la memoria')),
+                  );
+                }
+              },
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey[100],
+                  child: const Icon(Icons.image_not_supported),
+                ),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
         );
       },
     );
   }
+
 
   // ============ FORMATO ============
   Widget _buildFormatTypeContent() {
