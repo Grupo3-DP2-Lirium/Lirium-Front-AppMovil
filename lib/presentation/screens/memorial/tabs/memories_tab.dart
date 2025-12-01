@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/models/file_response.dart';
-import 'package:flutter_frontend/data/models/memory_lite_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
-import 'package:flutter_frontend/data/models/memories_by_type_response.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/screens/memorial/tabs/banner_ia.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_filter_chips.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/format_type_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/organize_memories/moment_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/theme_detail_screen.dart';
 
 class MemoriesTab extends StatefulWidget {
@@ -36,12 +35,6 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
   int currentPage = 0;
   final int pageSize = 10;
   bool hasMoreMemories = true;
-
-  // Datos organizados
-  Map<String, Map<String, List<MemoryLiteResponse>>> _memoriesByCategory = {};
-  List<MemoryResponse> _timelineMemories = [];
-  MemoriesByTypeResponse? _memoriesByType;
-  bool _isLoadingSpecialData = false;
 
   // Filtros disponibles
   final List<FilterChipData> _filters = const [
@@ -129,7 +122,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       case 'themes':
         return _buildThemesContent();
       case 'moments': //pendiente
-        return _buildThemesContent();
+        return _buildMomentsContent();
       default:
         return _buildActivityContent();
     }
@@ -798,28 +791,52 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ LÍNEA DE TIEMPO ============
   Widget _buildTimelineContent() {
-    if (_timelineMemories.isEmpty) {
-      _loadTimelineMemories();
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    // Filtrar memorias que son línea de tiempo
+    final timelineMemories = memories.where((m) => m.esLineaTiempo == true).toList();
+
+    if (timelineMemories.isEmpty) {
+      return _buildEmptyState('No hay momentos en la línea de tiempo', Icons.timeline);
     }
 
-    if (_isLoadingSpecialData) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-    }
+    // Ordenar por fecha de la foto (o creación si no tiene photoDate)
+    timelineMemories.sort((a, b) {
+      final dateA = a.photoDate != null
+          ? DateTime.parse(a.photoDate.toString())
+          : DateTime.parse(a.createdDate.toString());
+      final dateB = b.photoDate != null
+          ? DateTime.parse(b.photoDate.toString())
+          : DateTime.parse(b.createdDate.toString());
+      return dateA.compareTo(dateB); // Orden cronológico (más antiguo primero)
+    });
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 140),
-      itemCount: _timelineMemories.length,
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 140),
+      itemCount: timelineMemories.length + 1, // +1 para el banner
       itemBuilder: (context, index) {
-        final memory = _timelineMemories[index];
-        final date = _toDateTime(memory.photoDate ?? memory.createdDate);
-        final isLast = index == _timelineMemories.length - 1;
-        final imageFile = _firstImageFile(memory.files);
+        // Primer item es el banner
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(left: 0, right: 0, top: 0, bottom: 8),
+            child: AIGeneratedBanner(
+              memorialName: 'Juanita',
+              accentColor: AppColors.secondary,
+            ),
+          );
+        }
+
+        // Los demás items son las memorias
+        final memoryIndex = index - 1;
+        final memory = timelineMemories[memoryIndex];
+        final date = memory.photoDate != null
+            ? DateTime.parse(memory.photoDate.toString())
+            : DateTime.parse(memory.createdDate.toString());
+        final isLast = memoryIndex == timelineMemories.length - 1;
 
         return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Timeline vertical line
               Column(
                 children: [
                   Container(
@@ -841,45 +858,91 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
                 ],
               ),
               const SizedBox(width: 16),
+
+              // Content card
               Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text('${date.year}', style: AppColors.h5.copyWith(color: AppColors.primary)),
-                          const SizedBox(width: 8),
-                          Text('-', style: TextStyle(fontSize: 18, color: Colors.grey[400])),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(memory.title ?? '', style: AppColors.h6.copyWith(fontSize: 17)),
-                          ),
-                        ],
-                      ),
-                      if ((memory.description ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(memory.description, style: AppColors.bodyMedium),
-                      ],
-                      if (imageFile != null) ...[
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: Image.network(
-                              imageFile.downloadUrl ?? '',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey[100],
-                                child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),
-                              ),
-                            ),
-                          ),
+                child: GestureDetector(
+                  onTap: () => _navigateToMemoryDetail(memory),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
                       ],
-                    ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header: Año y título
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${date.year}',
+                                style: AppColors.labelLarge.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                memory.title,
+                                style: AppColors.h6.copyWith(fontSize: 17),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Descripción
+                        if (memory.description.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            memory.description,
+                            style: AppColors.bodyMedium,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+
+                        // Contenido multimedia (igual que en actividad reciente)
+                        if (memory.files.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _buildTimelineMediaContent(memory),
+                        ],
+
+                        // Fecha completa en gris pequeño
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatFullDate(date),
+                              style: AppColors.labelSmall.copyWith(
+                                color: Colors.grey[500],
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -890,41 +953,80 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     );
   }
 
+  // Helper para mostrar contenido multimedia en línea de tiempo
+  Widget _buildTimelineMediaContent(MemoryResponse memory) {
+    final hasImages = memory.files.any((f) => f.isImage);
+    final hasVideos = memory.files.any((f) => f.isVideo);
+    final hasAudio = memory.files.any((f) => f.fileType == 'audio');
+
+    // Si solo tiene audio, mostrar reproductor
+    if (hasAudio && !hasImages && !hasVideos) {
+      return _buildAudioPlayer(memory.files.firstWhere((f) => f.fileType == 'audio'));
+    }
+
+    // Si tiene imágenes o videos, mostrar grid
+    if (hasImages || hasVideos) {
+      return _buildMediaGrid(memory.files);
+    }
+
+    return const SizedBox.shrink();
+  }
+
+// Helper para formatear fecha completa
+  String _formatFullDate(DateTime date) {
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return '${date.day} de ${months[date.month - 1]} de ${date.year}';
+  }
+
   // ============ TEMÁTICAS ============
   Widget _buildThemesContent() {
-    if (_memoriesByCategory.isEmpty) {
-      _loadMemoriesByCategory();
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    // Agrupar memorias por categoría desde las memorias ya cargadas
+    final Map<String, List<MemoryResponse>> memoriesByCategory = {};
+
+    for (final memory in memories) {
+      if (memory.categories != null && memory.categories!.isNotEmpty) {
+        for (final categoria in memory.categories!) {
+          final categoryLower = categoria.toLowerCase();
+
+          // Excluir "otros" (fallback)
+          if (categoryLower == 'otros') continue;
+
+          if (!memoriesByCategory.containsKey(categoria)) {
+            memoriesByCategory[categoria] = [];
+          }
+          if (!memoriesByCategory[categoria]!.contains(memory)) {
+            memoriesByCategory[categoria]!.add(memory);
+          }
+        }
+      }
     }
 
-    if (_isLoadingSpecialData) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-    }
-
-    final entries = _memoriesByCategory.entries.toList();
-
-    if (entries.isEmpty) {
+    if (memoriesByCategory.isEmpty) {
       return _buildEmptyState('No hay temáticas', Icons.category);
     }
+
+    // Ordenar por cantidad de recuerdos (mayor a menor)
+    final sortedEntries = memoriesByCategory.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
       child: Column(
-        children: entries.map((entry) {
+        children: sortedEntries.map((entry) {
           final category = entry.key;
-          final typeMap = entry.value;
-          int totalCount = 0;
-          for (var list in typeMap.values) {
-            totalCount += (list?.length ?? 0);
-          }
+          final categoryMemories = entry.value;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _buildThemeItem(
               icon: _getCategoryIcon(category),
-              title: category,
-              count: '$totalCount recuerdos',
+              title: _formatCategoryName(category),
+              count: '${categoryMemories.length} recuerdo${categoryMemories.length > 1 ? 's' : ''}',
               color: _getCategoryColor(category),
+              memories: categoryMemories,
             ),
           );
         }).toList(),
@@ -937,37 +1039,18 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     required String title,
     required String count,
     required Color color,
+    required List<MemoryResponse> memories,
   }) {
+    // Obtener URL de preview
     String? previewUrl;
-    if (_memoriesByCategory.containsKey(title)) {
-      final typeMap = _memoriesByCategory[title]!;
-      for (var memoriesList in typeMap.values) {
-        if (memoriesList != null && memoriesList.isNotEmpty) {
-          final first = memoriesList.first;
-          if (first != null) {
-            if ((first as dynamic).firstFileUrl != null) {
-              previewUrl = (first as dynamic).firstFileUrl as String?;
-              break;
-            }
-            if ((first as dynamic).files != null && ((first as dynamic).files as List).isNotEmpty) {
-              final files = (first as dynamic).files as List;
-              for (final f in files) {
-                try {
-                  final isImage = (f as dynamic).isImage;
-                  if (isImage == true) {
-                    previewUrl = (f as dynamic).downloadUrl as String?;
-                    break;
-                  }
-                } catch (_) {
-                  previewUrl = (f as dynamic).downloadUrl as String?;
-                  if (previewUrl != null) break;
-                }
-              }
-              if (previewUrl != null) break;
-            }
-          }
+    for (final memory in memories) {
+      for (final file in memory.files) {
+        if (file.isImage && file.downloadUrl != null) {
+          previewUrl = file.downloadUrl;
+          break;
         }
       }
+      if (previewUrl != null) break;
     }
 
     return Material(
@@ -975,30 +1058,17 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          if (!_memoriesByCategory.containsKey(title)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No hay recuerdos en esta temática')),
-            );
-            return;
-          }
-          final typeMap = _memoriesByCategory[title]!;
-          try {
-            if (!mounted) return;
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => ThemeDetailScreen(
-                  title: title,
-                  memoriesByType: typeMap,
-                  color: color,
-                  icon: icon,
-                ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ThemeDetailScreen(
+                title: title,
+                memories: memories,
+                color: color,
+                icon: icon,
               ),
-            );
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Error abriendo temática')),
-            );
-          }
+            ),
+          );
         },
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -1059,6 +1129,328 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     );
   }
 
+  // ============ MOMENTOS ============
+  Widget _buildMomentsContent() {
+    // Agrupar memorias por momento desde las memorias ya cargadas
+    final Map<String, List<MemoryResponse>> memoriesByMoment = {};
+
+    for (final memory in memories) {
+      if (memory.moments != null && memory.moments!.isNotEmpty) {
+        for (final momento in memory.moments!) {
+          final momentLower = momento.toLowerCase();
+
+          // Excluir "cotidiano" (fallback)
+          if (momentLower == 'cotidiano') continue;
+
+          if (!memoriesByMoment.containsKey(momento)) {
+            memoriesByMoment[momento] = [];
+          }
+          if (!memoriesByMoment[momento]!.contains(memory)) {
+            memoriesByMoment[momento]!.add(memory);
+          }
+        }
+      }
+    }
+
+    if (memoriesByMoment.isEmpty) {
+      return _buildEmptyState('No hay momentos especiales', Icons.favorite);
+    }
+
+    // Ordenar por cantidad de recuerdos (mayor a menor)
+    final sortedEntries = memoriesByMoment.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+      child: Column(
+        children: sortedEntries.map((entry) {
+          final moment = entry.key;
+          final momentMemories = entry.value;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildMomentItem(
+              icon: _getMomentIcon(moment),
+              title: _formatMomentName(moment),
+              count: '${momentMemories.length} recuerdo${momentMemories.length > 1 ? 's' : ''}',
+              color: _getMomentColor(moment),
+              memories: momentMemories,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMomentItem({
+    required IconData icon,
+    required String title,
+    required String count,
+    required Color color,
+    required List<MemoryResponse> memories,
+  }) {
+    // Obtener URL de preview
+    String? previewUrl;
+    for (final memory in memories) {
+      for (final file in memory.files) {
+        if (file.isImage && file.downloadUrl != null) {
+          previewUrl = file.downloadUrl;
+          break;
+        }
+      }
+      if (previewUrl != null) break;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MomentDetailScreen(
+                title: title,
+                memories: memories,
+                color: color,
+                icon: icon,
+              ),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: previewUrl != null
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    previewUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
+                  ),
+                )
+                    : Icon(icon, color: color, size: 36),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(count, style: AppColors.bodyMedium),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============ HELPERS PARA CATEGORÍAS ============
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'familia':
+        return Icons.family_restroom_rounded;
+      case 'amigos':
+        return Icons.groups_rounded;
+      case 'pareja':
+        return Icons.favorite_rounded;
+      case 'infancia':
+        return Icons.child_care_rounded;
+      case 'juventud':
+        return Icons.school_rounded;
+      case 'adultez':
+        return Icons.person_rounded;
+      case 'viajes':
+        return Icons.flight_rounded;
+      case 'celebraciones':
+        return Icons.celebration_rounded;
+      case 'trabajo':
+        return Icons.work_rounded;
+      case 'comunidad':
+        return Icons.people_rounded;
+      case 'arte_cultura':
+      case 'arte y cultura':
+        return Icons.palette_rounded;
+      case 'fe_espiritualidad':
+      case 'fe y espiritualidad':
+        return Icons.church_rounded;
+      case 'salud_bienestar':
+      case 'salud y bienestar':
+        return Icons.favorite_border_rounded;
+      case 'despedidas_duelo':
+      case 'despedidas y duelo':
+        return Icons.sentiment_dissatisfied_rounded;
+      case 'legado':
+        return Icons.auto_stories_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'familia':
+        return Colors.blue;
+      case 'amigos':
+        return Colors.green;
+      case 'pareja':
+        return Colors.pink;
+      case 'infancia':
+        return Colors.purple;
+      case 'juventud':
+        return Colors.indigo;
+      case 'adultez':
+        return Colors.blueGrey;
+      case 'viajes':
+        return Colors.orange;
+      case 'celebraciones':
+        return Colors.amber;
+      case 'trabajo':
+        return Colors.teal;
+      case 'comunidad':
+        return Colors.cyan;
+      case 'arte_cultura':
+      case 'arte y cultura':
+        return Colors.deepPurple;
+      case 'fe_espiritualidad':
+      case 'fe y espiritualidad':
+        return Colors.deepOrange;
+      case 'salud_bienestar':
+      case 'salud y bienestar':
+        return Colors.lightGreen;
+      case 'despedidas_duelo':
+      case 'despedidas y duelo':
+        return Colors.grey;
+      case 'legado':
+        return Colors.brown;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  String _formatCategoryName(String category) {
+    // Convertir snake_case a formato legible
+    final formatted = category
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
+
+    return formatted;
+  }
+
+  // ============ HELPERS PARA MOMENTOS ============
+  IconData _getMomentIcon(String moment) {
+    switch (moment.toLowerCase().replaceAll('_', ' ')) {
+      case 'amor afecto':
+      case 'amor':
+      case 'afecto':
+        return Icons.favorite_rounded;
+      case 'gratitud':
+        return Icons.volunteer_activism_rounded;
+      case 'nostalgia':
+        return Icons.history_rounded;
+      case 'alegria':
+      case 'alegría':
+        return Icons.sentiment_very_satisfied_rounded;
+      case 'tristeza':
+        return Icons.sentiment_dissatisfied_rounded;
+      case 'orgullo':
+        return Icons.emoji_events_rounded;
+      case 'superacion':
+      case 'superación':
+        return Icons.trending_up_rounded;
+      case 'reflexion':
+      case 'reflexión':
+        return Icons.psychology_rounded;
+      case 'fe':
+        return Icons.auto_awesome_rounded;
+      case 'paz':
+        return Icons.spa_rounded;
+      case 'asombro':
+        return Icons.stars_rounded;
+      default:
+        return Icons.auto_awesome_outlined;
+    }
+  }
+
+  Color _getMomentColor(String moment) {
+    switch (moment.toLowerCase().replaceAll('_', ' ')) {
+      case 'amor afecto':
+      case 'amor':
+      case 'afecto':
+        return Colors.red;
+      case 'gratitud':
+        return Colors.orange;
+      case 'nostalgia':
+        return Colors.purple;
+      case 'alegria':
+      case 'alegría':
+        return Colors.yellow;
+      case 'tristeza':
+        return Colors.blue;
+      case 'orgullo':
+        return Colors.amber;
+      case 'superacion':
+      case 'superación':
+        return Colors.green;
+      case 'reflexion':
+      case 'reflexión':
+        return Colors.indigo;
+      case 'fe':
+        return Colors.deepPurple;
+      case 'paz':
+        return Colors.teal;
+      case 'asombro':
+        return Colors.pink;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  String _formatMomentName(String moment) {
+    // Convertir snake_case a formato legible
+    final formatted = moment
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
+
+    return formatted;
+  }
+
   // ============ HELPERS ============
   Widget _buildEmptyState(String message, IconData icon) {
     return Center(
@@ -1080,95 +1472,7 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     );
   }
 
-  DateTime _toDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (_) {
-        return DateTime.now();
-      }
-    }
-    return DateTime.now();
-  }
-
-  FileResponse? _firstImageFile(List<FileResponse>? files) {
-    if (files == null) return null;
-    for (final f in files) {
-      if (f.isImage == true) return f;
-    }
-    return null;
-  }
-
-  Future<void> _loadMemoriesByType() async {
-    if (_memoriesByType != null) return;
-    setState(() => _isLoadingSpecialData = true);
-    try {
-      final data = await widget.memoriesService.getMemoriesByType(memorialId: widget.memorialId);
-      setState(() => _memoriesByType = data);
-    } finally {
-      setState(() => _isLoadingSpecialData = false);
-    }
-  }
-
-  Future<void> _loadTimelineMemories() async {
-    if (_timelineMemories.isNotEmpty) return;
-    setState(() => _isLoadingSpecialData = true);
-    try {
-      final data = await widget.memoriesService.getTimelineMemories(memorialId: widget.memorialId);
-      setState(() => _timelineMemories = data);
-    } finally {
-      setState(() => _isLoadingSpecialData = false);
-    }
-  }
-
-  Future<void> _loadMemoriesByCategory() async {
-    if (_memoriesByCategory.isNotEmpty) return;
-    setState(() => _isLoadingSpecialData = true);
-    try {
-      final data =
-      await widget.memoriesService.getMemoriesGroupedByCategory(memorialId: widget.memorialId);
-      setState(() => _memoriesByCategory = data);
-    } finally {
-      setState(() => _isLoadingSpecialData = false);
-    }
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'familia':
-        return Icons.family_restroom_rounded;
-      case 'celebraciones':
-        return Icons.celebration_rounded;
-      case 'viajes':
-        return Icons.travel_explore_rounded;
-      case 'trabajo':
-        return Icons.work_rounded;
-      case 'hobbies':
-        return Icons.sports_esports_rounded;
-      default:
-        return Icons.category_rounded;
-    }
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'familia':
-        return Colors.blue;
-      case 'celebraciones':
-        return Colors.purple;
-      case 'viajes':
-        return Colors.orange;
-      case 'trabajo':
-        return Colors.green;
-      case 'hobbies':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
+  // ============ IR A DETALLE DE MEMORIA ============
   void _navigateToMemoryDetail(MemoryResponse memory) {
     // Convertir MemoryResponse a Memory entity
     final memoryEntity = Memory(
