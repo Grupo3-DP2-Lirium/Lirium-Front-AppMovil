@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/components/documentary_card.dart';
@@ -351,7 +352,7 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'No tienes documentales aún',
+              'Aún no tienes documentales',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -360,7 +361,7 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Crea tu primer documental para recordar momentos especiales',
+              'Crea tu primer documental para recordar momentos significativos',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],

@@ -76,7 +76,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.add_box_outlined,
+                  Icons.photo_library_outlined,
                   size: 64,
                   color: AppColors.primary,
                 ),

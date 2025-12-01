@@ -69,9 +69,8 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
           AppPopupButton(
             text: "Continuar",
             onPressed: () {
-              Navigator.pop(context); // cerrar popup
-              Navigator.pop(context); // retrocede al grid
-              Navigator.pop(context);
+              Navigator.pop(context); // Cerrar popup
+              Navigator.pop(context, createdMemory); // Regresar con el memory creado
             },
           ),
         ],

@@ -196,7 +196,7 @@ class _CreateDocumentaryScreenState extends State<CreateDocumentaryScreen> {
 
               // Botón Generar
               PrimaryButton(
-                text: 'Generar Documental',
+                text: 'Generar Documental', //NO VALE
                 icon: Icons.movie_creation_outlined,
                 isFullWidth: true,
                 isLoading: _isLoading,

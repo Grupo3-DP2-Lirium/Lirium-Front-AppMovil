@@ -7,15 +7,38 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return OnboardingLayout(
       child: Column(
         children: [
           const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.15),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Image.asset( //ícono de Lirium
+              'assets/images/img19.jpg',
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 12),
           // Logo/Title
-          const AppTitle(
-            title: 'Remory',
+          AppTitle(
+            title: 'Lirium',
             fontSize: 32,
-            color: Color(0xFF6366F1),
+            color: theme.primaryColor,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),

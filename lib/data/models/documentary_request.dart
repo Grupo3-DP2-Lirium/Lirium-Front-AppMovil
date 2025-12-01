@@ -3,7 +3,7 @@ class DocumentaryRequestModel {
   final String title;
   final String? description;
 
-  //NUEVOS Campos de configuración creativa
+  //Campos de configuración creativa
   final String? narrativeFocus;
   final String? emotionalTone;
 
@@ -20,7 +20,7 @@ class DocumentaryRequestModel {
     this.description,
     this.narrativeFocus,
     this.emotionalTone,
-    this.durationPerMemory = 5,
+    this.durationPerMemory = 7,
     this.musicTrack,
     this.styleFilter = 'warm',
     this.transitionType = 'fade',
@@ -42,7 +42,7 @@ class DocumentaryRequestModel {
     'excludedMemoryIds': excludedMemoryIds,
   };
 
-  // ✨ NUEVO: Método copyWith para facilitar actualizaciones
+  // Método copyWith para facilitar actualizaciones
   DocumentaryRequestModel copyWith({
     String? memorialId,
     String? title,

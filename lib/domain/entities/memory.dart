@@ -1,3 +1,4 @@
+import 'package:flutter_frontend/domain/entities/user_lite.dart';
 import 'file.dart';
 
 class Memory {
@@ -16,6 +17,10 @@ class Memory {
   final double? totalUsedSpace;
   final DateTime createdDate;
   final DateTime? updateDate;
+  final List<String> categories;
+  final List<String> moments;
+  final bool esLineaTiempo;
+  final UserLite? author;
 
   Memory({
     required this.id,
@@ -32,7 +37,11 @@ class Memory {
     required this.files,
     required this.totalUsedSpace,
     required this.createdDate,
-    required this.updateDate
+    required this.updateDate,
+    this.categories = const [],   // Valor por defecto
+    this.moments = const [],      // Valor por defecto
+    this.esLineaTiempo = false,   // Valor por defecto
+    this.author,
   });
 
   Memory copyWith({
@@ -50,7 +59,11 @@ class Memory {
     List<File>? files,
     double? totalUsedSpace,
     DateTime? createdDate,
-    DateTime? updateDate
+    DateTime? updateDate,
+    List<String>? categories,
+    List<String>? moments,
+    bool? esLineaTiempo,
+    UserLite? author,
   }) {
     return Memory(
       id: id ?? this.id,
@@ -68,6 +81,10 @@ class Memory {
       totalUsedSpace: totalUsedSpace ?? this.totalUsedSpace,
       createdDate: createdDate ?? this.createdDate,
       updateDate: updateDate ?? this.updateDate,
+      categories: categories ?? this.categories,
+      moments: moments ?? this.moments,
+      esLineaTiempo: esLineaTiempo ?? this.esLineaTiempo,
+      author: author ?? this.author,
     );
   }
 

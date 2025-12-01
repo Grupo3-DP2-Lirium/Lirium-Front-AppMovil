@@ -5,13 +5,13 @@ import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 
-class ThemeDetailScreen extends StatelessWidget {
+class MomentDetailScreen extends StatelessWidget {
   final String title;
   final List<MemoryResponse> memories;
   final Color color;
   final IconData icon;
 
-  const ThemeDetailScreen({
+  const MomentDetailScreen({
     Key? key,
     required this.title,
     required this.memories,
@@ -76,7 +76,7 @@ class ThemeDetailScreen extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Revive los momentos de ${title.toLowerCase()}',
+              'Momentos llenos de ${title.toLowerCase()}',
               style: AppColors.bodyMedium.copyWith(
                 color: color.withOpacity(0.8),
                 fontStyle: FontStyle.italic,
@@ -196,7 +196,7 @@ class ThemeDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Badge de categoría
+                  // Badge de momento
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(

@@ -357,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           const Text(
-            'Comienza tu legado digital',
+            'Comienza tu legado digital con Lirium',
             style: AppColors.h4,
             textAlign: TextAlign.center,
           ),
@@ -375,10 +375,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.favorite,
-              size: 48,
-              color: AppColors.primary,
+            child: Image.asset( //ícono de Lirium
+              'assets/images/img19.jpg',
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 12),
