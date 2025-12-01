@@ -1,6 +1,7 @@
 import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/models/user_lite_response.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:flutter_frontend/domain/entities/user_lite.dart';
 
 
 class MemoryResponse {
@@ -123,6 +124,11 @@ class MemoryResponse {
       categories: categories,
       moments: moments,
       esLineaTiempo: esLineaTiempo,
+      author: author != null ? UserLite( //MAPEO DEL AUTHOR
+        id: author!.idUser,
+        name: author!.name,
+        profilePhotoUrl: author!.profilePhotoUrl,
+      ) : null,
     );
   }
 

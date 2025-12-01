@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
-import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/data/models/user_lite_response.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
+import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:provider/provider.dart';
 
 class VideosTab extends StatefulWidget {
   final String memorialId;
-  final MemoryService memoriesService;
 
   const VideosTab({
     super.key,
-    required this.memorialId,
-    required this.memoriesService,
+    required this.memorialId
   });
 
   @override
@@ -18,75 +20,45 @@ class VideosTab extends StatefulWidget {
 }
 
 class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixin {
-  List<MemoryResponse> memories = [];
-  bool isLoadingMemories = true;
-  String? errorMessage;
-  int currentPage = 0;
-  final int pageSize = 10;
-  bool hasMoreMemories = true;
-
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _loadMemories();
-  }
-
-  Future<void> _loadMemories() async {
-    if (!mounted) return;
-
-    try {
-      setState(() {
-        isLoadingMemories = true;
-        errorMessage = null;
-      });
-
-      final response = await widget.memoriesService.listMemories(
-        memorialId: widget.memorialId,
-        page: currentPage,
-        size: pageSize,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        if (currentPage == 0) {
-          memories = response.content;
-        } else {
-          memories.addAll(response.content);
-        }
-        hasMoreMemories = (response.number + 1) < response.totalPages;
-        isLoadingMemories = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        errorMessage = 'Error al cargar las memorias: $e';
-        isLoadingMemories = false;
-      });
-    }
+    // Cargar memorias usando el provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<MemoriesByMemorialProvider>();
+      if (!provider.loaded) {
+        provider.loadMemories(memorialId: widget.memorialId);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    if (isLoadingMemories) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-    }
+    return Consumer<MemoriesByMemorialProvider>(
+      builder: (context, provider, _) {
+        if (provider.loading && provider.memories.isEmpty) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
 
-    final memoriesWithVideos = memories.where((m) => m.files.any((f) => f.isVideo)).toList();
+        // Convertir Memory entities a MemoryResponse
+        final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
+        final memoriesWithVideos = memories.where((m) => m.files.any((f) => f.isVideo)).toList();
 
-    if (memoriesWithVideos.isEmpty) {
-      return _buildEmptyState();
-    }
+        if (memoriesWithVideos.isEmpty) {
+          return _buildEmptyState();
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: memoriesWithVideos.length,
-      itemBuilder: (context, index) => _buildVideoCard(memoriesWithVideos[index]),
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: memoriesWithVideos.length,
+          itemBuilder: (context, index) => _buildVideoCard(memoriesWithVideos[index]),
+        );
+      },
     );
   }
 
@@ -106,24 +78,18 @@ class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixi
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    /*child: Container(
-                      color: Colors.grey[200],
-                      child: memory.files.first.thumbnailUrl != null
-                          ? Image.network(
-                        memory.files.first.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.play_circle_outline,
-                          size: 64,
-                          color: AppColors.textSecondary,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.purple[300]!, Colors.pink[300]!],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                         ),
-                      )
-                          : const Icon(
-                        Icons.play_circle_outline,
-                        size: 64,
-                        color: AppColors.textSecondary,
                       ),
-                    ),*/
+                      child: const Center(
+                        child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
+                      ),
+                    ),
                   ),
                 ),
                 // Play overlay
@@ -179,31 +145,14 @@ class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixi
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    /*if (memory.files.first.duration != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          _formatDuration(memory.files.first.duration!),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),*/
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(memory.title, style: AppColors.h6.copyWith(fontSize: 17)),
-                if (memory.description.isNotEmpty) ...[
+                if (memory.description != null && memory.description!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
-                    memory.description,
+                    memory.description!,
                     style: AppColors.bodyMedium,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -253,9 +202,40 @@ class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixi
     );
   }
 
-  String _formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final secs = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  MemoryResponse _memoryToResponse(Memory memory) {
+    return MemoryResponse(
+      idMemory: memory.id,
+      type: memory.type,
+      title: memory.title,
+      description: memory.description,
+      photoDate: memory.photoDate,
+      location: memory.location,
+      visible: memory.visible,
+      tags: memory.tags,
+      associatedQuestion: memory.associatedQuestion,
+      files: memory.files.map((f) => FileResponse(
+        idFile: f.id,
+        fileName: f.name,
+        originalFileName: f.originalName,
+        fileType: f.type,
+        mimeType: f.mimeType,
+        fileSize: f.size,
+        fileUrl: f.url,
+        uploadedDate: f.uploadedDate,
+      )).toList(),
+      totalUsedSpace: memory.totalUsedSpace,
+      createdDate: memory.createdDate,
+      updateDate: memory.updateDate,
+      latitude: memory.latitude,
+      longitude: memory.longitude,
+      esLineaTiempo: memory.esLineaTiempo,        // USA EL VALOR DE MEMORY
+      categories: memory.categories,               // USA EL VALOR DE MEMORY
+      moments: memory.moments,                     // USA EL VALOR DE MEMORY
+      author: memory.author != null ? UserLiteResponse(  // USA EL VALOR DE MEMORY
+        idUser: memory.author!.id,
+        name: memory.author!.name,
+        profilePhotoUrl: memory.author!.profilePhotoUrl,
+      ) : null,
+    );
   }
 }

@@ -19,6 +19,7 @@ import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
 
 class MemorialDetailScreen extends StatefulWidget {
   final String memorialId;
@@ -31,7 +32,6 @@ class MemorialDetailScreen extends StatefulWidget {
 
 class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   final MemorialService _memorialService = MemorialService();
-  final MemoryService _memoriesService = MemoryService();
   final MemorialActions _memorialActions = MemorialActions();
   final ScrollController _scrollController = ScrollController();
 
@@ -74,11 +74,23 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
         memorialErrorMessage = null;
       });
 
-      final memorial = await _memorialService.getMemorialById(widget.memorialId);
+      // Cargar memorial y memorias en paralelo
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+
+      await Future.wait([
+        _memorialService.getMemorialById(widget.memorialId).then((memorial) {
+          if (mounted) {
+            setState(() {
+              _detailsState = MemorialDetailsState.fromResponse(memorial);
+            });
+          }
+        }),
+        memoriesProvider.loadMemories(memorialId: widget.memorialId, force: true),
+      ]);
+
       if (!mounted) return;
 
       setState(() {
-        _detailsState = MemorialDetailsState.fromResponse(memorial);
         isLoadingMemorial = false;
       });
     } catch (e) {
@@ -147,20 +159,18 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
     switch (_selectedTopTab) {
       case 0:
         return MemoriesTab(
-          memorialId: widget.memorialId,
-          memoriesService: _memoriesService,
+          memorialId: widget.memorialId
         );
       case 1:
         return VideosTab(
-          memorialId: widget.memorialId,
-          memoriesService: _memoriesService,
+          memorialId: widget.memorialId
+          //memoriesService: _memoriesService,
         );
       case 2:
         return InfoTab(detailsState: _detailsState);
       default:
         return MemoriesTab(
-          memorialId: widget.memorialId,
-          memoriesService: _memoriesService,
+          memorialId: widget.memorialId
         );
     }
   }
@@ -287,6 +297,9 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
     );
     if (createdMemory != null) {
       prov.agregarMemoria(createdMemory);
+
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+      memoriesProvider.addMemory(createdMemory);
     }
   }
 

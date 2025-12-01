@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/file_response.dart';
 import 'package:flutter_frontend/data/models/memory_response.dart';
-import 'package:flutter_frontend/data/services/memory_service.dart';
+import 'package:flutter_frontend/data/models/user_lite_response.dart';
 import 'package:flutter_frontend/domain/entities/file.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
@@ -11,15 +11,15 @@ import 'package:flutter_frontend/presentation/screens/memories/memory_details/me
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/format_type_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/moment_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/organize_memories/theme_detail_screen.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
+import 'package:provider/provider.dart';
 
 class MemoriesTab extends StatefulWidget {
   final String memorialId;
-  final MemoryService memoriesService;
 
   const MemoriesTab({
     super.key,
     required this.memorialId,
-    required this.memoriesService,
   });
 
   @override
@@ -28,14 +28,6 @@ class MemoriesTab extends StatefulWidget {
 
 class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClientMixin {
   String _selectedFilter = 'all';
-
-  // Datos de memorias
-  List<MemoryResponse> memories = [];
-  bool isLoadingMemories = true;
-  String? errorMessage;
-  int currentPage = 0;
-  final int pageSize = 10;
-  bool hasMoreMemories = true;
 
   // Filtros disponibles
   final List<FilterChipData> _filters = const [
@@ -53,42 +45,13 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
   @override
   void initState() {
     super.initState();
-    _loadMemories();
-  }
-
-  Future<void> _loadMemories() async {
-    if (!mounted) return;
-
-    try {
-      setState(() {
-        isLoadingMemories = true;
-        errorMessage = null;
-      });
-
-      final response = await widget.memoriesService.listMemories(
-        memorialId: widget.memorialId,
-        page: currentPage,
-        size: pageSize,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        if (currentPage == 0) {
-          memories = response.content;
-        } else {
-          memories.addAll(response.content);
-        }
-        hasMoreMemories = (response.number + 1) < response.totalPages;
-        isLoadingMemories = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        errorMessage = 'Error al cargar las memorias: $e';
-        isLoadingMemories = false;
-      });
-    }
+    // Cargar memorias usando el provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<MemoriesByMemorialProvider>();
+      if (!provider.loaded) {
+        provider.loadMemories(memorialId: widget.memorialId);
+      }
+    });
   }
 
   @override
@@ -131,17 +94,25 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ RECIENTES (FEED STYLE) ============
   Widget _buildActivityContent() {
-    if (isLoadingMemories) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-    }
-    if (memories.isEmpty) {
-      return _buildEmptyState('No hay recuerdos', Icons.photo_library_outlined);
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: memories.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) => _buildMemoryFeedCard(memories[index]),
+    return Consumer<MemoriesByMemorialProvider>(
+      builder: (context, provider, _) {
+        if (provider.loading && provider.memories.isEmpty) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        if (provider.memories.isEmpty) {
+          return _buildEmptyState('No hay recuerdos', Icons.photo_library_outlined);
+        }
+
+        // Convertir Memory entities a MemoryResponse para mantener compatibilidad
+        final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: memories.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
+          itemBuilder: (context, index) => _buildMemoryFeedCard(memories[index]),
+        );
+      },
     );
   }
 
@@ -559,74 +530,82 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
     }
   }
 
-  // ============ GALERÍA ============
+// ============ GALERÍA ============
   Widget _buildGalleryGridContent() {
-    // 1. Crear lista de pares {file, memory} para mantener la relación
-    final allImageEntries = memories
-        .expand(
-          (m) => m.files
-          .where((f) => f.isImage)
-          .map((f) => {'file': f, 'memory': m}),
-    )
-        .toList();
+    return Consumer<MemoriesByMemorialProvider>(
+      builder: (context, provider, _) {
+        if (provider.loading && provider.memories.isEmpty) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
 
-    if (allImageEntries.isEmpty) {
-      return _buildEmptyState('No hay imágenes', Icons.image_not_supported);
-    }
+        final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
+        final allImageEntries = memories
+            .expand(
+              (m) => m.files
+              .where((f) => f.isImage)
+              .map((f) => {'file': f, 'memory': m}),
+        )
+            .toList();
 
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: allImageEntries.length,
-      itemBuilder: (context, index) {
-        final entry = allImageEntries[index];
+        if (allImageEntries.isEmpty) {
+          return _buildEmptyState('No hay imágenes', Icons.image_not_supported);
+        }
 
-        // Extraer file y memory con tipado fuerte
-        final FileResponse file = entry['file'] as FileResponse;
-        final MemoryResponse memory = entry['memory'] as MemoryResponse;
-
-        // URL segura evitando null
-        final imageUrl = file.downloadUrl;
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                try {
-                  _navigateToMemoryDetail(memory);
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Error abriendo la memoria')),
-                  );
-                }
-              },
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey[100],
-                  child: const Icon(Icons.image_not_supported),
-                ),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
-            ),
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
           ),
+          itemCount: allImageEntries.length,
+          itemBuilder: (context, index) {
+            final entry = allImageEntries[index];
+
+            // Extraer file y memory con tipado fuerte
+            final FileResponse file = entry['file'] as FileResponse;
+            final MemoryResponse memory = entry['memory'] as MemoryResponse;
+
+            // URL segura evitando null
+            final imageUrl = file.downloadUrl;
+
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    try {
+                      _navigateToMemoryDetail(memory);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error abriendo la memoria')),
+                      );
+                    }
+                  },
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey[100],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -635,937 +614,1007 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
 
   // ============ FORMATO ============
   Widget _buildFormatTypeContent() {
-    if (isLoadingMemories) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-    }
-
-    // Agrupar memorias por tipo de archivo desde las memorias ya cargadas
-    final Map<String, List<MemoryResponse>> memoriesByFormat = {
-      'image': [],
-      'video': [],
-      'audio': [],
-      'letter': [],
-    };
-
-    for (final memory in memories) {
-      // Verificar si es una carta
-      final isLetter = memory.title.toLowerCase().contains('carta personal') ||
-          (memory.files.isEmpty && memory.description.isNotEmpty);
-
-      if (isLetter) {
-        memoriesByFormat['letter']!.add(memory);
-      }
-
-      // Verificar archivos
-      for (final file in memory.files) {
-        if (file.fileType == 'image' && !memoriesByFormat['image']!.contains(memory)) {
-          memoriesByFormat['image']!.add(memory);
-        }
-        if (file.fileType == 'video' && !memoriesByFormat['video']!.contains(memory)) {
-          memoriesByFormat['video']!.add(memory);
-        }
-        if (file.fileType == 'audio' && !memoriesByFormat['audio']!.contains(memory)) {
-          memoriesByFormat['audio']!.add(memory);
-        }
-      }
-    }
-
-    // Filtrar formatos vacíos
-    final hasPhotos = memoriesByFormat['image']!.isNotEmpty;
-    final hasVideos = memoriesByFormat['video']!.isNotEmpty;
-    final hasAudios = memoriesByFormat['audio']!.isNotEmpty;
-    final hasLetters = memoriesByFormat['letter']!.isNotEmpty;
-
-    if (!hasPhotos && !hasVideos && !hasAudios && !hasLetters) {
-      return _buildEmptyState('No hay formatos', Icons.image_aspect_ratio);
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      child: Column(
-        children: [
-          if (hasPhotos) ...[
-            _buildFormatTypeItem(
-              icon: Icons.photo_library_rounded,
-              title: 'Fotos',
-              count: '${memoriesByFormat['image']!.length} recuerdos',
-              color: Colors.blue,
-              memories: memoriesByFormat['image']!,
-              previewUrl: _getPreviewUrl(memoriesByFormat['image']!),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (hasVideos) ...[
-            _buildFormatTypeItem(
-              icon: Icons.videocam_rounded,
-              title: 'Videos',
-              count: '${memoriesByFormat['video']!.length} recuerdos',
-              color: Colors.green,
-              memories: memoriesByFormat['video']!,
-              previewUrl: _getPreviewUrl(memoriesByFormat['video']!),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (hasAudios) ...[
-            _buildFormatTypeItem(
-              icon: Icons.audiotrack_rounded,
-              title: 'Audios',
-              count: '${memoriesByFormat['audio']!.length} recuerdos',
-              color: Colors.red,
-              memories: memoriesByFormat['audio']!,
-              previewUrl: _getPreviewUrl(memoriesByFormat['audio']!),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (hasLetters)
-            _buildFormatTypeItem(
-              icon: Icons.mail_rounded,
-              title: 'Cartas',
-              count: '${memoriesByFormat['letter']!.length} recuerdos',
-              color: Colors.purple,
-              memories: memoriesByFormat['letter']!,
-              previewUrl: null, // Las cartas no tienen preview de imagen
-            ),
-        ],
-      ),
-    );
-  }
-
-  // Helper para obtener URL de preview
-  String? _getPreviewUrl(List<MemoryResponse> memories) {
-    if (memories.isEmpty) return null;
-
-    for (final memory in memories) {
-      for (final file in memory.files) {
-        if (file.isImage && file.downloadUrl != null) {
-          return file.downloadUrl;
-        }
-      }
-    }
-    return null;
-  }
-
-  Widget _buildFormatTypeItem({
-    required IconData icon,
-    required String title,
-    required String count,
-    required Color color,
-    required List<MemoryResponse> memories,
-    String? previewUrl,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          if (memories.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No hay recuerdos en este formato')),
-            );
-            return;
+    return Consumer<MemoriesByMemorialProvider>(
+        builder: (context, provider, _) {
+          if (provider.loading && provider.memories.isEmpty) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FormatTypeDetailScreen(
-                title: title,
-                memories: memories,
-                color: color,
-              ),
+          final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
+
+          // Agrupar memorias por tipo de archivo desde las memorias ya cargadas
+          final Map<String, List<MemoryResponse>> memoriesByFormat = {
+            'image': [],
+            'video': [],
+            'audio': [],
+            'letter': [],
+          };
+
+          for (final memory in memories) {
+            // Verificar si es una carta
+            final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+                (memory.files.isEmpty && memory.description.isNotEmpty);
+
+            if (isLetter) {
+              memoriesByFormat['letter']!.add(memory);
+            }
+
+            // Verificar archivos
+            for (final file in memory.files) {
+              if (file.fileType == 'image' && !memoriesByFormat['image']!.contains(memory)) {
+                memoriesByFormat['image']!.add(memory);
+              }
+              if (file.fileType == 'video' && !memoriesByFormat['video']!.contains(memory)) {
+                memoriesByFormat['video']!.add(memory);
+              }
+              if (file.fileType == 'audio' && !memoriesByFormat['audio']!.contains(memory)) {
+                memoriesByFormat['audio']!.add(memory);
+              }
+            }
+          }
+
+          // Filtrar formatos vacíos
+          final hasPhotos = memoriesByFormat['image']!.isNotEmpty;
+          final hasVideos = memoriesByFormat['video']!.isNotEmpty;
+          final hasAudios = memoriesByFormat['audio']!.isNotEmpty;
+          final hasLetters = memoriesByFormat['letter']!.isNotEmpty;
+
+          if (!hasPhotos && !hasVideos && !hasAudios && !hasLetters) {
+            return _buildEmptyState('No hay formatos', Icons.image_aspect_ratio);
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            child: Column(
+              children: [
+                if (hasPhotos) ...[
+                  _buildFormatTypeItem(
+                    icon: Icons.photo_library_rounded,
+                    title: 'Fotos',
+                    count: '${memoriesByFormat['image']!.length} recuerdos',
+                    color: Colors.blue,
+                    memories: memoriesByFormat['image']!,
+                    previewUrl: _getPreviewUrl(memoriesByFormat['image']!),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (hasVideos) ...[
+                  _buildFormatTypeItem(
+                    icon: Icons.videocam_rounded,
+                    title: 'Videos',
+                    count: '${memoriesByFormat['video']!.length} recuerdos',
+                    color: Colors.green,
+                    memories: memoriesByFormat['video']!,
+                    previewUrl: _getPreviewUrl(memoriesByFormat['video']!),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (hasAudios) ...[
+                  _buildFormatTypeItem(
+                    icon: Icons.audiotrack_rounded,
+                    title: 'Audios',
+                    count: '${memoriesByFormat['audio']!.length} recuerdos',
+                    color: Colors.red,
+                    memories: memoriesByFormat['audio']!,
+                    previewUrl: _getPreviewUrl(memoriesByFormat['audio']!),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (hasLetters)
+                  _buildFormatTypeItem(
+                    icon: Icons.mail_rounded,
+                    title: 'Cartas',
+                    count: '${memoriesByFormat['letter']!.length} recuerdos',
+                    color: Colors.purple,
+                    memories: memoriesByFormat['letter']!,
+                    previewUrl: null, // Las cartas no tienen preview de imagen
+                  ),
+              ],
             ),
           );
         },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
+    );
+  }
+
+        // Helper para obtener URL de preview
+  String? _getPreviewUrl(List<MemoryResponse> memories) {
+      if (memories.isEmpty) return null;
+
+      for (final memory in memories) {
+        for (final file in memory.files) {
+          if (file.isImage && file.downloadUrl != null) {
+            return file.downloadUrl;
+          }
+        }
+      }
+      return null;
+    }
+
+    Widget _buildFormatTypeItem({
+      required IconData icon,
+      required String title,
+      required String count,
+      required Color color,
+      required List<MemoryResponse> memories,
+      String? previewUrl,
+    }) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            if (memories.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No hay recuerdos en este formato')),
+              );
+              return;
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FormatTypeDetailScreen(
+                  title: title,
+                  memories: memories,
+                  color: color,
                 ),
-                child: previewUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    previewUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                )
-                    : Icon(icon, color: color, size: 36),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
-                    const SizedBox(height: 4),
-                    Text(count, style: AppColors.bodyMedium),
-                  ],
+                  child: previewUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      previewUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
+                    ),
+                  )
+                      : Icon(icon, color: color, size: 36),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
+                      const SizedBox(height: 4),
+                      Text(count, style: AppColors.bodyMedium),
+                    ],
+                  ),
                 ),
-                child: Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
-              ),
-            ],
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ============ LÍNEA DE TIEMPO ============
-  Widget _buildTimelineContent() {
-    // Filtrar memorias que son línea de tiempo
-    final timelineMemories = memories.where((m) => m.esLineaTiempo == true).toList();
-
-    if (timelineMemories.isEmpty) {
-      return _buildEmptyState('No hay momentos en la línea de tiempo', Icons.timeline);
+      );
     }
 
-    // Ordenar por fecha de la foto (o creación si no tiene photoDate)
-    timelineMemories.sort((a, b) {
-      final dateA = a.photoDate != null
-          ? DateTime.parse(a.photoDate.toString())
-          : DateTime.parse(a.createdDate.toString());
-      final dateB = b.photoDate != null
-          ? DateTime.parse(b.photoDate.toString())
-          : DateTime.parse(b.createdDate.toString());
-      return dateA.compareTo(dateB); // Orden cronológico (más antiguo primero)
-    });
+    // ============ LÍNEA DE TIEMPO ============
+    Widget _buildTimelineContent() {
+      return Consumer<MemoriesByMemorialProvider>(
+          builder: (context, provider, _) {
+            if (provider.loading && provider.memories.isEmpty) {
+              return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary));
+            }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 140),
-      itemCount: timelineMemories.length + 1, // +1 para el banner
-      itemBuilder: (context, index) {
-        // Primer item es el banner
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(left: 0, right: 0, top: 0, bottom: 8),
-            child: AIGeneratedBanner(
-              memorialName: '',
-              accentColor: AppColors.secondary2,
-            ),
-          );
-        }
+            final memories = provider.memories
+                .map((m) => _memoryToResponse(m))
+                .toList();
+            // Filtrar memorias que son línea de tiempo
+            final timelineMemories = memories.where((m) => m.esLineaTiempo == true).toList();
 
-        // Los demás items son las memorias
-        final memoryIndex = index - 1;
-        final memory = timelineMemories[memoryIndex];
-        final date = memory.photoDate != null
-            ? DateTime.parse(memory.photoDate.toString())
-            : DateTime.parse(memory.createdDate.toString());
-        final isLast = memoryIndex == timelineMemories.length - 1;
+            if (timelineMemories.isEmpty) {
+              return _buildEmptyState('No hay momentos en la línea de tiempo', Icons.timeline);
+            }
 
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Timeline vertical line
-              Column(
-                children: [
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
+            // Ordenar por fecha de la foto (o creación si no tiene photoDate)
+            timelineMemories.sort((a, b) {
+              final dateA = a.photoDate != null
+                  ? DateTime.parse(a.photoDate.toString())
+                  : DateTime.parse(a.createdDate.toString());
+              final dateB = b.photoDate != null
+                  ? DateTime.parse(b.photoDate.toString())
+                  : DateTime.parse(b.createdDate.toString());
+              return dateA.compareTo(dateB); // Orden cronológico (más antiguo primero)
+            });
+
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 140),
+              itemCount: timelineMemories.length + 1, // +1 para el banner
+              itemBuilder: (context, index) {
+                // Primer item es el banner
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 0, right: 0, top: 0, bottom: 8),
+                    child: AIGeneratedBanner(
+                      memorialName: '',
+                      accentColor: AppColors.secondary2,
                     ),
-                  ),
-                  if (!isLast)
-                    Expanded(
-                      child: Container(
-                        width: 2.5,
-                        color: AppColors.primary.withOpacity(0.25),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
+                  );
+                }
 
-              // Content card
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _navigateToMemoryDetail(memory),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 24),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header: Año y título
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${date.year}',
-                                style: AppColors.labelLarge.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                // Los demás items son las memorias
+                final memoryIndex = index - 1;
+                final memory = timelineMemories[memoryIndex];
+                final date = memory.photoDate != null
+                    ? DateTime.parse(memory.photoDate.toString())
+                    : DateTime.parse(memory.createdDate.toString());
+                final isLast = memoryIndex == timelineMemories.length - 1;
+
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Timeline vertical line
+                      Column(
+                        children: [
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                memory.title,
-                                style: AppColors.h6.copyWith(fontSize: 17),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Descripción
-                        if (memory.description.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            memory.description,
-                            style: AppColors.bodyMedium,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-
-                        // Contenido multimedia (igual que en actividad reciente)
-                        if (memory.files.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          _buildTimelineMediaContent(memory),
-                        ],
-
-                        // Fecha completa en gris pequeño
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatFullDate(date),
-                              style: AppColors.labelSmall.copyWith(
-                                color: Colors.grey[500],
-                                fontSize: 11,
+                          if (!isLast)
+                            Expanded(
+                              child: Container(
+                                width: 2.5,
+                                color: AppColors.primary.withOpacity(0.25),
                               ),
                             ),
-                          ],
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Content card
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _navigateToMemoryDetail(memory),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 24),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header: Año y título
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${date.year}',
+                                        style: AppColors.labelLarge.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        memory.title,
+                                        style: AppColors.h6.copyWith(fontSize: 17),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Descripción
+                                if (memory.description.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    memory.description,
+                                    style: AppColors.bodyMedium,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+
+                                // Contenido multimedia (igual que en actividad reciente)
+                                if (memory.files.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  _buildTimelineMediaContent(memory),
+                                ],
+
+                                // Fecha completa en gris pequeño
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _formatFullDate(date),
+                                      style: AppColors.labelSmall.copyWith(
+                                        color: Colors.grey[500],
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Helper para mostrar contenido multimedia en línea de tiempo
-  Widget _buildTimelineMediaContent(MemoryResponse memory) {
-    final hasImages = memory.files.any((f) => f.isImage);
-    final hasVideos = memory.files.any((f) => f.isVideo);
-    final hasAudio = memory.files.any((f) => f.fileType == 'audio');
-
-    // Si solo tiene audio, mostrar reproductor
-    if (hasAudio && !hasImages && !hasVideos) {
-      return _buildAudioPlayer(memory.files.firstWhere((f) => f.fileType == 'audio'));
+                );
+              },
+            );
+          }
+      );
     }
 
-    // Si tiene imágenes o videos, mostrar grid
-    if (hasImages || hasVideos) {
-      return _buildMediaGrid(memory.files);
-    }
+    // Helper para mostrar contenido multimedia en línea de tiempo
+    Widget _buildTimelineMediaContent(MemoryResponse memory) {
+      final hasImages = memory.files.any((f) => f.isImage);
+      final hasVideos = memory.files.any((f) => f.isVideo);
+      final hasAudio = memory.files.any((f) => f.fileType == 'audio');
 
-    return const SizedBox.shrink();
-  }
+      // Si solo tiene audio, mostrar reproductor
+      if (hasAudio && !hasImages && !hasVideos) {
+        return _buildAudioPlayer(memory.files.firstWhere((f) => f.fileType == 'audio'));
+      }
+
+      // Si tiene imágenes o videos, mostrar grid
+      if (hasImages || hasVideos) {
+        return _buildMediaGrid(memory.files);
+      }
+
+      return const SizedBox.shrink();
+    }
 
 // Helper para formatear fecha completa
-  String _formatFullDate(DateTime date) {
-    const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-    return '${date.day} de ${months[date.month - 1]} de ${date.year}';
-  }
-
-  // ============ TEMÁTICAS (CATEGORÍAS) ============
-  Widget _buildThemesContent() {
-    final Map<String, List<MemoryResponse>> memoriesByCategory = {};
-
-    for (final memory in memories) {
-      if (memory.categories != null && memory.categories!.isNotEmpty) {
-        for (final categoria in memory.categories!) {
-          final categoryLower = categoria.toLowerCase();
-          if (categoryLower == 'otros') continue;
-
-          if (!memoriesByCategory.containsKey(categoria)) {
-            memoriesByCategory[categoria] = [];
-          }
-          if (!memoriesByCategory[categoria]!.contains(memory)) {
-            memoriesByCategory[categoria]!.add(memory);
-          }
-        }
-      }
+    String _formatFullDate(DateTime date) {
+      const months = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      return '${date.day} de ${months[date.month - 1]} de ${date.year}';
     }
 
-    if (memoriesByCategory.isEmpty) {
-      return _buildEmptyState('No hay temáticas', Icons.category);
-    }
+    // ============ TEMÁTICAS (CATEGORÍAS) ============
+    Widget _buildThemesContent() {
+      return Consumer<MemoriesByMemorialProvider>(
+          builder: (context, provider, _) {
+            if (provider.loading && provider.memories.isEmpty) {
+              return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary));
+            }
 
-    final sortedEntries = memoriesByCategory.entries.toList()
-      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+            final memories = provider.memories
+                .map((m) => _memoryToResponse(m))
+                .toList();
+            final Map<String, List<MemoryResponse>> memoriesByCategory = {};
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
-      child: Column(
-        children: [
-          // Banner de IA al inicio (se scrollea con el contenido)
-          AIGeneratedBanner(
-            memorialName: '',
-            accentColor: AppColors.secondary2,
-          ),
+            for (final memory in memories) {
+              if (memory.categories != null && memory.categories!.isNotEmpty) {
+                for (final categoria in memory.categories!) {
+                  final categoryLower = categoria.toLowerCase();
+                  if (categoryLower == 'otros') continue;
 
-          // Lista de categorías
-          ...sortedEntries.map((entry) {
-            final category = entry.key;
-            final categoryMemories = entry.value;
+                  if (!memoriesByCategory.containsKey(categoria)) {
+                    memoriesByCategory[categoria] = [];
+                  }
+                  if (!memoriesByCategory[categoria]!.contains(memory)) {
+                    memoriesByCategory[categoria]!.add(memory);
+                  }
+                }
+              }
+            }
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildThemeItem(
-                icon: _getCategoryIcon(category),
-                title: _formatCategoryName(category),
-                count: '${categoryMemories.length} recuerdo${categoryMemories.length > 1 ? 's' : ''}',
-                color: _getCategoryColor(category),
-                memories: categoryMemories,
+            if (memoriesByCategory.isEmpty) {
+              return _buildEmptyState('No hay temáticas', Icons.category);
+            }
+
+            final sortedEntries = memoriesByCategory.entries.toList()
+              ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
+              child: Column(
+                children: [
+                  // Banner de IA al inicio (se scrollea con el contenido)
+                  AIGeneratedBanner(
+                    memorialName: '',
+                    accentColor: AppColors.secondary2,
+                  ),
+
+                  // Lista de categorías
+                  ...sortedEntries.map((entry) {
+                    final category = entry.key;
+                    final categoryMemories = entry.value;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildThemeItem(
+                        icon: _getCategoryIcon(category),
+                        title: _formatCategoryMomentName(category),
+                        count: '${categoryMemories.length} recuerdo${categoryMemories.length > 1 ? 's' : ''}',
+                        color: _getCategoryColor(category),
+                        memories: categoryMemories,
+                      ),
+                    );
+                  }).toList(),
+                ],
               ),
             );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThemeItem({
-    required IconData icon,
-    required String title,
-    required String count,
-    required Color color,
-    required List<MemoryResponse> memories,
-  }) {
-    // Obtener URL de preview
-    String? previewUrl;
-    for (final memory in memories) {
-      for (final file in memory.files) {
-        if (file.isImage && file.downloadUrl != null) {
-          previewUrl = file.downloadUrl;
-          break;
-        }
-      }
-      if (previewUrl != null) break;
+          }
+      );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ThemeDetailScreen(
-                title: title,
-                memories: memories,
-                color: color,
-                icon: icon,
-              ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: previewUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    previewUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
-                  ),
-                )
-                    : Icon(icon, color: color, size: 36),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
-                    const SizedBox(height: 4),
-                    Text(count, style: AppColors.bodyMedium),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============ MOMENTOS ============
-  Widget _buildMomentsContent() {
-    final Map<String, List<MemoryResponse>> memoriesByMoment = {};
-
-    for (final memory in memories) {
-      if (memory.moments != null && memory.moments!.isNotEmpty) {
-        for (final momento in memory.moments!) {
-          final momentLower = momento.toLowerCase();
-          if (momentLower == 'cotidiano') continue;
-
-          if (!memoriesByMoment.containsKey(momento)) {
-            memoriesByMoment[momento] = [];
-          }
-          if (!memoriesByMoment[momento]!.contains(memory)) {
-            memoriesByMoment[momento]!.add(memory);
+    Widget _buildThemeItem({
+      required IconData icon,
+      required String title,
+      required String count,
+      required Color color,
+      required List<MemoryResponse> memories,
+    }) {
+      // Obtener URL de preview
+      String? previewUrl;
+      for (final memory in memories) {
+        for (final file in memory.files) {
+          if (file.isImage && file.downloadUrl != null) {
+            previewUrl = file.downloadUrl;
+            break;
           }
         }
+        if (previewUrl != null) break;
       }
-    }
 
-    if (memoriesByMoment.isEmpty) {
-      return _buildEmptyState('No hay momentos especiales', Icons.favorite);
-    }
-
-    final sortedEntries = memoriesByMoment.entries.toList()
-      ..sort((a, b) => b.value.length.compareTo(a.value.length));
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
-      child: Column(
-        children: [
-          // Banner de IA al inicio (se scrollea con el contenido)
-          AIGeneratedBanner(
-            memorialName: '',
-            accentColor: AppColors.secondary2,
-          ),
-
-          // Lista de momentos
-          ...sortedEntries.map((entry) {
-            final moment = entry.key;
-            final momentMemories = entry.value;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildMomentItem(
-                icon: _getMomentIcon(moment),
-                title: _formatMomentName(moment),
-                count: '${momentMemories.length} recuerdo${momentMemories.length > 1 ? 's' : ''}',
-                color: _getMomentColor(moment),
-                memories: momentMemories,
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ThemeDetailScreen(
+                  title: title,
+                  memories: memories,
+                  color: color,
+                  icon: icon,
+                ),
               ),
             );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMomentItem({
-    required IconData icon,
-    required String title,
-    required String count,
-    required Color color,
-    required List<MemoryResponse> memories,
-  }) {
-    // Obtener URL de preview
-    String? previewUrl;
-    for (final memory in memories) {
-      for (final file in memory.files) {
-        if (file.isImage && file.downloadUrl != null) {
-          previewUrl = file.downloadUrl;
-          break;
-        }
-      }
-      if (previewUrl != null) break;
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MomentDetailScreen(
-                title: title,
-                memories: memories,
-                color: color,
-                icon: icon,
-              ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: previewUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    previewUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
-                  ),
-                )
-                    : Icon(icon, color: color, size: 36),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
-                    const SizedBox(height: 4),
-                    Text(count, style: AppColors.bodyMedium),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============ HELPERS PARA CATEGORÍAS ============
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'familia':
-        return Icons.family_restroom_rounded;
-      case 'amigos':
-        return Icons.groups_rounded;
-      case 'pareja':
-        return Icons.favorite_rounded;
-      case 'infancia':
-        return Icons.child_care_rounded;
-      case 'juventud':
-        return Icons.school_rounded;
-      case 'adultez':
-        return Icons.person_rounded;
-      case 'viajes':
-        return Icons.flight_rounded;
-      case 'celebraciones':
-        return Icons.celebration_rounded;
-      case 'trabajo':
-        return Icons.work_rounded;
-      case 'comunidad':
-        return Icons.people_rounded;
-      case 'arte_cultura':
-      case 'arte y cultura':
-        return Icons.palette_rounded;
-      case 'fe_espiritualidad':
-      case 'fe y espiritualidad':
-        return Icons.church_rounded;
-      case 'salud_bienestar':
-      case 'salud y bienestar':
-        return Icons.favorite_border_rounded;
-      case 'despedidas_duelo':
-      case 'despedidas y duelo':
-        return Icons.sentiment_dissatisfied_rounded;
-      case 'legado':
-        return Icons.auto_stories_rounded;
-      default:
-        return Icons.category_rounded;
-    }
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'familia':
-        return Colors.blue;
-      case 'amigos':
-        return Colors.green;
-      case 'pareja':
-        return Colors.pink;
-      case 'infancia':
-        return Colors.purple;
-      case 'juventud':
-        return Colors.indigo;
-      case 'adultez':
-        return Colors.blueGrey;
-      case 'viajes':
-        return Colors.orange;
-      case 'celebraciones':
-        return Colors.amber;
-      case 'trabajo':
-        return Colors.teal;
-      case 'comunidad':
-        return Colors.cyan;
-      case 'arte_cultura':
-      case 'arte y cultura':
-        return Colors.deepPurple;
-      case 'fe_espiritualidad':
-      case 'fe y espiritualidad':
-        return Colors.deepOrange;
-      case 'salud_bienestar':
-      case 'salud y bienestar':
-        return Colors.lightGreen;
-      case 'despedidas_duelo':
-      case 'despedidas y duelo':
-        return Colors.grey;
-      case 'legado':
-        return Colors.brown;
-      default:
-        return Colors.blueGrey;
-    }
-  }
-
-  String _formatCategoryName(String category) {
-    // Convertir snake_case a formato legible
-    final formatted = category
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
-        .join(' ');
-
-    return formatted;
-  }
-
-  // ============ HELPERS PARA MOMENTOS ============
-  IconData _getMomentIcon(String moment) {
-    switch (moment.toLowerCase().replaceAll('_', ' ')) {
-      case 'amor afecto':
-      case 'amor':
-      case 'afecto':
-        return Icons.favorite_rounded;
-      case 'gratitud':
-        return Icons.volunteer_activism_rounded;
-      case 'nostalgia':
-        return Icons.history_rounded;
-      case 'alegria':
-      case 'alegría':
-        return Icons.sentiment_very_satisfied_rounded;
-      case 'tristeza':
-        return Icons.sentiment_dissatisfied_rounded;
-      case 'orgullo':
-        return Icons.emoji_events_rounded;
-      case 'superacion':
-      case 'superación':
-        return Icons.trending_up_rounded;
-      case 'reflexion':
-      case 'reflexión':
-        return Icons.psychology_rounded;
-      case 'fe':
-        return Icons.auto_awesome_rounded;
-      case 'paz':
-        return Icons.spa_rounded;
-      case 'asombro':
-        return Icons.stars_rounded;
-      default:
-        return Icons.auto_awesome_outlined;
-    }
-  }
-
-  Color _getMomentColor(String moment) {
-    switch (moment.toLowerCase().replaceAll('_', ' ')) {
-      case 'amor afecto':
-      case 'amor':
-      case 'afecto':
-        return Colors.red;
-      case 'gratitud':
-        return Colors.orange;
-      case 'nostalgia':
-        return Colors.purple;
-      case 'alegria':
-      case 'alegría':
-        return Colors.yellow;
-      case 'tristeza':
-        return Colors.blue;
-      case 'orgullo':
-        return Colors.amber;
-      case 'superacion':
-      case 'superación':
-        return Colors.green;
-      case 'reflexion':
-      case 'reflexión':
-        return Colors.indigo;
-      case 'fe':
-        return Colors.deepPurple;
-      case 'paz':
-        return Colors.teal;
-      case 'asombro':
-        return Colors.pink;
-      default:
-        return Colors.blueGrey;
-    }
-  }
-
-  String _formatMomentName(String moment) {
-    // Convertir snake_case a formato legible
-    final formatted = moment
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
-        .join(' ');
-
-    return formatted;
-  }
-
-  // ============ HELPERS ============
-  Widget _buildEmptyState(String message, IconData icon) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              shape: BoxShape.circle,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Icon(icon, size: 64, color: AppColors.textSecondary),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: previewUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      previewUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
+                    ),
+                  )
+                      : Icon(icon, color: color, size: 36),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
+                      const SizedBox(height: 4),
+                      Text(count, style: AppColors.bodyMedium),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(message, style: AppColors.bodyLarge),
-        ],
-      ),
-    );
-  }
-
-  // ============ IR A DETALLE DE MEMORIA ============
-  void _navigateToMemoryDetail(MemoryResponse memory) {
-    // Convertir MemoryResponse a Memory entity
-    final memoryEntity = Memory(
-      id: memory.idMemory,
-      type: memory.type,
-      title: memory.title,
-      description: memory.description ?? '',
-      photoDate: memory.photoDate != null ? DateTime.parse(memory.photoDate.toString()) : null,
-      location: memory.location,
-      visible: memory.visible,
-      tags: memory.tags ?? [],
-      associatedQuestion: memory.associatedQuestion,
-      files: memory.files.map((f) => File(
-        id: f.idFile,
-        name: f.fileName,
-        originalName: f.originalFileName,
-        type: f.fileType,
-        mimeType: f.mimeType,
-        size: f.fileSize,
-        url: f.fileUrl,
-        uploadedDate: f.uploadedDate != null ? DateTime.parse(f.uploadedDate.toString()) : DateTime.now(),
-      )).toList(),
-      totalUsedSpace: memory.totalUsedSpace,
-      createdDate: memory.createdDate != null ? DateTime.parse(memory.createdDate.toString()) : DateTime.now(),
-      updateDate: memory.updateDate != null ? DateTime.parse(memory.updateDate.toString()) : null,
-      latitude: memory.latitude,
-      longitude: memory.longitude,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MemoryDetailScreen(
-          memory: memoryEntity,
-          mode: MemoryMode.view,
         ),
-      ),
-    );
+      );
+    }
+
+    // ============ MOMENTOS ============
+    Widget _buildMomentsContent() {
+      return Consumer<MemoriesByMemorialProvider>(
+          builder: (context, provider, _) {
+            if (provider.loading && provider.memories.isEmpty) {
+              return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary));
+            }
+
+            final memories = provider.memories
+                .map((m) => _memoryToResponse(m))
+                .toList();
+            final Map<String, List<MemoryResponse>> memoriesByMoment = {};
+
+            for (final memory in memories) {
+              if (memory.moments != null && memory.moments!.isNotEmpty) {
+                for (final momento in memory.moments!) {
+                  final momentLower = momento.toLowerCase();
+                  if (momentLower == 'cotidiano') continue;
+
+                  if (!memoriesByMoment.containsKey(momento)) {
+                    memoriesByMoment[momento] = [];
+                  }
+                  if (!memoriesByMoment[momento]!.contains(memory)) {
+                    memoriesByMoment[momento]!.add(memory);
+                  }
+                }
+              }
+            }
+
+            if (memoriesByMoment.isEmpty) {
+              return _buildEmptyState('No hay momentos especiales', Icons.favorite);
+            }
+
+            final sortedEntries = memoriesByMoment.entries.toList()
+              ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
+              child: Column(
+                children: [
+                  // Banner de IA al inicio (se scrollea con el contenido)
+                  AIGeneratedBanner(
+                    memorialName: '',
+                    accentColor: AppColors.secondary2,
+                  ),
+
+                  // Lista de momentos
+                  ...sortedEntries.map((entry) {
+                    final moment = entry.key;
+                    final momentMemories = entry.value;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildMomentItem(
+                        icon: _getMomentIcon(moment),
+                        title: _formatCategoryMomentName(moment),
+                        count: '${momentMemories.length} recuerdo${momentMemories.length > 1 ? 's' : ''}',
+                        color: _getMomentColor(moment),
+                        memories: momentMemories,
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            );
+          }
+      );
+    }
+
+    Widget _buildMomentItem({
+      required IconData icon,
+      required String title,
+      required String count,
+      required Color color,
+      required List<MemoryResponse> memories,
+    }) {
+      // Obtener URL de preview
+      String? previewUrl;
+      for (final memory in memories) {
+        for (final file in memory.files) {
+          if (file.isImage && file.downloadUrl != null) {
+            previewUrl = file.downloadUrl;
+            break;
+          }
+        }
+        if (previewUrl != null) break;
+      }
+
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MomentDetailScreen(
+                  title: title,
+                  memories: memories,
+                  color: color,
+                  icon: icon,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: previewUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      previewUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(icon, color: color, size: 36),
+                    ),
+                  )
+                      : Icon(icon, color: color, size: 36),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppColors.h6.copyWith(fontSize: 18)),
+                      const SizedBox(height: 4),
+                      Text(count, style: AppColors.bodyMedium),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 18),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ============ HELPERS PARA CATEGORÍAS ============
+    IconData _getCategoryIcon(String category) {
+      switch (category.toLowerCase()) {
+        case 'familia':
+          return Icons.family_restroom_rounded;
+        case 'amigos':
+          return Icons.groups_rounded;
+        case 'pareja':
+          return Icons.favorite_rounded;
+        case 'infancia':
+          return Icons.child_care_rounded;
+        case 'juventud':
+          return Icons.school_rounded;
+        case 'adultez':
+          return Icons.person_rounded;
+        case 'viajes':
+          return Icons.flight_rounded;
+        case 'celebraciones':
+          return Icons.celebration_rounded;
+        case 'trabajo':
+          return Icons.work_rounded;
+        case 'comunidad':
+          return Icons.people_rounded;
+        case 'arte_cultura':
+        case 'arte y cultura':
+          return Icons.palette_rounded;
+        case 'fe_espiritualidad':
+        case 'fe y espiritualidad':
+          return Icons.church_rounded;
+        case 'salud_bienestar':
+        case 'salud y bienestar':
+          return Icons.favorite_border_rounded;
+        case 'despedidas_duelo':
+        case 'despedidas y duelo':
+          return Icons.sentiment_dissatisfied_rounded;
+        case 'legado':
+          return Icons.auto_stories_rounded;
+        default:
+          return Icons.category_rounded;
+      }
+    }
+
+    Color _getCategoryColor(String category) {
+      switch (category.toLowerCase()) {
+        case 'familia':
+          return Colors.blue;
+        case 'amigos':
+          return Colors.green;
+        case 'pareja':
+          return Colors.pink;
+        case 'infancia':
+          return Colors.purple;
+        case 'juventud':
+          return Colors.indigo;
+        case 'adultez':
+          return Colors.blueGrey;
+        case 'viajes':
+          return Colors.orange;
+        case 'celebraciones':
+          return Colors.amber;
+        case 'trabajo':
+          return Colors.teal;
+        case 'comunidad':
+          return Colors.cyan;
+        case 'arte_cultura':
+        case 'arte y cultura':
+          return Colors.deepPurple;
+        case 'fe_espiritualidad':
+        case 'fe y espiritualidad':
+          return Colors.deepOrange;
+        case 'salud_bienestar':
+        case 'salud y bienestar':
+          return Colors.lightGreen;
+        case 'despedidas_duelo':
+        case 'despedidas y duelo':
+          return Colors.grey;
+        case 'legado':
+          return Colors.brown;
+        default:
+          return Colors.blueGrey;
+      }
+    }
+
+    String _formatCategoryMomentName(String category) {
+      // Convertir snake_case a formato legible
+      final formatted = category
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+          .join(' ');
+
+      return formatted;
+    }
+
+    // ============ HELPERS PARA MOMENTOS ============
+    IconData _getMomentIcon(String moment) {
+      switch (moment.toLowerCase().replaceAll('_', ' ')) {
+        case 'amor afecto':
+        case 'amor':
+        case 'afecto':
+          return Icons.favorite_rounded;
+        case 'gratitud':
+          return Icons.volunteer_activism_rounded;
+        case 'nostalgia':
+          return Icons.history_rounded;
+        case 'alegria':
+        case 'alegría':
+          return Icons.sentiment_very_satisfied_rounded;
+        case 'tristeza':
+          return Icons.sentiment_dissatisfied_rounded;
+        case 'orgullo':
+          return Icons.emoji_events_rounded;
+        case 'superacion':
+        case 'superación':
+          return Icons.trending_up_rounded;
+        case 'reflexion':
+        case 'reflexión':
+          return Icons.psychology_rounded;
+        case 'fe':
+          return Icons.auto_awesome_rounded;
+        case 'paz':
+          return Icons.spa_rounded;
+        case 'asombro':
+          return Icons.stars_rounded;
+        default:
+          return Icons.auto_awesome_outlined;
+      }
+    }
+
+    Color _getMomentColor(String moment) {
+      switch (moment.toLowerCase().replaceAll('_', ' ')) {
+        case 'amor afecto':
+        case 'amor':
+        case 'afecto':
+          return Colors.red;
+        case 'gratitud':
+          return Colors.orange;
+        case 'nostalgia':
+          return Colors.purple;
+        case 'alegria':
+        case 'alegría':
+          return Colors.yellow;
+        case 'tristeza':
+          return Colors.blue;
+        case 'orgullo':
+          return Colors.amber;
+        case 'superacion':
+        case 'superación':
+          return Colors.green;
+        case 'reflexion':
+        case 'reflexión':
+          return Colors.indigo;
+        case 'fe':
+          return Colors.deepPurple;
+        case 'paz':
+          return Colors.teal;
+        case 'asombro':
+          return Colors.pink;
+        default:
+          return Colors.blueGrey;
+      }
+    }
+
+
+    // ============ HELPERS ============
+    Widget _buildEmptyState(String message, IconData icon) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 64, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Text(message, style: AppColors.bodyLarge),
+          ],
+        ),
+      );
+    }
+
+    // ============ IR A DETALLE DE MEMORIA ============
+    void _navigateToMemoryDetail(MemoryResponse memory) {
+      // Convertir MemoryResponse a Memory entity
+      final memoryEntity = Memory(
+        id: memory.idMemory,
+        type: memory.type,
+        title: memory.title,
+        description: memory.description ?? '',
+        photoDate: memory.photoDate != null ? DateTime.parse(memory.photoDate.toString()) : null,
+        location: memory.location,
+        visible: memory.visible,
+        tags: memory.tags ?? [],
+        associatedQuestion: memory.associatedQuestion,
+        files: memory.files.map((f) => File(
+          id: f.idFile,
+          name: f.fileName,
+          originalName: f.originalFileName,
+          type: f.fileType,
+          mimeType: f.mimeType,
+          size: f.fileSize,
+          url: f.fileUrl,
+          uploadedDate: f.uploadedDate != null ? DateTime.parse(f.uploadedDate.toString()) : DateTime.now(),
+        )).toList(),
+        totalUsedSpace: memory.totalUsedSpace,
+        createdDate: memory.createdDate != null ? DateTime.parse(memory.createdDate.toString()) : DateTime.now(),
+        updateDate: memory.updateDate != null ? DateTime.parse(memory.updateDate.toString()) : null,
+        latitude: memory.latitude,
+        longitude: memory.longitude,
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MemoryDetailScreen(
+            memory: memoryEntity,
+            mode: MemoryMode.view,
+          ),
+        ),
+      );
+    }
+
+    MemoryResponse _memoryToResponse(Memory memory) {
+      return MemoryResponse(
+        idMemory: memory.id,
+        type: memory.type,
+        title: memory.title,
+        description: memory.description,
+        photoDate: memory.photoDate,
+        location: memory.location,
+        visible: memory.visible,
+        tags: memory.tags,
+        associatedQuestion: memory.associatedQuestion,
+        files: memory.files.map((f) => FileResponse(
+          idFile: f.id,
+          fileName: f.name,
+          originalFileName: f.originalName,
+          fileType: f.type,
+          mimeType: f.mimeType,
+          fileSize: f.size,
+          fileUrl: f.url,
+          uploadedDate: f.uploadedDate,
+        )).toList(),
+        totalUsedSpace: memory.totalUsedSpace,
+        createdDate: memory.createdDate,
+        updateDate: memory.updateDate,
+        latitude: memory.latitude,
+        longitude: memory.longitude,
+        esLineaTiempo: memory.esLineaTiempo,        // USA EL VALOR DE MEMORY
+        categories: memory.categories,               // USA EL VALOR DE MEMORY
+        moments: memory.moments,                     // USA EL VALOR DE MEMORY
+        author: memory.author != null ? UserLiteResponse(  // USA EL VALOR DE MEMORY
+          idUser: memory.author!.id,
+          name: memory.author!.name,
+          profilePhotoUrl: memory.author!.profilePhotoUrl,
+        ) : null,
+      );
+    }
   }
-}
+

@@ -11,6 +11,7 @@ import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memories_grid_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_container.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../domain/entities/memory.dart';
@@ -288,6 +289,10 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       _newFiles.clear();
       _deletedFiles.clear();
 
+      // NUEVO: Actualizar en MemoriesByMemorialProvider
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+      memoriesProvider.updateMemory(widget.memory!.id, _originalMemory);
+
       Navigator.pop(context);
 
       // Mostrar pop-up de éxito
@@ -426,6 +431,10 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       final provider = Provider.of<MemoryProvider>(context, listen: false);
       provider.agregarMemoria(_originalMemory);
 
+      // NUEVO: Agregar en MemoriesByMemorialProvider
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+      memoriesProvider.addMemory(_originalMemory);
+
       // Limpiar estado local
       _existingFiles = List.from(_originalMemory.files);
       _newFiles.clear();
@@ -485,6 +494,11 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
       // Actualizar el provider para eliminar la memoria localmente
       final provider = Provider.of<MemoryProvider>(context, listen: false);
       provider.eliminarMemoria(widget.memory!.id);
+
+      // NUEVO: Eliminar de MemoriesByMemorialProvider
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+      memoriesProvider.removeMemory(widget.memory!.id);
+
       print('Memorias restantes: ${provider.misMemorias.length}');
 
       print("📦 Lista de memorias después de la eliminación:");
