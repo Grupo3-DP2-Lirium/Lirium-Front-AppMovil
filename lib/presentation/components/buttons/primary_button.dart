@@ -10,6 +10,7 @@ class PrimaryButton extends StatelessWidget {
   final IconData? icon;
   final bool isEnabled;
   final Color? color;
+  final Gradient? gradient;
 
   const PrimaryButton({
     super.key,
@@ -20,7 +21,8 @@ class PrimaryButton extends StatelessWidget {
     this.isLoading = false,
     this.isEnabled = true,
     this.icon,
-    this.color
+    this.color,
+    this.gradient
   });
 
   @override
@@ -28,44 +30,55 @@ class PrimaryButton extends StatelessWidget {
     return SizedBox(
       width: isFullWidth ? double.infinity : null,
       height: height,
-      child: ElevatedButton(
-          onPressed: (isLoading || !isEnabled) ? null : onPressed,        style: ElevatedButton.styleFrom(
-        backgroundColor: isEnabled
-            ? (color ?? AppColors.primary)
-            : Colors.grey[300],
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          disabledBackgroundColor: Colors.grey[300],
-          elevation: 0,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: (isEnabled && gradient != null)
+              ? gradient
+              : null,
+          color: (isEnabled && gradient == null)
+              ? (color ?? AppColors.primary)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        child: ElevatedButton(
+          onPressed: (isLoading || !isEnabled) ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+          ),
+          child: isLoading
+              ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          )
+              : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 18),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ),
+            ],
+          ),
+        ),
       ),
     );
   }
+
 }

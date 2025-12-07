@@ -6,6 +6,10 @@ import 'package:flutter_frontend/presentation/components/buttons/switch_button.d
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_date_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_dropdown_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/memorial_created_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
@@ -27,10 +31,14 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   // Controllers for form fields
   final _nameController = TextEditingController();
   final _relationController = TextEditingController();
-  final _birthDateController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _genderController = TextEditingController();
+
+
+  // Estado para dropdown y fecha:
+  String? _selectedGender;
+  DateTime? _birthDate;
 
   // Boolean for collaborative profile switch
   bool _isCollaborative = false;
@@ -47,6 +55,16 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   void initState() {
     super.initState();
     _relationController.text = widget.relation;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _relationController.dispose();
+    _nicknameController.dispose();
+    _descriptionController.dispose();
+    _genderController.dispose();
+    super.dispose();
   }
 
   /// Handles the submission of the form and sends the data to the backend
@@ -66,15 +84,13 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
     );
 
     String formattedBirthDate = '';
-    if (_birthDateController.text.isNotEmpty) {
-      final parts = _birthDateController.text.split('/');
-      if (parts.length == 3) {
-        final day = parts[0].padLeft(2, '0');
-        final month = parts[1].padLeft(2, '0');
-        final year = parts[2];
-        formattedBirthDate = "$year-$month-$day";
-      }
+    if (_birthDate != null) {
+      final y = _birthDate!.year.toString().padLeft(4, '0');
+      final m = _birthDate!.month.toString().padLeft(2, '0');
+      final d = _birthDate!.day.toString().padLeft(2, '0');
+      formattedBirthDate = "$y-$m-$d";
     }
+
 
     try {
       final memorial = await service.createMemorial(
@@ -88,6 +104,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
           isCollaborative: _isCollaborative,
           isJournal: false,
         ),
+
         _imageFile?.path,
       );
 
@@ -148,54 +165,78 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
   Widget build(BuildContext context) {
     // Define form fields with validation where required
     final List<Widget> fields = [
-      _buildTextField(
-        _nameController,
-        hintText: "Nombre",
+      // Nombre
+      CustomTextField(
+        label: 'Nombre',
+        controller: _nameController,
         validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'El nombre es obligatorio';
-          }
+          if (value == null || value.trim().isEmpty) return 'El nombre es obligatorio';
           return null;
         },
       ),
-      _buildTextField(
-        _relationController,
-        hintText: "Vínculo",
+
+      // Vínculo (solo lectura)
+      CustomTextField(
+        label: 'Vínculo',
+        controller: _relationController,
         enabled: false,
+        readOnly: true,
       ),
+
+      // Género
       AppDropdownField(
         controller: _genderController,
-        options: ["Masculino", "Femenino", "Otro"],
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'El género es obligatorio';
-          }
+        header: 'Género',
+        options: ['Masculino', 'Femenino', 'Otro'],
+        validator: (val) {
+          if (val == null || val.trim().isEmpty) return 'El género es obligatorio';
           return null;
         },
       ),
-      DateTextField(
-        hintText: "Fecha de nacimiento",
-        controller: _birthDateController,
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'La fecha de nacimiento es obligatoria';
-          }
+
+      // Fecha de nacimiento -> CustomDateField
+      CustomDateField(
+        label: 'Fecha de nacimiento',
+        value: _birthDate,
+        onChanged: (date) => setState(() => _birthDate = date),
+        validator: (date) {
+          if (date == null) return 'La fecha de nacimiento es obligatoria';
           return null;
         },
       ),
-      _buildTextField(_nicknameController, hintText: "Apodo"),
-      _buildTextField(_descriptionController, hintText: "Descripción...", maxLines: 3),
+
+      // Apodo
+      CustomTextField(
+        label: 'Apodo',
+        controller: _nicknameController,
+      ),
+
+      // Descripción -> CustomTextArea
+      CustomTextArea(
+        label: 'Descripción',
+        controller: _descriptionController,
+        maxLines: 3,
+        maxLength: 200,
+      ),
+
+      // Switch colaborativo
       BooleanSelectorSwitch(
         label: "Perfil colaborativo",
         value: _isCollaborative,
         onChanged: (v) => setState(() => _isCollaborative = v),
       ),
     ];
+
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      appBar: AppBar(automaticallyImplyLeading: false),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+      ),
       backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.symmetric(

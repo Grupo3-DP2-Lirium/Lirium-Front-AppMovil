@@ -47,7 +47,7 @@ class AboutScreen extends StatelessWidget {
               radius: 50,
               backgroundColor: AppColors.primary
               ,
-              backgroundImage: const AssetImage('assets/images/lirium_icon.png'),
+              backgroundImage: const AssetImage('assets/images/img19.jpg'),
             ),
             const SizedBox(height: 16),
             const Text(
