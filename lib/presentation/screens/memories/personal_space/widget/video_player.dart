@@ -105,7 +105,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
             top: 40,
             left: 20,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 32),
+              icon: const Icon(Icons.arrow_back_outlined, color: Colors.white, size: 32),
               onPressed: () => Navigator.pop(context),
             ),
           ),

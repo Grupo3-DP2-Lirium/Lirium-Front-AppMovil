@@ -25,7 +25,7 @@ class FullScreenImage extends StatelessWidget {
             left: 20,
             child: IconButton(
               icon: const Icon(
-                Icons.close,
+                Icons.arrow_back_outlined,
                 color: Colors.white,
                 size: 32,
               ),

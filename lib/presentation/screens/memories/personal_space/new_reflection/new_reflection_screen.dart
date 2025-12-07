@@ -542,7 +542,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
-                      //color: Colors.black87,
                     ),
                     decoration: const InputDecoration(
                       hintText: 'Título',
