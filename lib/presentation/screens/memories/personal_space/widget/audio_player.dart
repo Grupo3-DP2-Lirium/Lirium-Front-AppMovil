@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
@@ -91,7 +92,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
               _isPlaying
                   ? Icons.pause_circle_filled
                   : Icons.play_circle_fill,
-              color: Colors.blue,
+              color: AppColors.primary2,
             ),
             onPressed: _togglePlay,
           ),

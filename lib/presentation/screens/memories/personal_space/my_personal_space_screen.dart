@@ -4,7 +4,7 @@ import '../../../../providers/reflection_provider.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../../data/models/reflection_model.dart';
 import '../../../../data/services/reflection_service.dart';
-import 'reflection_detail_screen.dart';
+import 'reflection_detail/reflection_detail_screen.dart';
 import 'new_reflection/new_reflection_screen.dart';
 import 'package:provider/provider.dart';
 

@@ -20,7 +20,6 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   void initState() {
     super.initState();
 
-    // PRIORIDAD: local → si no existe, usa URL
     if (widget.file.localPath != null &&
         widget.file.localPath!.isNotEmpty &&
         File(widget.file.localPath!).existsSync()) {
@@ -85,7 +84,6 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // VIDEO CON GESTURE DETECTOR
           GestureDetector(
             onTap: () {
               _togglePlayPause();
@@ -120,7 +118,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
               ),
             ),
 
-          // BARRA DE PROGRESO Y TIEMPOS ABAJO
+          // BARRA DE PROGRESO Y TIEMPOS
           if (_controller.value.isInitialized)
             Positioned(
               bottom: 40,

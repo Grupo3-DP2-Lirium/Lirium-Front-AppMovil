@@ -14,10 +14,7 @@ class FullScreenImage extends StatelessWidget {
       body: Stack(
         children: [
           Center(
-            child: Image.file(
-              File(file.localPath!),
-              fit: BoxFit.contain,
-            ),
+            child: _buildImage(),
           ),
 
           Positioned(
@@ -35,5 +32,29 @@ class FullScreenImage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildImage() {
+    if (file.localPath != null && file.localPath!.isNotEmpty) {
+      return Image.file(
+        File(file.localPath!),
+        fit: BoxFit.contain,
+      );
+    }
+
+    if (file.downloadUrl.isNotEmpty) {
+      return Image.network(
+        file.downloadUrl,
+        fit: BoxFit.contain,
+        loadingBuilder: (_, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const CircularProgressIndicator(color: Colors.white);
+        },
+        errorBuilder: (_, __, ___) =>
+        const Icon(Icons.broken_image, color: Colors.white, size: 50),
+      );
+    }
+
+    return const Icon(Icons.broken_image, color: Colors.white, size: 50);
   }
 }
