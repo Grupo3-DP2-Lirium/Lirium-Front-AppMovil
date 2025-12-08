@@ -19,15 +19,35 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.file.localPath!))
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-      });
+
+    if (widget.file.localPath != null &&
+        widget.file.localPath!.isNotEmpty &&
+        File(widget.file.localPath!).existsSync()) {
+      // VIDEO LOCAL
+      _controller = VideoPlayerController.file(
+        File(widget.file.localPath!),
+      );
+    } else {
+      // VIDEO DESDE AZURE (NETWORK)
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.file.downloadUrl),
+      );
+    }
+
+    _controller.initialize().then((_) {
+      setState(() {});
+      _controller.play();
+    });
 
     _controller.addListener(() {
-      if (mounted) setState(() {});
+      if (_controller.value.position >= _controller.value.duration &&
+          !_controller.value.isPlaying) {
+        _controller.seekTo(Duration.zero);
+        _controller.pause();
+        if (mounted) setState(() {});
+      }
     });
+
   }
 
   @override
@@ -64,7 +84,6 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // VIDEO CON GESTURE DETECTOR
           GestureDetector(
             onTap: () {
               _togglePlayPause();
@@ -84,7 +103,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
             top: 40,
             left: 20,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 32),
+              icon: const Icon(Icons.arrow_back_outlined, color: Colors.white, size: 32),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -99,7 +118,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
               ),
             ),
 
-          // BARRA DE PROGRESO Y TIEMPOS ABAJO
+          // BARRA DE PROGRESO Y TIEMPOS
           if (_controller.value.isInitialized)
             Positioned(
               bottom: 40,

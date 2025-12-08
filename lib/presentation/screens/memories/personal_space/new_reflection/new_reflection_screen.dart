@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/audio_player.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/image_screen.dart';
-import 'package:flutter_frontend/presentation/screens/memories/personal_space/video_player.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/new_reflection/toolbar_widget.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/audio_player.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/image_screen.dart';
+import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/video_player.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,9 +13,10 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
-import '../../../data/models/reflection_model.dart';
-import '../../../data/services/reflection_service.dart';
-import '../../../providers/reflection_provider.dart';
+import '../../../../../data/models/reflection_model.dart';
+import '../../../../../data/services/reflection_service.dart';
+import '../../../../../providers/reflection_provider.dart';
+import 'attachments_preview.dart';
 
 class NewReflectionScreen extends StatefulWidget {
   final ReflectionModel? editingReflection;
@@ -34,19 +36,18 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   final ReflectionService _reflectionService = ReflectionService();
   final ImagePicker _imagePicker = ImagePicker();
   
-  // Audio recording variables (usando flutter_sound como en answer_question_screen)
   FlutterSoundRecorder? _audioRecorder;
   bool _isRecorderInitialized = false;
   String? _audioPath;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTimer;
-  
+
   List<ReflectionFile> _attachedFiles = [];
   bool _isSaving = false;
   bool _isRecording = false;
 
   Map<String, VideoPlayerController> _videoControllers = {};
-  bool _isUploadingFile = false;
+  Set<String> _uploadingFiles = {};
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _titleController.text = widget.editingReflection!.title;
       _contentController.text = widget.editingReflection!.content;
       _attachedFiles = List.from(widget.editingReflection!.attachedFiles);
+      _initExistingVideoControllers();
     }
     _initializeRecorder();
   }
@@ -68,12 +70,23 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     super.dispose();
   }
 
+  Future<void> _initExistingVideoControllers() async {
+    for (final file in _attachedFiles.where((f) => f.isVideo)) {
+      if (!_videoControllers.containsKey(file.localPath)) {
+        final controller = VideoPlayerController.file(File(file.localPath!));
+        await controller.initialize();
+        controller.setLooping(true);
+        controller.pause();
+        _videoControllers[file.localPath!] = controller;
+      }
+    }
+  }
+
   Future<void> _takePhoto() async {
     if (_reflectionService.userType == UserType.free) {
       _showPremiumRequiredDialog('adjuntar fotos');
       return;
     }
-
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -148,7 +161,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     }
   }
 
-  // Métodos de inicialización y grabación de audio (basados en answer_question_screen)
   Future<void> _initializeRecorder() async {
     try {
       _audioRecorder = FlutterSoundRecorder();
@@ -284,7 +296,9 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
   Future<void> _processPickedFile(File file, ReflectionFileType type) async {
     try {
-      setState(() => _isUploadingFile = true);
+      setState(() {
+        _uploadingFiles.add(file.path);
+      });
 
       final fileSize = await file.length();
 
@@ -298,15 +312,13 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       final maxFiles = subscriptionProvider.maxFiles; // Puede ser null = ilimitado
       final planName = subscriptionProvider.planName;
 
-      // Traer todas las reflexiones para contar archivos ya existentes
       final reflections = await _reflectionService.getAllReflections();
       int totalAttachedFiles = reflections.fold(
           0, (sum, r) => sum + r.attachedFiles.length);
 
-      // Agregar también los archivos de la reflexión actual que ya seleccionaste
+      // Agregar también los archivos de la reflexión actual
       totalAttachedFiles += _attachedFiles.length;
 
-      // Mostrar mensaje
       if (maxFiles == null) {
         print('Tu plan "$planName" permite adjuntar una cantidad ilimitada de archivos.');
       } else {
@@ -314,7 +326,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
         print('Actualmente tienes $totalAttachedFiles archivos adjuntos en todas tus reflexiones.');
       }
 
-      // Validar cantidad actual
       if (maxFiles != null && totalAttachedFiles >= maxFiles) {
         _showErrorDialog(
             'Has alcanzado el límite de $maxFiles archivos para tu plan.'
@@ -335,7 +346,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
           controller.setLooping(true);
           controller.pause();
 
-          // Guardarlo en tu mapa de controladores
           _videoControllers[localPath] = controller;
         }
       }
@@ -347,8 +357,9 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     } catch (e) {
       _showErrorDialog('Error al procesar el archivo: $e');
     } finally {
-      setState(() => _isUploadingFile = false);
-    }
+      setState(() {
+        _uploadingFiles.remove(file.path);
+      });    }
   }
 
   void _removeAttachedFile(int index) {
@@ -466,8 +477,8 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
         actions: [
           FilledButton(
             onPressed: () {
-              Navigator.pop(context); // Cerrar diálogo
-              Navigator.pop(context, true); // Volver a pantalla anterior
+              Navigator.pop(context);
+              Navigator.pop(context, true);
             },
             child: const Text('Continuar'),
           ),
@@ -543,7 +554,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
-                      //color: Colors.black87,
                     ),
                     decoration: const InputDecoration(
                       hintText: 'Título',
@@ -583,9 +593,15 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                   ),
 
                   // Vista previa de archivos adjuntos
-                  if (_attachedFiles.isNotEmpty) ...[
+                  if (_attachedFiles.isNotEmpty || _uploadingFiles.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _buildAttachmentsPreview(),
+                    AttachmentsPreview(
+                      attachedFiles: _attachedFiles,
+                      videoControllers: _videoControllers,
+                      onRemove: _removeAttachedFile,
+                      onOpen: _openFile,
+                      uploadingFiles: _uploadingFiles,
+                    ),
                   ],
                 ],
               ),
@@ -614,117 +630,24 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: Icons.photo_camera_outlined,
                         tooltip: 'Cámara',
                         onPressed: _takePhoto,
                       ),
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: _isRecording ? Icons.stop : Icons.mic_none_outlined,
                         tooltip: _isRecording ? 'Detener grabación' : 'Audio',
                         onPressed: _recordAudio,
                         isRecording: _isRecording,
                       ),
-                      _buildToolbarButton(
+                      ToolbarButton(
                         icon: Icons.image_outlined,
                         tooltip: 'Galería',
                         onPressed: _pickFromGallery,
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbarButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-    bool isRecording = false,
-  }) {
-    return Container(
-      decoration: isRecording 
-          ? BoxDecoration(
-              color: Colors.red.shade100,
-              shape: BoxShape.circle,
-            )
-          : null,
-      child: IconButton(
-        tooltip: tooltip,
-        icon: Icon(
-          icon,
-          color: isRecording ? Colors.red : null,
-        ),
-        onPressed: onPressed,
-        iconSize: 24,
-      ),
-    );
-  }
-
-  Widget _buildAttachmentsPreview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Archivos adjuntos (${_attachedFiles.length})',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _attachedFiles.asMap().entries.map((entry) {
-            final index = entry.key;
-            final file = entry.value;
-            
-            return _buildFilePreview(file, index);
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilePreview(ReflectionFile file, int index) {
-    return GestureDetector(
-      onTap: () => _openFile(file),
-      child: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Stack(
-          children: [
-            // Contenido (imagen, video, audio) ocupa TODO el contenedor
-            ClipRRect(
-              borderRadius: BorderRadius.circular(7),
-              child: SizedBox.expand(
-                child: _buildFileContent(file),
-              ),
-            ),
-            // Botón de borrar sobre la esquina superior derecha
-            Positioned(
-              top: 4,
-              right: 4,
-              child: InkWell(
-                onTap: () => _removeAttachedFile(index),
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, size: 14, color: Colors.white),
                 ),
               ),
             ),
@@ -758,95 +681,8 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Reproducir audio"),
         content: AudioPlayerWidget(path: file.localPath!),
       ),
     );
   }
-
-
-  Widget _buildFileContent(ReflectionFile file) {
-    if (file.isImage) return _buildImagePreview(file);
-    if (file.isAudio) return _buildAudioPreview();
-    return _buildVideoPreview(file);
-  }
-
-  Widget _buildImagePreview(ReflectionFile file) {
-    if (file.localPath != null) {
-      return Image.file(
-        File(file.localPath!),
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
-      );
-    }
-
-    if (file.downloadUrl.isNotEmpty) {
-      return Image.network(
-        file.downloadUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
-      );
-    }
-
-    return Container(
-      color: Colors.grey.shade200,
-      child: const Icon(Icons.image),
-    );
-  }
-
-  Widget _buildAudioPreview() {
-    return Container(
-      color: Colors.blue.shade50,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.audiotrack, size: 24, color: Colors.blue.shade600),
-          const SizedBox(height: 4),
-          Text(
-            "Audio",
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.blue.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVideoPreview(ReflectionFile file) {
-    final path = file.localPath;
-
-    // Aún no está disponible
-    if (path == null) {
-      return Container(
-        color: Colors.purple.shade50,
-        child: const Center(child: Icon(Icons.videocam)),
-      );
-    }
-
-    final controller = _videoControllers[path];
-
-    if (controller == null || !controller.value.isInitialized) {
-      return Container(
-        color: Colors.purple.shade50,
-        child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
-
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-        width: controller.value.size.width,
-        height: controller.value.size.height,
-        child: VideoPlayer(controller),
-      ),
-    );
-  }
-
 }

@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../../providers/reflection_provider.dart';
-import '../../components/buttons/primary_button.dart';
-import '../../../data/models/reflection_model.dart';
-import '../../../data/services/reflection_service.dart';
-import 'reflection_detail_screen.dart';
-import 'new_reflection_screen.dart';
+import '../../../../providers/reflection_provider.dart';
+import '../../../components/buttons/primary_button.dart';
+import '../../../../data/models/reflection_model.dart';
+import '../../../../data/services/reflection_service.dart';
+import 'reflection_detail/reflection_detail_screen.dart';
+import 'new_reflection/new_reflection_screen.dart';
 import 'package:provider/provider.dart';
 
 class MyPersonalSpaceScreen extends StatefulWidget {
@@ -196,6 +196,10 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final hasMedia = reflection.attachedFiles.isNotEmpty;
+
+    for (final file in reflection.attachedFiles) {
+      print('File: ${file.fileName}, Type: ${file.fileType}, isVideo: ${file.isVideo}, downloadUrl: ${file.downloadUrl}, localPath: ${file.localPath}');
+    }
 
     // Debug logging
     print('Reflection ${reflection.title} has ${reflection.attachedFiles.length} files:');
