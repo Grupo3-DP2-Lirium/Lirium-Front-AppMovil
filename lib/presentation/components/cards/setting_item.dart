@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class SettingItem extends StatelessWidget {
   final IconData icon;
@@ -36,14 +37,14 @@ class SettingItem extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: (iconColor ?? const Color(0xFF6366F1)).withValues(
+                color: (iconColor ?? AppColors.primary).withValues(
                   alpha: 0.1,
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
-                color: iconColor ?? const Color(0xFF6366F1),
+                color: iconColor ?? AppColors.primary,
                 size: 20,
               ),
             ),

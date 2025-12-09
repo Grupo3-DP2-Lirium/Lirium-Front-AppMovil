@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/reminder_service.dart';
 import 'package:flutter_frontend/domain/entities/reminder.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/reminders/create_reminder_screen.dart';
 
 class RemindersListScreen extends StatefulWidget {
@@ -160,7 +161,7 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                         ElevatedButton(
                           onPressed: _loadReminders,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
+                            backgroundColor: AppColors.primary,
                           ),
                           child: const Text('Reintentar'),
                         ),
@@ -222,7 +223,7 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
             _loadReminders();
           }
         },
-        backgroundColor: const Color(0xFF6366F1),
+        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add),
         label: const Text('Crear recordatorio'),
       ),
@@ -241,7 +242,7 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: reminder.active 
-              ? const Color(0xFF6366F1).withOpacity(0.3)
+              ? AppColors.primary.withOpacity(0.3)
               : Colors.grey[300]!,
         ),
         boxShadow: [
@@ -264,14 +265,14 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: reminder.active
-                        ? const Color(0xFF6366F1).withOpacity(0.1)
+                        ? AppColors.primary.withOpacity(0.1)
                         : Colors.grey[200],
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.event,
                     color: reminder.active
-                        ? const Color(0xFF6366F1)
+                        ? AppColors.primary
                         : Colors.grey[500],
                     size: 24,
                   ),
@@ -367,7 +368,7 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                 Switch(
                   value: reminder.active,
                   onChanged: (_) => _toggleReminderActive(reminder),
-                  activeColor: const Color(0xFF6366F1),
+                  activeColor: AppColors.primary,
                 ),
               ],
             ),
@@ -400,12 +401,12 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                     icon: const Icon(
                       Icons.edit_outlined,
                       size: 18,
-                      color: Color(0xFF6366F1),
+                      color: AppColors.primary,
                     ),
                     label: const Text(
                       'Editar',
                       style: TextStyle(
-                        color: Color(0xFF6366F1),
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
