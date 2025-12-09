@@ -110,53 +110,53 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _showPremiumRequiredDialog('adjuntar imágenes');
       return;
     }
+
     try {
-      // Mostrar diálogo de selección entre imagen y video
-      final result = await showDialog<String>(
+      await appPopupButtonDefault(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Seleccionar archivo'),
-          content: const Text('¿Qué tipo de archivo deseas adjuntar?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'image'),
-              child: const Text('Imagen'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'video'),
-              child: const Text('Video'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        ),
+        title: 'Seleccionar archivo',
+        message: '¿Qué tipo de archivo deseas adjuntar?',
+        showCloseButton: true,
+        buttons: [
+          AppPopupButton(
+            text: 'Imagen',
+            onPressed: () async {
+              // Cierra el popup primero
+              Navigator.pop(context);
+
+              // Espera un frame para evitar conflictos
+              await Future.delayed(Duration.zero);
+
+              final XFile? image = await _imagePicker.pickImage(
+                source: ImageSource.gallery,
+                maxWidth: 1080,
+                maxHeight: 1080,
+                imageQuality: 85,
+              );
+
+              if (image != null) {
+                await _processPickedFile(File(image.path), ReflectionFileType.image);
+              }
+            },
+          ),
+          AppPopupButton(
+            text: 'Video',
+            onPressed: () async {
+              Navigator.pop(context);
+              await Future.delayed(Duration.zero);
+
+              final result = await FilePicker.platform.pickFiles(
+                type: FileType.video,
+                allowMultiple: false,
+              );
+
+              if (result != null && result.files.single.path != null) {
+                await _processPickedFile(File(result.files.single.path!), ReflectionFileType.video);
+              }
+            },
+          ),
+        ],
       );
-
-      if (result == null) return;
-
-      if (result == 'image') {
-        final XFile? image = await _imagePicker.pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 1080,
-          maxHeight: 1080,
-          imageQuality: 85,
-        );
-
-        if (image != null) {
-          await _processPickedFile(File(image.path), ReflectionFileType.image);
-        }
-      } else if (result == 'video') {
-        final result = await FilePicker.platform.pickFiles(
-          type: FileType.video,
-          allowMultiple: false,
-        );
-
-        if (result != null && result.files.single.path != null) {
-          await _processPickedFile(File(result.files.single.path!), ReflectionFileType.video);
-        }
-      }
     } catch (e) {
       _showErrorDialog('Error al seleccionar archivo: $e');
     }
