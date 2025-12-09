@@ -19,8 +19,6 @@ class ImagesGrid extends StatelessWidget {
       return _buildSingleImage(context, images.first, 3);
     }
 
-
-
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -90,7 +88,7 @@ class ImagesGrid extends StatelessWidget {
                 top: 40,
                 left: 16,
                 child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  icon: const Icon(Icons.arrow_back_outlined, color: Colors.white, size: 30),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),

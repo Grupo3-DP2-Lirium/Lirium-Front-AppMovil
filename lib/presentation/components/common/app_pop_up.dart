@@ -26,7 +26,7 @@ Future<void> appPopupButtonDefault({
 
   return showDialog(
     context: context,
-    barrierDismissible: !isLoading,
+    barrierDismissible: false,
     builder: (_) => Center(
       child: Container(
         width: 294,

@@ -67,6 +67,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
   }
 
   // Cancel the edit mode and restore the original data
+  // Cancel the edit mode and restore the original data
   void _cancelEdit() {
     if (_hasChanges()) {
       appPopupButtonDefault(
@@ -74,6 +75,12 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
         title: "¿Estás seguro?",
         message: "Tienes cambios no guardados. Si cancelas, perderás los cambios.",
         buttons: [
+          AppPopupButton(
+            text: "Cancelar",
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
           AppPopupButton(
             text: "Confirmar",
             onPressed: () {
@@ -447,6 +454,29 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
     }
   }
 
+  void _confirmDeleteMemory() {
+    appPopupButtonDefault(
+      context: context,
+      title: "Eliminar memoria",
+      message: "¿Estás seguro de que deseas eliminar esta memoria? \n Esta acción no se puede deshacer.",
+      buttons: [
+        AppPopupButton(
+          text: "Cancelar",
+          onPressed: () => Navigator.pop(context),
+          color: Colors.grey[200],
+        ),
+        AppPopupButton(
+          text: "Eliminar",
+          onPressed: () {
+            Navigator.pop(context);
+            _deleteMemory();
+          },
+          color: Colors.red,
+        ),
+      ],
+    );
+  }
+
   // Delete memory (View mode)
   Future<void> _deleteMemory() async {
     if (_isLoading) return;
@@ -556,7 +586,7 @@ class _MemoryDetailScreenState extends State<MemoryDetailScreen> {
                       label: "Eliminar",
                       icon: Icons.delete,
                       onTap: () {
-                        _deleteMemory();
+                        _confirmDeleteMemory();
                       },
                     ),
                   ],

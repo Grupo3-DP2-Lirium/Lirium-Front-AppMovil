@@ -1,14 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/image_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/personal_space/widget/video_player.dart';
+import 'package:flutter_frontend/providers/reflection_provider.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../../data/models/reflection_model.dart';
 import '../../../../../data/services/reflection_service.dart';
+import '../../../../components/buttons/pop_menu_button.dart';
+import '../../../../components/common/app_bar.dart';
+import '../../../../components/common/app_pop_up.dart';
 import 'media_section.dart';
 import '../new_reflection/new_reflection_screen.dart';
-
+import 'package:provider/provider.dart';
 
 class ReflectionDetailScreen extends StatefulWidget {
   final ReflectionModel reflection;
@@ -32,6 +37,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   String? _currentlyPlayingAudioId;
   final Map<String, VideoPlayerController> _videoControllers = {};
   bool _isLoadingVideos = true;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -142,31 +148,28 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   }
 
   void _confirmDelete() {
-    showDialog(
+    appPopupButtonDefault(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar reflexión'),
-        content: const Text(
-          '¿Estás seguro de que deseas eliminar esta reflexión? '
-          'Esta acción no se puede deshacer.',
+      title: "Eliminar reflexión",
+      message:
+      "¿Estás seguro de que deseas eliminar esta reflexión?\nEsta acción no se puede deshacer.",
+      buttons: [
+        AppPopupButton(
+          text: "Cancelar",
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          color: AppColors.inactive,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteReflection();
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+        AppPopupButton(
+          text: "Eliminar",
+          onPressed: () async {
+            Navigator.pop(context);
+            await _deleteReflection();
+          },
+          color: Colors.red,
+        ),
+      ],
     );
   }
 
@@ -215,21 +218,45 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
 
   Future<void> _deleteReflection() async {
     try {
-      await _reflectionService.deleteReflection(_reflection.id);
-      
+      appPopupButtonDefault(
+        context: context,
+        title: "",
+        message: "",
+        buttons: [AppPopupButton(text: "", onPressed: () {})],
+        isLoading: true,
+      );
+
+      final provider = Provider.of<ReflectionProvider>(context, listen: false);
+      final ok = await provider.deleteReflection(_reflection.id);
+
+      if (mounted) Navigator.pop(context);
+
       if (!mounted) return;
-      
+
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo eliminar la reflexión'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reflexión eliminada con éxito'),
           backgroundColor: Colors.green,
         ),
       );
-      
+
       Navigator.pop(context, true);
+
     } catch (e) {
+      if (mounted) Navigator.pop(context);
+
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al eliminar: $e'),
@@ -237,30 +264,6 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
         ),
       );
     }
-  }
-
-  Future<void> _initVideoControllers() async {
-    final videos = _reflection.attachedFiles.where((f) => f.isVideo);
-
-    for (final video in videos) {
-      VideoPlayerController controller;
-
-      if (video.localPath != null) {
-        controller = VideoPlayerController.file(File(video.localPath!));
-      } else if (video.downloadUrl.isNotEmpty) {
-        controller = VideoPlayerController.network(video.downloadUrl);
-      } else {
-        continue; // no hay fuente
-      }
-
-      await controller.initialize();
-      controller.setLooping(false);
-      controller.pause(); // deja el video en frame 0
-
-      _videoControllers[video.id] = controller;
-    }
-
-    if (mounted) setState(() {});
   }
 
   void _openImage(ReflectionFile file) {
@@ -288,116 +291,101 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'edit':
-                  _navigateToEdit();
-                  break;
-                case 'delete':
-                  _confirmDelete();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20),
-                    SizedBox(width: 12),
-                    Text('Editar'),
-                  ],
-                ),
+      appBar: CustomMemoryAppBar(
+        title: "Reflexión",
+        onBack: () => Navigator.pop(context),
+        showBackButton: true,
+        appBarHeight: MediaQuery.of(context).size.height * 0.09,
+        trailing: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: CustomPopupMenu(
+            options: [
+              PopupMenuOption(
+                label: "Editar",
+                icon: Icons.edit,
+                onTap: () => _navigateToEdit(),
               ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 20, color: Colors.red),
-                    SizedBox(width: 12),
-                    Text('Eliminar', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
+              PopupMenuOption(
+                label: "Eliminar",
+                icon: Icons.delete,
+                onTap: () => _confirmDelete(),
               ),
             ],
-            child: const Padding(
-              padding: EdgeInsets.all(12),
-              child: Icon(Icons.more_vert, color: Colors.black87),
-            ),
-          ),
-        ],
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    ),
+    body:Stack(
           children: [
-            // Fecha
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _formatDate(_reflection.createdDate),
-                style: textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Fecha
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      _formatDate(_reflection.createdDate),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Título
+                  if (_reflection.title.isNotEmpty) ...[
+                    Text(
+                      _reflection.title,
+                      style: textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Contenido
+                  if (_reflection.content.isNotEmpty) ...[
+                    Text(
+                      _reflection.content,
+                      style: textTheme.bodyLarge?.copyWith(
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Archivos multimedia
+                  if (_reflection.attachedFiles.isNotEmpty ) ...[
+                    MediaSection(
+                      files: _reflection.attachedFiles,
+                      isPlayingAudio: _isPlayingAudio,
+                      playingAudioId: _currentlyPlayingAudioId,
+                      onPlayAudio: _playAudio,
+                      onOpenImage: (file) => _openImage(file),
+                      onOpenVideo: (file) => _openVideo(file),
+                      cachedControllers: _cachedVideoControllers,
+                    ),
+                  ],
+                ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Título
-            if (_reflection.title.isNotEmpty) ...[
-              Text(
-                _reflection.title,
-                style: textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+            if (_isDeleting)
+              Container(
+                color: Colors.black.withOpacity(0.4),
+                child: const Center(
+                  child: CircularProgressIndicator(),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-
-            // Contenido
-            if (_reflection.content.isNotEmpty) ...[
-              Text(
-                _reflection.content,
-                style: textTheme.bodyLarge?.copyWith(
-                  height: 1.6,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Archivos multimedia
-            if (_reflection.attachedFiles.isNotEmpty ) ...[
-              MediaSection(
-                files: _reflection.attachedFiles,
-                isPlayingAudio: _isPlayingAudio,
-                playingAudioId: _currentlyPlayingAudioId,
-                onPlayAudio: _playAudio,
-                onOpenImage: (file) => _openImage(file),
-                onOpenVideo: (file) => _openVideo(file),
-                cachedControllers: _cachedVideoControllers,
-              ),
-            ],
           ],
-        ),
       ),
     );
   }
