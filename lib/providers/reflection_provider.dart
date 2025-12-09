@@ -41,8 +41,11 @@ class ReflectionProvider extends ChangeNotifier {
   }
 
   /// Guardar (crear o actualizar)
-  Future<ReflectionModel?> saveReflection(ReflectionModel reflection) async {
-    final result = await _service.saveReflection(reflection);
+  Future<ReflectionModel?> saveReflection(
+      ReflectionModel reflection,
+      List<String> deletedFileIds, // <- nuevo parámetro
+      ) async {
+    final result = await _service.saveReflection(reflection, deletedFileIds);
     if (result == null) return null;
 
     // Si la reflexión ya existe -> reemplazar

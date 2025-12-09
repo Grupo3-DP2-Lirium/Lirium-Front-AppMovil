@@ -50,6 +50,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
   Map<String, VideoPlayerController> _videoControllers = {};
   Set<String> _uploadingFiles = {};
+  List<String> _deletedFileIds = [];
 
   @override
   void initState() {
@@ -105,60 +106,66 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     }
   }
 
-  Future<void> _pickFromGallery() async {
+  void _pickFromGallery() {
     if (_reflectionService.userType == UserType.free) {
       _showPremiumRequiredDialog('adjuntar imágenes');
       return;
     }
 
+    _showAddOptions(context);
+  }
+
+  void _showAddOptions(BuildContext context) {
     try {
-      await appPopupButtonDefault(
+      showModalBottomSheet(
         context: context,
-        title: 'Seleccionar archivo',
-        message: '¿Qué tipo de archivo deseas adjuntar?',
-        showCloseButton: true,
-        buttons: [
-          AppPopupButton(
-            text: 'Imagen',
-            onPressed: () async {
-              // Cierra el popup primero
-              Navigator.pop(context);
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (modalContext) {
+          return SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.image),
+                  title: const Text("Añadir imagen"),
+                  onTap: () async {
+                    Navigator.pop(modalContext);
+                    final XFile? image = await _imagePicker.pickImage(
+                      source: ImageSource.gallery,
+                      maxWidth: 1080,
+                      maxHeight: 1080,
+                      imageQuality: 85,
+                    );
 
-              // Espera un frame para evitar conflictos
-              await Future.delayed(Duration.zero);
+                    if (image != null) {
+                      await _processPickedFile(File(image.path), ReflectionFileType.image);
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.videocam),
+                  title: const Text("Añadir video"),
+                  onTap: () async {
+                    Navigator.pop(modalContext);
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.video,
+                      allowMultiple: false,
+                    );
 
-              final XFile? image = await _imagePicker.pickImage(
-                source: ImageSource.gallery,
-                maxWidth: 1080,
-                maxHeight: 1080,
-                imageQuality: 85,
-              );
-
-              if (image != null) {
-                await _processPickedFile(File(image.path), ReflectionFileType.image);
-              }
-            },
-          ),
-          AppPopupButton(
-            text: 'Video',
-            onPressed: () async {
-              Navigator.pop(context);
-              await Future.delayed(Duration.zero);
-
-              final result = await FilePicker.platform.pickFiles(
-                type: FileType.video,
-                allowMultiple: false,
-              );
-
-              if (result != null && result.files.single.path != null) {
-                await _processPickedFile(File(result.files.single.path!), ReflectionFileType.video);
-              }
-            },
-          ),
-        ],
+                    if (result != null && result.files.single.path != null) {
+                      await _processPickedFile(File(result.files.single.path!), ReflectionFileType.video);
+                    }
+                  },
+                ),
+              ],
+            ),
+          );
+        },
       );
-    } catch (e) {
-      _showErrorDialog('Error al seleccionar archivo: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error al abrir modal: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 
@@ -364,8 +371,21 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   }
 
   void _removeAttachedFile(int index) {
+    final removedFile = _attachedFiles[index];
+
     setState(() {
       _attachedFiles.removeAt(index);
+
+      // Si estamos editando y el archivo tiene un ID en backend
+      if (widget.editingReflection != null && removedFile.id.isNotEmpty) {
+        _deletedFileIds.add(removedFile.id);
+      }
+
+      // También eliminar controladores de video si aplica
+      if (removedFile.isVideo && removedFile.localPath != null) {
+        _videoControllers[removedFile.localPath!]?.dispose();
+        _videoControllers.remove(removedFile.localPath!);
+      }
     });
   }
 
@@ -397,7 +417,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
       print("ID que se está enviando al editar: ${reflection.id}");
 
-      await _reflectionService.saveReflection(reflection);
+      await _reflectionService.saveReflection(reflection, _deletedFileIds);
 
       if (mounted) {
         final provider = Provider.of<ReflectionProvider>(context, listen: false);

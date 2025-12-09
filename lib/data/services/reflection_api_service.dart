@@ -158,14 +158,15 @@ class ReflectionApiService {
       }
       
       Map<String, String> fields = {
-        'reflection': json.encode(reflectionData), // Datos como JSON
+        'reflection': json.encode(reflectionData),
       };
-      
-      // Archivos a eliminar
+
       if (filesToDelete != null && filesToDelete.isNotEmpty) {
-        fields['filesToDelete'] = json.encode(filesToDelete);
+        for (String fileId in filesToDelete) {
+          fields.addAll({'filesToDelete': fileId});
+        }
       }
-      
+
       List<http.MultipartFile> multipartFiles = [];
       
       // Nuevos archivos
