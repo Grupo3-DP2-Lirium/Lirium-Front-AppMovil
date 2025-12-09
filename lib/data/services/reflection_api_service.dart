@@ -141,10 +141,8 @@ class ReflectionApiService {
     try {
       // Preparar los datos de la reflexión como JSON
       Map<String, dynamic> reflectionData = {
-        'idMemory': id,
         'type': 'REFLECTION',
         'visible': true,
-        // Omitir photoDate temporalmente - no hay campo en frontend para seleccionar fecha
       };
       
       // Solo agregar campos que han sido modificados
@@ -165,7 +163,7 @@ class ReflectionApiService {
       
       // Archivos a eliminar
       if (filesToDelete != null && filesToDelete.isNotEmpty) {
-        fields['deleteFiles'] = json.encode(filesToDelete);
+        fields['filesToDelete'] = json.encode(filesToDelete);
       }
       
       List<http.MultipartFile> multipartFiles = [];
