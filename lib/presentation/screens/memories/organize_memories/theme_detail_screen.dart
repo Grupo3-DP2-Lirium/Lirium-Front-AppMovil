@@ -98,7 +98,7 @@ class ThemeDetailScreen extends StatelessWidget {
           ),
 
           // Botón crear recuerdo
-          Container(
+          /*Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -141,7 +141,7 @@ class ThemeDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          ),*/
         ],
       ),
     );

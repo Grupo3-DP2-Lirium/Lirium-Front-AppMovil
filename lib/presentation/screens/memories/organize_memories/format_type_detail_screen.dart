@@ -32,7 +32,7 @@ class FormatTypeDetailScreen extends StatelessWidget {
             child: _buildContent(context),
           ),
           // Botón Crear Recuerdo
-          Container(
+          /*Container(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton(
               onPressed: () {
@@ -58,7 +58,7 @@ class FormatTypeDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          ),*/
         ],
       ),
     );
