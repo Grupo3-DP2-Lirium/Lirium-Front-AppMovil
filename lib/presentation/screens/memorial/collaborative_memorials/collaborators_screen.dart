@@ -569,7 +569,7 @@ class _CollaboratorCard extends StatelessWidget {
                 if (isActive) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Editar: ${collaborator.canEdit ? "Sí" : "No"} • Comentar: ${collaborator.canComment ? "Sí" : "No"}',
+                    'Editar: ${collaborator.canEdit ? "Sí" : "No"}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 12,
@@ -653,13 +653,13 @@ class _PermissionsDialogState extends State<_PermissionsDialog> {
             onChanged: (value) => setState(() => _canEdit = value),
             activeColor: const Color(0xFFFF6B6B),
           ),
-          SwitchListTile(
-            title: const Text('Puede comentar'),
-            subtitle: const Text('Agregar comentarios'),
-            value: _canComment,
-            onChanged: (value) => setState(() => _canComment = value),
-            activeColor: const Color(0xFFFF6B6B),
-          ),
+          // SwitchListTile(
+          //   title: const Text('Puede comentar'),
+          //   subtitle: const Text('Agregar comentarios'),
+          //   value: _canComment,
+          //   onChanged: (value) => setState(() => _canComment = value),
+          //   activeColor: const Color(0xFFFF6B6B),
+          // ),
         ],
       ),
       actions: [

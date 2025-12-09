@@ -241,26 +241,26 @@ class _InviteByEmailDialogState extends State<InviteByEmailDialog> {
                                   setState(() => _canEdit = value),
                               activeColor: AppColors.primary,
                             ),
-                            Divider(height: 1, color: AppColors.inactive),
-                            SwitchListTile(
-                              title: Text(
-                                'Puede comentar',
-                                style: textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              subtitle: Text(
-                                'Agregar comentarios',
-                                style: textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              value: _canComment,
-                              onChanged: (value) =>
-                                  setState(() => _canComment = value),
-                              activeColor: colorScheme.primary,
-                            ),
+                            // Divider(height: 1, color: AppColors.inactive),
+                            // SwitchListTile(
+                            //   title: Text(
+                            //     'Puede comentar',
+                            //     style: textTheme.bodyMedium?.copyWith(
+                            //       fontWeight: FontWeight.w500,
+                            //       color: colorScheme.onSurface,
+                            //     ),
+                            //   ),
+                            //   subtitle: Text(
+                            //     'Agregar comentarios',
+                            //     style: textTheme.labelSmall?.copyWith(
+                            //       color: colorScheme.onSurfaceVariant,
+                            //     ),
+                            //   ),
+                            //   value: _canComment,
+                            //   onChanged: (value) =>
+                            //       setState(() => _canComment = value),
+                            //   activeColor: colorScheme.primary,
+                            // ),
                           ],
                         ),
                       ),

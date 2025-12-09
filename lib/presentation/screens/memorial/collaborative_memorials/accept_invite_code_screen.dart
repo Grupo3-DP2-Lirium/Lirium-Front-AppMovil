@@ -403,11 +403,11 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
                           label: _validation!.canEdit ? 'Puede editar' : 'Solo ver',
                           color: _validation!.canEdit ? Colors.green : Colors.orange,
                         ),
-                        _PermissionChip(
-                          icon: Icons.comment,
-                          label: _validation!.canComment ? 'Puede comentar' : 'Sin comentarios',
-                          color: _validation!.canComment ? Colors.blue : Colors.grey,
-                        ),
+                        // _PermissionChip(
+                        //   icon: Icons.comment,
+                        //   label: _validation!.canComment ? 'Puede comentar' : 'Sin comentarios',
+                        //   color: _validation!.canComment ? Colors.blue : Colors.grey,
+                        // ),
                       ],
                     ),
                   ],

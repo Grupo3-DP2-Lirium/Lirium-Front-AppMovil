@@ -245,25 +245,25 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                 onChanged: (value) => setState(() => _canEdit = value),
                 activeColor: const Color(0xFF6366F1),  // ✅ Color consistente
               ),
-              Divider(height: 1, color: Colors.grey[300]),
-              SwitchListTile(
-                title: Text(
-                  'Puede comentar',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurface,
-                      ),
-                ),
-                subtitle: Text(
-                  'Agregar comentarios (próximamente)',  // ✅ Indicar que es futuro
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                value: _canComment,
-                onChanged: (value) => setState(() => _canComment = value),
-                activeColor: const Color(0xFF6366F1),  // ✅ Color consistente
-              ),
+              // Divider(height: 1, color: Colors.grey[300]),
+              // SwitchListTile(
+              //   title: Text(
+              //     'Puede comentar',
+              //     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              //           fontWeight: FontWeight.w500,
+              //           color: colorScheme.onSurface,
+              //         ),
+              //   ),
+              //   subtitle: Text(
+              //     'Agregar comentarios (próximamente)',  // ✅ Indicar que es futuro
+              //     style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              //           color: colorScheme.onSurfaceVariant,
+              //         ),
+              //   ),
+              //   value: _canComment,
+              //   onChanged: (value) => setState(() => _canComment = value),
+              //   activeColor: const Color(0xFF6366F1),  // ✅ Color consistente
+              // ),
             ],
           ),
         ),
