@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_frontend/data/services/invite_code_service.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class AcceptInviteCodeScreen extends StatefulWidget {
   const AcceptInviteCodeScreen({super.key});
@@ -129,13 +130,11 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6B4CE6), Color(0xFF8B6CEF)],
-                ),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6B4CE6).withOpacity(0.3),
+                    color: AppColors.primary.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -212,7 +211,7 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: const BorderSide(
-                    color: Color(0xFF6B4CE6),
+                    color: AppColors.primary,
                     width: 2,
                   ),
                 ),
@@ -245,10 +244,14 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
             // Botón de pegar
             OutlinedButton.icon(
               onPressed: _pasteFromClipboard,
-              icon: const Icon(Icons.content_paste),
-              label: const Text('Pegar desde portapapeles'),
+              icon: const Icon(Icons.content_paste, color: AppColors.primary),
+              label: const Text(
+                'Pegar desde portapapeles',
+                style: TextStyle(color: AppColors.primary),
+              ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -289,15 +292,10 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF6B4CE6).withOpacity(0.1),
-                      const Color(0xFF8B6CEF).withOpacity(0.1),
-                    ],
-                  ),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFF6B4CE6).withOpacity(0.3),
+                    color: AppColors.primary.withOpacity(0.3),
                   ),
                 ),
                 child: Column(
@@ -308,7 +306,7 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF6B4CE6),
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -324,7 +322,7 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF6B4CE6),
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
@@ -403,11 +401,6 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
                           label: _validation!.canEdit ? 'Puede editar' : 'Solo ver',
                           color: _validation!.canEdit ? Colors.green : Colors.orange,
                         ),
-                        // _PermissionChip(
-                        //   icon: Icons.comment,
-                        //   label: _validation!.canComment ? 'Puede comentar' : 'Sin comentarios',
-                        //   color: _validation!.canComment ? Colors.blue : Colors.grey,
-                        // ),
                       ],
                     ),
                   ],
@@ -420,7 +413,7 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
               FilledButton(
                 onPressed: _isAccepting ? null : _acceptInvite,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B4CE6),
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -451,7 +444,7 @@ class _AcceptInviteCodeScreenState extends State<AcceptInviteCodeScreen> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
+                  child: CircularProgressIndicator(color: AppColors.primary),
                 ),
               ),
             
