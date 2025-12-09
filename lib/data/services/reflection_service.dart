@@ -19,7 +19,10 @@ class ReflectionService {
     }
   }
 
-  Future<ReflectionModel?> saveReflection(ReflectionModel reflection) async {
+  Future<ReflectionModel?> saveReflection(
+      ReflectionModel reflection,
+      List<String> deletedFileIds
+  ) async {
     try {
       // Verificar si es un UUID válido del backend
       bool isValidBackendId = _isValidUUID(reflection.id);
@@ -44,8 +47,9 @@ class ReflectionService {
           latitude: reflection.latitude,
           longitude: reflection.longitude,
           newFiles: await _prepareFiles(reflection.attachedFiles),
+          filesToDelete: deletedFileIds,
         );
-        
+
         return result;
       }
     } catch (e) {
