@@ -8,6 +8,7 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
   final List<Tab>? tabs;
   final bool showBackButton;
   final double appBarHeight;
+  final Widget? trailing;
 
   const CustomMemoryAppBar({
     super.key,
@@ -16,7 +17,8 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
     this.tabController,
     this.tabs,
     this.showBackButton = false,
-    required this.appBarHeight,  // Pasamos la altura calculada
+    required this.appBarHeight,
+    this.trailing,
   });
 
   @override
@@ -31,7 +33,6 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
           padding: const EdgeInsets.only(top: 16),
           child: Column(
             children: [
-              // Fila con el Icono de retroceso y el título
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -42,6 +43,7 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
                     )
                   else
                     const SizedBox(width: 48),
+                  // CENTRO: título
                   Expanded(
                     child: Center(
                       child: Padding(
@@ -49,7 +51,7 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
                         child: Text(
                           title,
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 23,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -57,21 +59,23 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48),  // Espacio vacío a la derecha
+                  SizedBox(
+                    width: 48,
+                    child: trailing ?? const SizedBox(),
+                  ),
                 ],
               ),
 
-              // Si hay TabBar, lo mostramos
               if (tabs != null && tabController != null)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Tab_Bar(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Tab_Bar(
                       controller: tabController!,
-                      tabs: tabs!
+                      tabs: tabs!,
+                    ),
                   ),
-                ),
-              )
+                )
             ],
           ),
         ),
@@ -80,7 +84,5 @@ class CustomMemoryAppBar extends StatelessWidget implements PreferredSizeWidget 
   }
 
   @override
-  Size get preferredSize {
-    return Size.fromHeight(appBarHeight);  // Usamos la altura calculada
-  }
+  Size get preferredSize => Size.fromHeight(appBarHeight);
 }

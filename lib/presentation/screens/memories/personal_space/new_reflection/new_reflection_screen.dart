@@ -16,6 +16,8 @@ import 'package:video_player/video_player.dart';
 import '../../../../../data/models/reflection_model.dart';
 import '../../../../../data/services/reflection_service.dart';
 import '../../../../../providers/reflection_provider.dart';
+import '../../../../components/common/app_bar.dart';
+import '../../../../components/common/app_pop_up.dart';
 import 'attachments_preview.dart';
 
 class NewReflectionScreen extends StatefulWidget {
@@ -108,7 +110,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _showPremiumRequiredDialog('adjuntar imágenes');
       return;
     }
-
     try {
       // Mostrar diálogo de selección entre imagen y video
       final result = await showDialog<String>(
@@ -376,10 +377,14 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _showErrorDialog('Debes escribir al menos un título o contenido');
       return;
     }
-
-    setState(() {
-      _isSaving = true;
-    });
+    // Mostrar popup de cargando
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
 
     try {
       final reflection = ReflectionModel(
@@ -390,6 +395,8 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
         attachedFiles: _attachedFiles,
       );
 
+      print("ID que se está enviando al editar: ${reflection.id}");
+
       await _reflectionService.saveReflection(reflection);
 
       if (mounted) {
@@ -398,19 +405,54 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       }
 
       if (!mounted) return;
-      
-      _showSuccessDialog();
-      
+
+      Navigator.pop(context);
+
+      final isEditing = widget.editingReflection != null;
+      // Popup según si es creación o edición
+      await appPopupButtonDefault(
+        context: context,
+        title: isEditing
+            ? "Tu reflexión ha sido actualizada"
+            : "Tu reflexión ha sido creada",
+        message: isEditing
+            ? "Los cambios se guardaron correctamente."
+            : "Gracias por compartir un momento más de tu historia.",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context, true);
+              if (isEditing) {
+                Navigator.pop(context, true);
+              }
+            },
+          ),
+        ],
+      );
     } catch (e) {
       if (!mounted) return;
-      _showErrorDialog('Error al guardar la reflexión: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      Navigator.pop(context);
+      await appPopupButtonDefault(
+        context: context,
+        title: "Error",
+        message: "Error al guardar la reflexión: $e",
+        buttons: [
+          AppPopupButton(
+            text: "Cerrar",
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      );
     }
+  }
+
+  bool _hasChanges() {
+    if (widget.editingReflection == null) return false;
+
+    return _titleController.text.trim() != widget.editingReflection!.title ||
+        _contentController.text.trim() != widget.editingReflection!.content ||
+        _attachedFiles.length != widget.editingReflection!.attachedFiles.length;
   }
 
   void _showPremiumRequiredDialog(String feature) {
@@ -465,28 +507,6 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     );
   }
 
-  void _showSuccessDialog() {
-    final isEditing = widget.editingReflection != null;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¡Éxito!'),
-        content: Text(isEditing 
-            ? 'Tu reflexión ha sido actualizada con éxito'
-            : 'Tu reflexión ha sido creada con éxito'),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, true);
-            },
-            child: const Text('Continuar'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -503,41 +523,66 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     );
   }
 
+  void _showExitEditDialog() {
+    appPopupButtonDefault(
+      context: context,
+      title: "¿Estás seguro?",
+      message: "Tienes cambios no guardados. Si cancelas, perderás los cambios.",
+      buttons: [
+        AppPopupButton(
+          text: "Cancelar",
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        AppPopupButton(
+          text: "Confirmar",
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              onPressed: _isSaving ? null : _saveReflection,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      Icons.check_circle,
-                      color: colorScheme.primary,
-                      size: 28,
-                    ),
-              tooltip: 'Guardar',
+      appBar: CustomMemoryAppBar(
+        title: widget.editingReflection != null
+            ? "Editar Reflexión"
+            : "Nueva Reflexión",
+        onBack: () {
+          if (widget.editingReflection != null && _hasChanges()) {
+            _showExitEditDialog();
+          } else {
+            Navigator.pop(context);
+          }
+        },
+        appBarHeight: MediaQuery.of(context).size.height * 0.09,
+        showBackButton: true,
+        trailing: Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: IconButton(
+            onPressed: _isSaving ? null : _saveReflection,
+            icon: _isSaving
+                ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+                : Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+              size: 28,
             ),
+            tooltip: 'Guardar',
           ),
-        ],
+        ),
       ),
       body: SafeArea(
         child: Stack(

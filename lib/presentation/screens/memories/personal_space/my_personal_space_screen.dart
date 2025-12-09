@@ -4,6 +4,7 @@ import '../../../../providers/reflection_provider.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../../data/models/reflection_model.dart';
 import '../../../../data/services/reflection_service.dart';
+import '../../../components/common/app_bar.dart';
 import 'reflection_detail/reflection_detail_screen.dart';
 import 'new_reflection/new_reflection_screen.dart';
 import 'package:provider/provider.dart';
@@ -67,25 +68,19 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    // Get screen dimensions for responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    double appBarHeight = screenHeight * 0.09;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          'Mi espacio personal',
-          style: textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: CustomMemoryAppBar(
+        title: "Mi Espacio Personal",
+        onBack: () => Navigator.pop(context),
+        appBarHeight: appBarHeight,
+        showBackButton: true,
       ),
       body: RefreshIndicator(
         onRefresh: _refreshReflections,
