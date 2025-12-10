@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_actions.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_details_state.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/widgets/memorial_header.dart';
@@ -107,7 +107,10 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final subProvider = context.watch<SubscriptionProvider>();
-    final hasPremiumPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+    
+    // ✅ CRÍTICO: Colaboradores NO necesitan plan premium
+    final isCollaborator = !_detailsState.isOwner;
+    final hasPremiumPermission = isCollaborator || subProvider.permissions.contains("CREATE_MEMORIALS");
 
     if (!subProvider.isLoaded || isLoadingMemorial) {
       return const Scaffold(
@@ -147,11 +150,12 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
             ],
           ),
 
-          // Botón flotante
-          _buildFloatingButton(hasPremiumPermission),
+          // ✅ Botón flotante
+          if (_detailsState.canEdit || _detailsState.isOwner)
+            _buildFloatingButton(hasPremiumPermission),
 
-          // Botón de configuración
-          if (_detailsState.isOwner || _detailsState.canEdit)
+          // ✅ Botón de configuración - Solo si es dueño (NO colaborador)
+          if (_detailsState.isOwner)
             _buildSettingsButton(),
         ],
       ),
@@ -220,9 +224,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
       right: 20,
       child: FloatingActionButton.extended(
         onPressed: () {
+          // ✅ Para colaboradores, siempre permitir (ya se verificó hasPremiumPermission arriba)
           if (hasPremiumPermission) {
             _goToCreateMemory();
           } else {
+            // Solo mostrar pantalla de premium si es dueño sin plan
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const GetPremiumScreen()),

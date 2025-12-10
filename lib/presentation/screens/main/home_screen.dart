@@ -295,30 +295,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
 
                     // ✨ SECCIÓN: Recordatorios
-                    FutureBuilder<List<Reminder>>(
-                      future: _remindersFuture,
-                      builder: (context, remindersSnap) {
-                        final reminders = remindersSnap.data ?? <Reminder>[];
-                        if (reminders.isEmpty) return const SizedBox.shrink();
+                    // FutureBuilder<List<Reminder>>(
+                    //   future: _remindersFuture,
+                    //   builder: (context, remindersSnap) {
+                    //     final reminders = remindersSnap.data ?? <Reminder>[];
+                    //     if (reminders.isEmpty) return const SizedBox.shrink();
 
-                        return Column(
-                          children: [
-                            _buildSectionHeader(
-                              'Próximos Recordatorios',
-                              'Momentos especiales que no querrás olvidar',
-                              icon: Icons.event_outlined,
-                              onSeeAll: _goToAllReminders,
-                            ),
-                            const SizedBox(height: 16),
-                            ReminderCarousel(
-                              reminders: reminders,
-                              onSeeAll: _goToAllReminders,
-                            ),
-                            const SizedBox(height: 32),
-                          ],
-                        );
-                      },
-                    ),
+                    //     return Column(
+                    //       children: [
+                    //         _buildSectionHeader(
+                    //           'Próximos Recordatorios',
+                    //           'Fechas especiales o momentos importantes que agendaste',
+                    //           icon: Icons.event_outlined,
+                    //           onSeeAll: _goToAllReminders,
+                    //         ),
+                    //         const SizedBox(height: 16),
+                    //         ReminderCarousel(
+                    //           reminders: reminders,
+                    //           onSeeAll: _goToAllReminders,
+                    //         ),
+                    //         const SizedBox(height: 32),
+                    //       ],
+                    //     );
+                    //   },
+                    // ),
 
                     _buildPersonalSpaceCard(),
                     const SizedBox(height: 32),

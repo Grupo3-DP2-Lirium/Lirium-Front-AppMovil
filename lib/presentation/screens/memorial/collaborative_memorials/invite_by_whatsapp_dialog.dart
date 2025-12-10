@@ -44,7 +44,7 @@ class _InviteByWhatsAppDialogState extends State<InviteByWhatsAppDialog> {
       // 2. Preparar el mensaje
       final permissions = <String>[];
       if (_canEdit) permissions.add('✏️ Editar contenido');
-      if (_canComment) permissions.add('💬 Comentar');
+      // if (_canComment) permissions.add('💬 Comentar');
       if (permissions.isEmpty) permissions.add('👁️ Ver contenido');
       
       final permissionsText = permissions.join('\n');
@@ -287,25 +287,25 @@ $permissionsText
                 onChanged: _isGenerating ? null : (value) => setState(() => _canEdit = value),
                 activeColor: const Color(0xFF25D366),
               ),
-              Divider(height: 1, color: Colors.grey[300]),
-              SwitchListTile(
-                title: Text(
-                  'Puede comentar',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurface,
-                      ),
-                ),
-                subtitle: Text(
-                  'Agregar comentarios (próximamente)',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                value: _canComment,
-                onChanged: _isGenerating ? null : (value) => setState(() => _canComment = value),
-                activeColor: const Color(0xFF25D366),
-              ),
+              // Divider(height: 1, color: Colors.grey[300]),
+              // SwitchListTile(
+              //   title: Text(
+              //     'Puede comentar',
+              //     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              //           fontWeight: FontWeight.w500,
+              //           color: colorScheme.onSurface,
+              //         ),
+              //   ),
+              //   subtitle: Text(
+              //     'Agregar comentarios (próximamente)',
+              //     style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              //           color: colorScheme.onSurfaceVariant,
+              //         ),
+              //   ),
+              //   value: _canComment,
+              //   onChanged: _isGenerating ? null : (value) => setState(() => _canComment = value),
+              //   activeColor: const Color(0xFF25D366),
+              // ),
             ],
           ),
         ),

@@ -21,7 +21,7 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
   final InviteCodeService _service = InviteCodeService();
   
   bool _canEdit = false;
-  bool _canComment = false;  // ✅ Cambiado a false por defecto
+  bool _canComment = false;
   bool _isLoading = false;
   String? _generatedCode;
   
@@ -83,11 +83,9 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _generatedCode == null
-                        ? [const Color(0xFF6366F1), const Color(0xFF8B5CF6)]  // ✅ Colores consistentes
-                        : [const Color(0xFF10B981), const Color(0xFF059669)],  // Verde para éxito
-                  ),
+                  color: _generatedCode == null
+                      ? AppColors.primary
+                      : AppColors.primary.withOpacity(0.8),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
@@ -140,13 +138,13 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Cancelar',
-                  style: TextStyle(color: Color(0xFF6366F1)),  // ✅ Color consistente
+                  style: TextStyle(color: AppColors.primary),
                 ),
               ),
               ElevatedButton(
                 onPressed: _isLoading ? null : _generateCode,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),  // ✅ Color consistente
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -165,7 +163,7 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                         'Generar',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,  // ✅ Texto blanco
+                          color: Colors.white,
                         ),
                       ),
               ),
@@ -176,8 +174,8 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('Copiar'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF6366F1),  // ✅ Color consistente
-                  side: const BorderSide(color: Color(0xFF6366F1)),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -189,7 +187,7 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                   Navigator.pop(context, _generatedCode);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),  // ✅ Color consistente
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -199,7 +197,7 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                   'Cerrar',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,  // ✅ Texto blanco
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -243,26 +241,7 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
                 ),
                 value: _canEdit,
                 onChanged: (value) => setState(() => _canEdit = value),
-                activeColor: const Color(0xFF6366F1),  // ✅ Color consistente
-              ),
-              Divider(height: 1, color: Colors.grey[300]),
-              SwitchListTile(
-                title: Text(
-                  'Puede comentar',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurface,
-                      ),
-                ),
-                subtitle: Text(
-                  'Agregar comentarios (próximamente)',  // ✅ Indicar que es futuro
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                value: _canComment,
-                onChanged: (value) => setState(() => _canComment = value),
-                activeColor: const Color(0xFF6366F1),  // ✅ Color consistente
+                activeColor: AppColors.primary,
               ),
             ],
           ),
@@ -282,15 +261,13 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
         GestureDetector(
           onTap: _copyToClipboard,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),  // ✅ Reducido padding
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],  // ✅ Color consistente
-              ),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                  color: AppColors.primary.withOpacity(0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -299,21 +276,21 @@ class _GenerateInviteCodeDialogState extends State<GenerateInviteCodeDialog> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Flexible(  // ✅ Wrapped en Flexible para evitar overflow
+                Flexible(
                   child: Text(
                     _generatedCode!,
                     style: const TextStyle(
-                      fontSize: 28,  // ✅ Reducido de 32 a 28
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 6,  // ✅ Reducido de 8 a 6
+                      letterSpacing: 6,
                       color: Colors.white,
                       fontFamily: 'monospace',
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(width: 12),  // ✅ Reducido de 16 a 12
-                const Icon(Icons.copy, color: Colors.white, size: 22),  // ✅ Reducido de 24 a 22
+                const SizedBox(width: 12),
+                const Icon(Icons.copy, color: Colors.white, size: 22),
               ],
             ),
           ),

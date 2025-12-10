@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/storage_service.dart';
+import 'package:flutter_frontend/data/services/http_service.dart';
+import 'package:flutter_frontend/data/services/http_client.dart';
+import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_documentales_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/reminders_list_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
+import 'package:flutter_frontend/providers/documentary_provider.dart';
+import 'package:flutter_frontend/providers/capsule_provider.dart';
+import 'package:flutter_frontend/providers/reflection_provider.dart';
+import 'package:flutter_frontend/providers/plan_provider.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../components/common/app_bar.dart';
@@ -87,16 +97,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _authStorage.saveLastEmail(currentEmail);
     }
 
-    // 5️. LIMPIAR TODOS LOS PROVIDERS
+    // 5️. LIMPIAR HTTP SERVICES (tokens)
+    HttpService().clearToken();
+    HttpClient.resetInstance();
+    print('✅ HTTP Services limpiados');
+
+    // 6️. DESREGISTRAR FCM TOKEN
+    try {
+      final fcmService = FirebaseMessagingService();
+      await fcmService.unregisterToken();
+      print('✅ FCM Token desregistrado');
+    } catch (e) {
+      print('⚠️ Error desregistrando FCM token: $e');
+    }
+
+    // 7️. LIMPIAR TODOS LOS PROVIDERS
     if (!mounted) return;
     
     // Limpiar MemorialProvider
     final memorialProvider = Provider.of<MemorialProvider>(context, listen: false);
     memorialProvider.limpiarTodo();
     
-    // Limpiar otros providers si existen
-    // final memoryProvider = Provider.of<MemoryProvider>(context, listen: false);
-    // memoryProvider.limpiarTodo();
+    // Limpiar MemoryProvider
+    final memoryProvider = Provider.of<MemoryProvider>(context, listen: false);
+    memoryProvider.limpiarTodo();
+    
+    // Limpiar DocumentaryProvider
+    final documentaryProvider = Provider.of<DocumentaryProvider>(context, listen: false);
+    documentaryProvider.limpiarTodo();
+    
+    // Limpiar CapsuleProvider
+    final capsuleProvider = Provider.of<CapsuleProvider>(context, listen: false);
+    capsuleProvider.limpiarTodo();
+    
+    // Limpiar ReflectionProvider
+    final reflectionProvider = Provider.of<ReflectionProvider>(context, listen: false);
+    reflectionProvider.limpiarTodo();
+    
+    // Limpiar SubscriptionProvider
+    final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+    subscriptionProvider.limpiarTodo();
+    
+    // Limpiar MemoriesByMemorialProvider
+    final memoriesByMemorialProvider = Provider.of<MemoriesByMemorialProvider>(context, listen: false);
+    memoriesByMemorialProvider.clear();
     
     print('✅ Todos los providers limpiados');
 
@@ -203,12 +247,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingItem(
             icon: Icons.notifications,
             title: 'Notificaciones',
-            subtitle: 'Configurar alertas y recordatorios',
+            subtitle: 'Configura las notificaciones que recibes',
+            onTap: () {},
+          ),
+          SettingItem(
+            icon: Icons.notifications,
+            title: 'Recordatorios',
+            subtitle: 'Gestiona tus recordatorios',
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const NotificationsSettingsScreen(),
+                  builder: (_) => const RemindersListScreen(),
                 ),
               );
             },

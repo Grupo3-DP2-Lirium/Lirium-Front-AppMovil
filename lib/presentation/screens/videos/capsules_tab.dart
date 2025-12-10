@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/capsule_model.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/capsule_card.dart';
 import 'package:flutter_frontend/presentation/screens/videos/select_memorial_capsule_screen.dart';
@@ -337,36 +338,37 @@ class _CapsulesTabState extends State<CapsulesTab> {
   }
 
   void _confirmDelete(CapsuleModel capsule) {
-    showDialog(
+    appPopupButtonDefault(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar cápsula'),
-        content: Text('¿Estás seguro de eliminar "${capsule.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final provider = context.read<CapsuleProvider>();
-              final success = await provider.deleteCapsule(capsule.idCapsule);
+      title: 'Eliminar cápsula',
+      message: '¿Estás seguro de eliminar "${capsule.title}"?',
+      buttons: [
+        AppPopupButton(
+          text: 'Cancelar',
+          onPressed: () {},
+        ),
+        AppPopupButton(
+          text: 'Eliminar',
+          //color: Colors.red,
+          onPressed: () async {
+            // Captura el context del widget tree actual antes del async
+            final nav = Navigator.of(context);
+            final messenger = ScaffoldMessenger.of(context);
 
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Cápsula eliminada'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+            final provider = context.read<CapsuleProvider>();
+            final success = await provider.deleteCapsule(capsule.idCapsule);
+
+            if (success && mounted) {
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Cápsula eliminada'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 

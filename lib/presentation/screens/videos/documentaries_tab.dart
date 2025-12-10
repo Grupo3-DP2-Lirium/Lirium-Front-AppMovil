@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/presentation/components/buttons/primary_button.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/videos/components/documentary_card.dart';
 import 'package:flutter_frontend/presentation/screens/videos/select_memorial_documentary_screen.dart';
@@ -431,45 +432,37 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
   }
 
   void _showDeleteDialog(BuildContext context, documentary, DocumentaryProvider provider) {
-    showDialog(
+    appPopupButtonDefault(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar documental'),
-        content: const Text(
-          '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
+      title: 'Eliminar documental',
+      message: '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
+      buttons: [
+        AppPopupButton(
+          text: 'Cancelar',
+          onPressed: () {},
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await provider.deleteDocumentary(
-                documentary.idDocumentary,
-              );
+        AppPopupButton(
+          text: 'Eliminar',
+          onPressed: () async {
+            final success = await provider.deleteDocumentary(
+              documentary.idDocumentary,
+            );
 
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success
-                          ? 'Documental eliminado'
-                          : 'Error al eliminar documental',
-                    ),
-                    backgroundColor: success ? Colors.green : Colors.red,
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? 'Documental eliminado'
+                        : 'Error al eliminar documental',
                   ),
-                );
-              }
-            },
-            child: const Text(
-              'Eliminar',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
+                  backgroundColor: success ? Colors.green : Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 

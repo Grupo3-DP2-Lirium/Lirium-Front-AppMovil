@@ -136,8 +136,8 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [
-              Color(0xFF6B4CE6),
-              Color(0xFF8B6CEF),
+              AppColors.primary,
+              AppColors.primary,
             ],
           ),
           borderRadius: BorderRadius.circular(16), // para matching con el FAB extended
@@ -365,8 +365,8 @@ class _ProfilesScreenState extends State<ProfilesScreen>
                 icon: Icons.qr_code,
                 gradient: const LinearGradient(
                   colors: [
-                    Color(0xFF6B4CE6),
-                    Color(0xFF8B6CEF),
+                    AppColors.primary,
+                    AppColors.primary,
                   ],
                 ),
                 onPressed: () async {
@@ -390,7 +390,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
     }
     return RefreshIndicator(
       onRefresh: () => provider.cargarColaborativos(force: true),
-      color: const Color(0xFF6366F1),
+      color: AppColors.primary,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount: provider.colaborativos.length,

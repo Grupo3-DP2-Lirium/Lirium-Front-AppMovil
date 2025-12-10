@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/reminder_service.dart';
 import 'package:flutter_frontend/domain/entities/reminder.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class CreateReminderScreen extends StatefulWidget {
   final Reminder? reminderToEdit;
@@ -58,8 +59,8 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6366F1),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
             ),
           ),
           child: child!,
@@ -80,8 +81,8 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6366F1),
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
             ),
           ),
           child: child!,
@@ -234,7 +235,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF6366F1),
+                    color: AppColors.primary,
                     width: 2,
                   ),
                 ),
@@ -276,7 +277,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF6366F1),
+                    color: AppColors.primary,
                     width: 2,
                   ),
                 ),
@@ -307,7 +308,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                   children: [
                     const Icon(
                       Icons.calendar_today,
-                      color: Color(0xFF6366F1),
+                      color: AppColors.primary,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -347,7 +348,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                   children: [
                     const Icon(
                       Icons.access_time,
-                      color: Color(0xFF6366F1),
+                      color: AppColors.primary,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -368,23 +369,23 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.info_outline,
-                    color: Color(0xFF6366F1),
+                    color: AppColors.primary,
                     size: 20,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Recibirás una notificación en la fecha y hora seleccionadas (tu zona horaria local)',
+                      'Recibirás una notificación en la fecha y hora seleccionadas, asegúrate de tener las notificaciones habilitadas.',
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF6366F1),
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -395,36 +396,36 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
             
             // Botón guardar
             SizedBox(
-  width: double.infinity,
-  height: 50,
-  child: ElevatedButton(
-    onPressed: _isLoading ? null : _saveReminder,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF6366F1),
-      disabledBackgroundColor: Colors.grey[300], // ✅ Color cuando está disabled
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    child: _isLoading
-        ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveReminder,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: Colors.grey[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        _isEditMode ? 'Actualizar' : 'Crear recordatorio',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
             ),
-          )
-        : Text(
-            _isEditMode ? 'Actualizar' : 'Crear recordatorio',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white, // ✅ Asegurar color del texto
-            ),
-          ),
-  ),
-),
           ],
         ),
       ),

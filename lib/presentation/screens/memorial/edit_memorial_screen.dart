@@ -1,13 +1,18 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_frontend/data/models/memorial_request.dart';
 import 'package:flutter_frontend/data/services/memorial_service.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
-import 'package:flutter_frontend/presentation/components/forms/date_field.dart';
-import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_date_field.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_dropdown_field.dart';
+import 'package:flutter_frontend/presentation/components/buttons/switch_button.dart';
 
 class EditMemorialScreen extends StatefulWidget {
   final String memorialId;
@@ -23,15 +28,17 @@ class EditMemorialScreen extends StatefulWidget {
 
 class _EditMemorialScreenState extends State<EditMemorialScreen> {
   final MemorialService _service = MemorialService();
-  final ImagePicker _picker = ImagePicker();
 
   // Controllers for form fields
   final _nameController = TextEditingController();
   final _relationController = TextEditingController();
-  final _birthDateController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _genderController = TextEditingController();
+
+  // Estado para fecha y colaborativo
+  DateTime? _birthDate;
+  bool _isCollaborative = false;
 
   // Image selected for the profile avatar
   File? _imageFile;
@@ -54,7 +61,6 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
   void dispose() {
     _nameController.dispose();
     _relationController.dispose();
-    _birthDateController.dispose();
     _nicknameController.dispose();
     _descriptionController.dispose();
     _genderController.dispose();
@@ -77,12 +83,17 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
         _nicknameController.text = memorial.nickname;
         _descriptionController.text = memorial.description;
         _genderController.text = memorial.gender;
+        _isCollaborative = memorial.isCollaborative;
 
-        // Formatear fecha de yyyy-MM-dd a dd/MM/yyyy
+        // Parsear fecha de yyyy-MM-dd a DateTime
         if (memorial.birthDate.isNotEmpty) {
           final parts = memorial.birthDate.split('-');
           if (parts.length == 3) {
-            _birthDateController.text = '${parts[2]}/${parts[1]}/${parts[0]}';
+            _birthDate = DateTime(
+              int.parse(parts[0]), // year
+              int.parse(parts[1]), // month
+              int.parse(parts[2]), // day
+            );
           }
         }
 
@@ -128,195 +139,29 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
     return null;
   }
 
-  /// Muestra el selector de fuente de imagen (cámara o galería)
-  Future<void> _showImageSourceActionSheet() async {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Barra superior indicadora
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                
-                // Título
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Seleccionar foto',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ),
-                
-                const Divider(),
-                
-                // Opción: Tomar foto
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Color(0xFF6366F1),
-                      size: 24,
-                    ),
-                  ),
-                  title: const Text(
-                    'Tomar foto',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                
-                // Opción: Elegir de galería
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.photo_library,
-                      color: Color(0xFF6366F1),
-                      size: 24,
-                    ),
-                  ),
-                  title: const Text(
-                    'Elegir de galería',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Selecciona una imagen de la fuente especificada
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      // Pedir permisos según la fuente
-      if (source == ImageSource.camera) {
-        final cameraStatus = await Permission.camera.request();
-        if (!cameraStatus.isGranted) {
-          _showPermissionDeniedMessage('cámara');
-          return;
-        }
-      } else if (source == ImageSource.gallery) {
-        final storageStatus = await Permission.photos.request(); // iOS
-        final androidStatus = await Permission.storage.request(); // Android
-        if (!storageStatus.isGranted && !androidStatus.isGranted) {
-          _showPermissionDeniedMessage('galería');
-          return;
-        }
-      }
-
-      final pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-
-      if (pickedFile != null) {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al seleccionar imagen: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  /// Muestra mensaje cuando se niegan los permisos
-  void _showPermissionDeniedMessage(String type) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Se necesita permiso de $type para esta función'),
-        action: SnackBarAction(
-          label: 'Configuración',
-          onPressed: () => openAppSettings(),
-        ),
-      ),
-    );
-  }
-
   /// Handles the submission of the form
   Future<void> _saveMemorial() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Formatear fecha de dd/MM/yyyy a yyyy-MM-dd
+    // Formatear fecha de DateTime a yyyy-MM-dd
     String formattedBirthDate = '';
-    if (_birthDateController.text.isNotEmpty) {
-      final parts = _birthDateController.text.split('/'); // "dd/MM/yyyy"
-      if (parts.length == 3) {
-        final day = parts[0].padLeft(2, '0');
-        final month = parts[1].padLeft(2, '0');
-        final year = parts[2];
-        formattedBirthDate = "$year-$month-$day"; // "yyyy-MM-dd"
-      }
+    if (_birthDate != null) {
+      final y = _birthDate!.year.toString().padLeft(4, '0');
+      final m = _birthDate!.month.toString().padLeft(2, '0');
+      final d = _birthDate!.day.toString().padLeft(2, '0');
+      formattedBirthDate = "$y-$m-$d";
     }
 
     try {
-      // Mostrar indicador de carga
-      showDialog(
+      // Pop-up de Cargando
+      appPopupButtonDefault(
         context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF6366F1),
-          ),
-        ),
+        title: "",
+        message: "",
+        buttons: [AppPopupButton(text: "", onPressed: () {})],
+        isLoading: true,
       );
 
       await _service.updateMemorial(
@@ -328,55 +173,42 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
           birthDate: formattedBirthDate,
           nickname: _nicknameController.text,
           description: _descriptionController.text,
-          isCollaborative: false, // Por defecto
+          isCollaborative: _isCollaborative,
           isJournal: false,
         ),
         _imageFile?.path,
       );
 
-      // Cerrar el diálogo de carga
-      Navigator.pop(context);
+      Navigator.pop(context); // cerrar loading
 
-      // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Memorial actualizado exitosamente'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
+      // Mostrar pop-up de éxito
+      await appPopupButtonDefault(
+        context: context,
+        title: "¡Memorial actualizado!",
+        message: "Los cambios han sido guardados correctamente",
+        buttons: [
+          AppPopupButton(
+            text: "Continuar",
+            onPressed: () {
+              Navigator.pop(context); // cierra el pop-up
+              Navigator.pop(context, true); // retrocede con resultado
+            },
+          ),
+        ],
       );
-
-      // Retornar true para indicar que se guardó correctamente
-      Navigator.pop(context, true);
     } catch (e) {
-      // Cerrar el diálogo de carga si está abierto
-      Navigator.pop(context);
+      Navigator.pop(context); // cerrar loading si hubo error
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar memorial: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar memorial: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
-  }
-
-  /// Helper to build custom text fields with optional validation
-  Widget _buildTextField(
-    TextEditingController controller, {
-    String hintText = "",
-    bool enabled = true,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return AppTextField(
-      controller: controller,
-      hintText: hintText,
-      enabled: enabled,
-      maxLines: maxLines,
-      validator: validator,
-    );
   }
 
   @override
@@ -388,17 +220,15 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
         backgroundColor: Colors.white,
         body: const Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF6366F1),
+            color: AppColors.primary,
           ),
         ),
       );
@@ -408,12 +238,10 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
     if (_errorMessage != null) {
       return Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
         backgroundColor: Colors.white,
         body: Center(
@@ -437,7 +265,7 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
                 ElevatedButton(
                   onPressed: _loadMemorialData,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
+                    backgroundColor: AppColors.primary,
                   ),
                   child: const Text('Reintentar'),
                 ),
@@ -448,11 +276,12 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
       );
     }
 
-    // Define form fields with validation where required
+    // Define form fields con los componentes estandarizados
     final List<Widget> fields = [
-      _buildTextField(
-        _nameController,
-        hintText: "Nombre",
+      // Nombre
+      CustomTextField(
+        label: 'Nombre',
+        controller: _nameController,
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
             return 'El nombre es obligatorio';
@@ -460,9 +289,12 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
           return null;
         },
       ),
+
+      // Vínculo
       AppDropdownField(
         controller: _relationController,
-        options: const ["Familia", "Amigo", "Mascota", "Pareja", "Otro"],
+        header: 'Vínculo',
+        options: const ['Familia', 'Amigo', 'Mascota', 'Pareja', 'Otro'],
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
             return 'El tipo de relación es obligatorio';
@@ -470,49 +302,70 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
           return null;
         },
       ),
-      DateTextField(
-        hintText: "Fecha de nacimiento",
-        controller: _birthDateController,
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
+
+      // Género
+      AppDropdownField(
+        controller: _genderController,
+        header: 'Género',
+        options: const ['Masculino', 'Femenino', 'Otro'],
+        validator: (val) {
+          if (val == null || val.trim().isEmpty) {
+            return 'El género es obligatorio';
+          }
+          return null;
+        },
+      ),
+
+      // Fecha de nacimiento
+      CustomDateField(
+        label: 'Fecha de nacimiento',
+        value: _birthDate,
+        onChanged: (date) => setState(() => _birthDate = date),
+        validator: (date) {
+          if (date == null) {
             return 'La fecha de nacimiento es obligatoria';
           }
           return null;
         },
       ),
-      _buildTextField(_nicknameController, hintText: "Apodo"),
-      _buildTextField(
-        _descriptionController,
-        hintText: "Descripción...",
-        maxLines: 5,
+
+      // Apodo
+      CustomTextField(
+        label: 'Apodo',
+        controller: _nicknameController,
+      ),
+
+      // Descripción
+      CustomTextArea(
+        label: 'Descripción',
+        controller: _descriptionController,
+        maxLines: 3,
+        maxLength: 200,
+      ),
+
+      // Switch colaborativo
+      BooleanSelectorSwitch(
+        label: "Perfil colaborativo",
+        value: _isCollaborative,
+        onChanged: (v) => setState(() => _isCollaborative = v),
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Editar información',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: false,
       ),
       backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: screenWidth * 0.04,
-          vertical: screenHeight * 0.02,
+          vertical: screenHeight * 0.03,
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Form(
@@ -521,99 +374,53 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Título
+                      const Center(
+                        child: AppTitle(title: "Editar información"),
+                      ),
+                      SizedBox(height: screenHeight * 0.02),
+
                       // Avatar con funcionalidad de cambio de foto
                       Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: screenWidth * 0.25,
-                              height: screenWidth * 0.25,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[200],
-                                image: _getAvatarImage() != null
-                                    ? DecorationImage(
-                                        image: _getAvatarImage()!,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
-                              ),
-                              child: _getAvatarImage() == null
-                                  ? Icon(
-                                      Icons.person,
-                                      size: screenWidth * 0.12,
-                                      color: Colors.grey[400],
-                                    )
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: _showImageSourceActionSheet,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF6366F1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: _showImageSourceActionSheet,
-                          child: const Text(
-                            'Cambiar foto',
-                            style: TextStyle(
-                              color: Color(0xFF6366F1),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        child: ProfileAvatar(
+                          radius: 60,
+                          showCameraIcon: true,
+                          placeholderIcon: Icons.image_outlined,
+                          onImageChanged: (file) => setState(() => _imageFile = file),
+                          photoUrl: _currentImageUrl,
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.03),
+
                       // Form fields with spacing
                       ...fields.map((field) => Padding(
-                            padding: EdgeInsets.only(bottom: screenHeight * 0.02),
-                            child: field,
-                          )),
+                        padding: EdgeInsets.only(bottom: screenHeight * 0.02),
+                        child: field,
+                      )),
                     ],
                   ),
                 ),
               ),
             ),
-            // Footer buttons: "Back" and "Save"
-            Padding(
-              padding: EdgeInsets.only(bottom: screenHeight * 0.02),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SecondaryButton(
-                      text: "Regresar",
-                      textColor: AppColors.primary,
-                      onPressed: () => Navigator.pop(context),
-                    ),
+
+            // Footer buttons: "Regresar" y "Guardar"
+            Row(
+              children: [
+                Expanded(
+                  child: SecondaryButton(
+                    text: "Regresar",
+                    textColor: AppColors.primary,
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  SizedBox(width: screenWidth * 0.04),
-                  Expanded(
-                    child: PrimaryButton(
-                      text: "Guardar",
-                      onPressed: _saveMemorial,
-                    ),
+                ),
+                SizedBox(width: screenWidth * 0.04),
+                Expanded(
+                  child: PrimaryButton(
+                    text: "Guardar",
+                    onPressed: _saveMemorial,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/collaborator_service.dart';
 import 'package:flutter_frontend/data/models/collaborator_response.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/generate_invite_code_dialog.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_email_dialog.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_whatsapp_dialog.dart'; // ✅ NUEVO
@@ -240,7 +241,7 @@ class _CollaboratorsScreenState extends State<CollaboratorsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Código generado'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: AppColors.primary,
                       ),
                     );
                   }
@@ -569,7 +570,7 @@ class _CollaboratorCard extends StatelessWidget {
                 if (isActive) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Editar: ${collaborator.canEdit ? "Sí" : "No"} • Comentar: ${collaborator.canComment ? "Sí" : "No"}',
+                    'Editar: ${collaborator.canEdit ? "Sí" : "No"}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 12,
@@ -653,13 +654,13 @@ class _PermissionsDialogState extends State<_PermissionsDialog> {
             onChanged: (value) => setState(() => _canEdit = value),
             activeColor: const Color(0xFFFF6B6B),
           ),
-          SwitchListTile(
-            title: const Text('Puede comentar'),
-            subtitle: const Text('Agregar comentarios'),
-            value: _canComment,
-            onChanged: (value) => setState(() => _canComment = value),
-            activeColor: const Color(0xFFFF6B6B),
-          ),
+          // SwitchListTile(
+          //   title: const Text('Puede comentar'),
+          //   subtitle: const Text('Agregar comentarios'),
+          //   value: _canComment,
+          //   onChanged: (value) => setState(() => _canComment = value),
+          //   activeColor: const Color(0xFFFF6B6B),
+          // ),
         ],
       ),
       actions: [
