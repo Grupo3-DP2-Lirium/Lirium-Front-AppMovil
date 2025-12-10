@@ -308,6 +308,19 @@ class DocumentaryProvider extends ChangeNotifier {
     _pollingTimer = null;
   }
 
+  /// Limpia todo el estado del provider para logout
+  void limpiarTodo() {
+    _stopPolling();
+    _documentaries = [];
+    _musicCatalog = [];
+    _loading = false;
+    _loadingMusic = false;
+    _error = null;
+    _lastLoadAttempt = null;
+    _processingDocumentaries.clear();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _stopPolling();

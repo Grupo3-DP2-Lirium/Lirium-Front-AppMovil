@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/memory_saved_screen.dart';
 import 'dart:io';
 import 'dart:async';
@@ -9,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
 
 /// Pantalla para responder una pregunta seleccionada.
 /// Soporta tres modos: grabar audio, grabar video y escribir texto (placeholder para grabaciones).
@@ -18,9 +20,9 @@ class AnswerQuestionScreen extends StatefulWidget {
   final String memorialId;
 
   const AnswerQuestionScreen({
-    super.key, 
-    required this.categoryName, 
-    required this.question, 
+    super.key,
+    required this.categoryName,
+    required this.question,
     required this.memorialId,
   });
 
@@ -39,26 +41,40 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   bool _isRecording = false;
   File? _recordedFile;
   XFile? _videoFile;
-  
+
   // Audio recording variables
   FlutterSoundRecorder? _audioRecorder;
+  FlutterSoundPlayer? _audioPlayer;
   bool _isRecorderInitialized = false;
+  bool _isPlayerInitialized = false;
+  bool _isPlaying = false;
   String? _audioPath;
   Duration _recordingDuration = Duration.zero;
+  Duration _playbackPosition = Duration.zero;
   Timer? _recordingTimer;
+  Timer? _playbackTimer;
+
+  // Video player variables
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+  bool _isVideoPlaying = false;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(() => setState(() {}));
     _initializeRecorder();
+    _initializePlayer();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _audioRecorder?.closeRecorder();
+    _audioPlayer?.closePlayer();
     _recordingTimer?.cancel();
+    _playbackTimer?.cancel();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -98,9 +114,9 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -123,26 +139,27 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   Future<void> _startVideoRecording() async {
     try {
       setState(() => _isRecording = true);
-      
+
       await _requestCameraPermission();
-      
+
       final XFile? video = await _picker.pickVideo(
         source: ImageSource.camera,
         maxDuration: const Duration(minutes: 5),
         preferredCameraDevice: CameraDevice.rear,
       );
-      
+
       if (video != null) {
         setState(() {
           _videoFile = video;
           _recordedFile = File(video.path);
         });
+        await _initializeVideoPlayer(video.path);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al grabar video: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al grabar video: $e')));
       }
     } finally {
       if (mounted) setState(() => _isRecording = false);
@@ -150,10 +167,79 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   }
 
   void _removeVideo() {
+    _videoController?.dispose();
     setState(() {
       _videoFile = null;
       _recordedFile = null;
+      _videoController = null;
+      _isVideoInitialized = false;
+      _isVideoPlaying = false;
     });
+  }
+
+  // Video player methods
+  Future<void> _initializeVideoPlayer(String path) async {
+    try {
+      _videoController?.dispose();
+      _videoController = VideoPlayerController.file(File(path));
+      await _videoController!.initialize();
+      _videoController!.addListener(_videoListener);
+      if (mounted) {
+        setState(() => _isVideoInitialized = true);
+      }
+    } catch (e) {
+      debugPrint('Error initializing video player: $e');
+    }
+  }
+
+  void _videoListener() {
+    if (_videoController == null) return;
+
+    final isPlaying = _videoController!.value.isPlaying;
+    if (_isVideoPlaying != isPlaying) {
+      if (mounted) setState(() => _isVideoPlaying = isPlaying);
+    }
+
+    // Check if video ended
+    if (_videoController!.value.position >= _videoController!.value.duration) {
+      if (mounted) {
+        setState(() => _isVideoPlaying = false);
+      }
+    }
+  }
+
+  void _toggleVideoPlayback() {
+    if (_videoController == null || !_isVideoInitialized) return;
+
+    if (_isVideoPlaying) {
+      _videoController!.pause();
+    } else {
+      // If at end, restart from beginning
+      if (_videoController!.value.position >=
+          _videoController!.value.duration) {
+        _videoController!.seekTo(Duration.zero);
+      }
+      _videoController!.play();
+    }
+  }
+
+  String _formatVideoDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _openFullscreenVideo() {
+    if (_videoController == null || !_isVideoInitialized) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FullscreenVideoPlayer(
+          videoController: _videoController!,
+          primaryColor: _primary,
+        ),
+      ),
+    );
   }
 
   // Audio recording methods
@@ -172,9 +258,20 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
     }
   }
 
+  Future<void> _initializePlayer() async {
+    try {
+      _audioPlayer = FlutterSoundPlayer();
+      await _audioPlayer!.openPlayer();
+      _isPlayerInitialized = true;
+    } catch (e) {
+      _isPlayerInitialized = false;
+      debugPrint('Failed to initialize audio player: $e');
+    }
+  }
+
   Future<bool> _checkPermissions() async {
-    return await Permission.microphone.isGranted || 
-           await Permission.microphone.request().isGranted;
+    return await Permission.microphone.isGranted ||
+        await Permission.microphone.request().isGranted;
   }
 
   Future<void> _startRecording() async {
@@ -198,8 +295,9 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
 
     try {
       final directory = await getTemporaryDirectory();
-      _audioPath = '${directory.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
-      
+      _audioPath =
+          '${directory.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
+
       await _audioRecorder!.startRecorder(
         toFile: _audioPath!,
         codec: Codec.aacADTS,
@@ -222,7 +320,7 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
     try {
       await _audioRecorder!.stopRecorder();
       _stopTimer();
-      
+
       if (_audioPath != null && mounted) {
         setState(() {
           _isRecording = false;
@@ -240,12 +338,111 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   }
 
   void _deleteRecording() {
+    _stopPlayback();
     _recordedFile?.delete();
     setState(() {
       _recordedFile = null;
       _audioPath = null;
       _recordingDuration = Duration.zero;
+      _playbackPosition = Duration.zero;
     });
+  }
+
+  // Audio playback methods
+  Future<void> _startPlayback() async {
+    if (!_isPlayerInitialized || _audioPath == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se puede reproducir el audio')),
+        );
+      }
+      return;
+    }
+
+    try {
+      await _audioPlayer!.startPlayer(
+        fromURI: _audioPath!,
+        codec: Codec.aacADTS,
+        whenFinished: () {
+          if (mounted) {
+            setState(() {
+              _isPlaying = false;
+              _playbackPosition = Duration.zero;
+            });
+            _stopPlaybackTimer();
+          }
+        },
+      );
+
+      setState(() => _isPlaying = true);
+      _startPlaybackTimer();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al reproducir: $e')));
+      }
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    if (!_isPlaying || _audioPlayer == null) return;
+
+    try {
+      await _audioPlayer!.stopPlayer();
+      _stopPlaybackTimer();
+      setState(() {
+        _isPlaying = false;
+        _playbackPosition = Duration.zero;
+      });
+    } catch (e) {
+      debugPrint('Error stopping playback: $e');
+    }
+  }
+
+  Future<void> _pausePlayback() async {
+    if (!_isPlaying || _audioPlayer == null) return;
+
+    try {
+      await _audioPlayer!.pausePlayer();
+      _stopPlaybackTimer();
+      setState(() => _isPlaying = false);
+    } catch (e) {
+      debugPrint('Error pausing playback: $e');
+    }
+  }
+
+  Future<void> _resumePlayback() async {
+    if (_audioPlayer == null) return;
+
+    try {
+      await _audioPlayer!.resumePlayer();
+      setState(() => _isPlaying = true);
+      _startPlaybackTimer();
+    } catch (e) {
+      debugPrint('Error resuming playback: $e');
+    }
+  }
+
+  void _startPlaybackTimer() {
+    _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (_isPlaying && mounted) {
+        setState(() {
+          _playbackPosition = Duration(
+            milliseconds: _playbackPosition.inMilliseconds + 100,
+          );
+          // No permitir que exceda la duración total
+          if (_playbackPosition > _recordingDuration) {
+            _playbackPosition = _recordingDuration;
+          }
+        });
+      }
+    });
+  }
+
+  void _stopPlaybackTimer() {
+    _playbackTimer?.cancel();
+    _playbackTimer = null;
   }
 
   void _startTimer() {
@@ -268,32 +465,110 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
     return '$minutes:$seconds';
   }
 
-  Color get _primary => const Color(0xFF6366F1);
+  Color get _primary => AppColors.primary;
 
-  Widget _buildModeSelector({required String label, required IconData icon, required AnswerMode mode}) {
+  Widget _buildModeSelector({
+    required String label,
+    required IconData icon,
+    required AnswerMode mode,
+    String? subtitle,
+  }) {
     final selected = _mode == mode;
     return GestureDetector(
       onTap: () => setState(() => _mode = mode),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: selected ? _primary : const Color(0xFFF0F1F5),
-          borderRadius: BorderRadius.circular(36),
+          color: selected ? _primary : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? _primary : AppColors.inactive,
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: _primary.withOpacity(0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: selected ? Colors.white : Colors.black87),
-            const SizedBox(width: 10),
-            Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
-                letterSpacing: .5,
+            // Icon container
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withOpacity(0.2)
+                    : _primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-            )
+              child: Icon(
+                icon,
+                size: 24,
+                color: selected ? Colors.white : _primary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Text content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: selected ? Colors.white : AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: selected
+                            ? Colors.white.withOpacity(0.8)
+                            : AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Selection indicator
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: selected ? Colors.white : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? Colors.white : AppColors.inactive,
+                  width: 2,
+                ),
+              ),
+              child: selected
+                  ? Icon(Icons.check, size: 16, color: _primary)
+                  : null,
+            ),
           ],
         ),
       ),
@@ -301,51 +576,41 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   }
 
   Widget _buildBody() {
-    if (_mode == null) {
-      return const Center(
-        child: Text(
-          'Selecciona un modo para responder',
-          style: TextStyle(color: Colors.black54),
-          textAlign: TextAlign.center,
+    if (_mode == AnswerMode.text) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        child: TextField(
+          controller: _controller,
+          keyboardType: TextInputType.multiline,
+          maxLines: null,
+          minLines: 5,
+          style: AppColors.bodyLarge.copyWith(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Escribe tu respuesta ...',
+            hintStyle: AppColors.bodyLarge.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            filled: true,
+            fillColor: AppColors.inactive.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.all(16),
+          ),
         ),
       );
     }
-    if (_mode == AnswerMode.text) {
-      return Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 120),
-              child: TextField(
-                controller: _controller,
-                keyboardType: TextInputType.multiline,
-                maxLines: null,
-                decoration: const InputDecoration(
-                  hintText: 'Escribe tu respuesta ...',
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    
+
     if (_mode == AnswerMode.video) {
       return _buildVideoContent();
     }
-    
+
     if (_mode == AnswerMode.audio) {
       return _buildAudioContent();
     }
-    
-    return const Center(
-      child: Text(
-        'Selecciona un modo para responder',
-        style: TextStyle(color: Colors.black54),
-        textAlign: TextAlign.center,
-      ),
-    );
+
+    return const SizedBox.shrink();
   }
 
   Widget _buildVideoContent() {
@@ -355,92 +620,203 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (_videoFile != null) ...[
-            // Preview del video grabado
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _primary, width: 2),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.play_circle_filled,
-                          size: 60,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Video grabado',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+            // Video thumbnail preview - fixed height
+            GestureDetector(
+              onTap: _openFullscreenVideo,
+              child: Container(
+                width: double.infinity,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _primary, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primary.withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Video thumbnail (first frame)
+                    if (_isVideoInitialized && _videoController != null)
+                      Positioned.fill(
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: _videoController!.value.size.width,
+                            height: _videoController!.value.size.height,
+                            child: VideoPlayer(_videoController!),
                           ),
                         ),
-                      ],
+                      ),
+                    // Dark overlay
+                    Container(color: Colors.black.withOpacity(0.3)),
+                    // Play icon
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: _primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    // Duration badge
+                    if (_isVideoInitialized && _videoController != null)
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _formatVideoDuration(
+                              _videoController!.value.duration,
+                            ),
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Loading indicator
+                    if (!_isVideoInitialized)
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: _primary),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Cargando video...',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Tap to preview hint
+            Text(
+              'Toca para ver el video',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Action buttons
+            Row(
+              children: [
+                // Delete button
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _removeVideo,
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                    label: Text(
+                      'Eliminar',
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.error),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: IconButton(
-                      onPressed: _removeVideo,
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black54,
+                ),
+                const SizedBox(width: 12),
+                // Save button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveMemory,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined, size: 20),
+                    label: Text(
+                      _saving ? 'Guardando...' : 'Guardar',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Botón para guardar
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _saving ? null : _saveMemory,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                 ),
-                icon: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_saving ? 'Guardando...' : 'Guardar Video'),
-              ),
+              ],
             ),
           ] else ...[
             // Estado inicial - sin video
-            Icon(
-              Icons.videocam_outlined,
-              size: 100,
-              color: _primary,
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.videocam_outlined, size: 48, color: _primary),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Graba un video para responder\nesta pregunta',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.black87,
+              style: AppColors.bodyLarge.copyWith(
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -448,14 +824,15 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton.icon(
                 onPressed: _isRecording ? null : _startVideoRecording,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 icon: _isRecording
@@ -468,7 +845,14 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                         ),
                       )
                     : const Icon(Icons.videocam),
-                label: Text(_isRecording ? 'Abriendo cámara...' : 'Grabar Video'),
+                label: Text(
+                  _isRecording ? 'Abriendo cámara...' : 'Grabar Video',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
               ),
             ),
           ],
@@ -488,65 +872,209 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: _isRecording ? Colors.red.withOpacity(0.1) : _primary.withOpacity(0.1),
+              color: _isRecording
+                  ? AppColors.error.withOpacity(0.1)
+                  : _primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.mic,
-              size: 60,
-              color: _isRecording ? Colors.red : _primary,
+              size: 56,
+              color: _isRecording ? AppColors.error : _primary,
             ),
           ),
 
           const SizedBox(height: 24),
 
           if (_recordedFile != null) ...[
-            // Audio recorded - show controls
+            // Audio recorded - show player and controls
             Text(
               'Audio grabado',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: _primary,
+              style: AppColors.h5.copyWith(color: _primary),
+            ),
+            const SizedBox(height: 16),
+
+            // Audio player card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _primary.withOpacity(0.2)),
+              ),
+              child: Column(
+                children: [
+                  // Progress bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: _recordingDuration.inMilliseconds > 0
+                          ? _playbackPosition.inMilliseconds /
+                                _recordingDuration.inMilliseconds
+                          : 0,
+                      backgroundColor: _primary.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Time labels
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDuration(_playbackPosition),
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        _formatDuration(_recordingDuration),
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Play/Pause button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Restart button
+                      IconButton(
+                        onPressed: () {
+                          _stopPlayback();
+                          setState(() => _playbackPosition = Duration.zero);
+                        },
+                        icon: Icon(Icons.replay, color: _primary, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Play/Pause main button
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _primary.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            if (_isPlaying) {
+                              _pausePlayback();
+                            } else if (_playbackPosition > Duration.zero &&
+                                _playbackPosition < _recordingDuration) {
+                              _resumePlayback();
+                            } else {
+                              _startPlayback();
+                            }
+                          },
+                          icon: Icon(
+                            _isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Stop button
+                      IconButton(
+                        onPressed: _isPlaying ? _stopPlayback : null,
+                        icon: Icon(
+                          Icons.stop,
+                          color: _isPlaying
+                              ? _primary
+                              : AppColors.textSecondary,
+                          size: 28,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Duración: ${_formatDuration(_recordingDuration)}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 32),
-            
+
+            const SizedBox(height: 24),
+
+            // Action buttons
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 // Delete button
-                OutlinedButton.icon(
-                  onPressed: _deleteRecording,
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  label: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _deleteRecording,
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                    label: Text(
+                      'Eliminar',
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.error),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 12),
                 // Save button
-                ElevatedButton.icon(
-                  onPressed: _saving ? null : _saveMemory,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveMemory,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined, size: 20),
+                    label: Text(
+                      _saving ? 'Guardando...' : 'Guardar',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_saving ? 'Guardando...' : 'Guardar'),
                 ),
               ],
             ),
@@ -554,65 +1082,72 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
             // Currently recording
             Text(
               'Grabando...',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.red,
-              ),
+              style: AppColors.h5.copyWith(color: AppColors.error),
             ),
             const SizedBox(height: 8),
             Text(
               _formatDuration(_recordingDuration),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: AppColors.h3.copyWith(color: AppColors.textPrimary),
             ),
             const SizedBox(height: 32),
-            
+
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton.icon(
                 onPressed: _stopRecording,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 icon: const Icon(Icons.stop),
-                label: const Text('Detener Grabación'),
+                label: const Text(
+                  'Detener Grabación',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
               ),
             ),
           ] else ...[
             // Initial state - ready to record
-            const Text(
+            Text(
               'Toca para grabar tu mensaje de audio',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
+              style: AppColors.bodyLarge.copyWith(
+                color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            
+
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton.icon(
                 onPressed: _startRecording,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 icon: const Icon(Icons.mic),
-                label: const Text('Iniciar Grabación'),
+                label: const Text(
+                  'Iniciar Grabación',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
               ),
             ),
           ],
@@ -623,69 +1158,425 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.categoryName),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.categoryName,
+          style: AppColors.h5.copyWith(color: AppColors.textPrimary),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: Icon(Icons.close, color: AppColors.textSecondary),
             onPressed: () => Navigator.pop(context),
-          )
+          ),
         ],
       ),
-      backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Tarjeta de la pregunta
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE4E6EC)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0F000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
-              ),
+          // Tarjeta de la pregunta y selectores
+          Expanded(
+            child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.question,
-                    style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  // Pregunta
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _primary.withOpacity(0.08),
+                          _primary.withOpacity(0.03),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _primary.withOpacity(0.15)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.help_outline,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            widget.question,
+                            style: AppColors.h5.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  // Título de la sección
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: _primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '¿Cómo deseas responder?',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Opciones de modo
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        _buildModeSelector(
+                          label: 'Grabar audio',
+                          subtitle: 'Graba tu voz respondiendo la pregunta',
+                          icon: Icons.mic,
+                          mode: AnswerMode.audio,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildModeSelector(
+                          label: 'Grabar video',
+                          subtitle: 'Captura un video con tu respuesta',
+                          icon: Icons.videocam_outlined,
+                          mode: AnswerMode.video,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildModeSelector(
+                          label: 'Escribir respuesta',
+                          subtitle: 'Escribe tu respuesta en texto',
+                          icon: Icons.edit_outlined,
+                          mode: AnswerMode.text,
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _buildModeSelector(label: 'Grabar audio', icon: Icons.mic, mode: AnswerMode.audio),
-                      _buildModeSelector(label: 'Grabar video', icon: Icons.videocam_outlined, mode: AnswerMode.video),
-                      _buildModeSelector(label: 'Escribir respuesta', icon: Icons.edit_outlined, mode: AnswerMode.text),
-                    ],
-                  ),
+
+                  // Contenido del modo seleccionado
+                  if (_mode != null) ...[
+                    Divider(height: 1, color: AppColors.inactive),
+                    _buildBody(),
+                  ],
                 ],
               ),
             ),
-          const Divider(height: 1),
-          Expanded(child: _buildBody()),
+          ),
         ],
       ),
       floatingActionButton: _mode == AnswerMode.text
           ? FloatingActionButton(
-              backgroundColor: (_controller.text.trim().isEmpty || _saving) ? Colors.grey : _primary,
-              onPressed: (_controller.text.trim().isEmpty || _saving) ? null : _saveMemory,
+              backgroundColor: (_controller.text.trim().isEmpty || _saving)
+                  ? AppColors.textSecondary
+                  : _primary,
+              elevation: 4,
+              onPressed: (_controller.text.trim().isEmpty || _saving)
+                  ? null
+                  : _saveMemory,
               child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.arrow_forward, color: Colors.white),
             )
           : null,
+    );
+  }
+}
+
+/// Fullscreen video player widget
+class _FullscreenVideoPlayer extends StatefulWidget {
+  final VideoPlayerController videoController;
+  final Color primaryColor;
+
+  const _FullscreenVideoPlayer({
+    required this.videoController,
+    required this.primaryColor,
+  });
+
+  @override
+  State<_FullscreenVideoPlayer> createState() => _FullscreenVideoPlayerState();
+}
+
+class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
+  bool _isPlaying = false;
+  bool _showControls = true;
+  Timer? _hideControlsTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.videoController.addListener(_videoListener);
+    _isPlaying = widget.videoController.value.isPlaying;
+    _startHideControlsTimer();
+  }
+
+  @override
+  void dispose() {
+    widget.videoController.removeListener(_videoListener);
+    _hideControlsTimer?.cancel();
+    // Pause when leaving fullscreen
+    widget.videoController.pause();
+    super.dispose();
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      final isPlaying = widget.videoController.value.isPlaying;
+      if (_isPlaying != isPlaying) {
+        setState(() => _isPlaying = isPlaying);
+      }
+
+      // Check if video ended
+      if (widget.videoController.value.position >=
+          widget.videoController.value.duration) {
+        setState(() {
+          _isPlaying = false;
+          _showControls = true;
+        });
+      }
+    }
+  }
+
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (_isPlaying && mounted) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() => _showControls = !_showControls);
+    if (_showControls) {
+      _startHideControlsTimer();
+    }
+  }
+
+  void _togglePlayback() {
+    if (_isPlaying) {
+      widget.videoController.pause();
+    } else {
+      if (widget.videoController.value.position >=
+          widget.videoController.value.duration) {
+        widget.videoController.seekTo(Duration.zero);
+      }
+      widget.videoController.play();
+      _startHideControlsTimer();
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: _toggleControls,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Video player
+            Center(
+              child: AspectRatio(
+                aspectRatio: widget.videoController.value.aspectRatio,
+                child: VideoPlayer(widget.videoController),
+              ),
+            ),
+
+            // Controls overlay
+            AnimatedOpacity(
+              opacity: _showControls ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.6),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.8),
+                    ],
+                    stops: const [0.0, 0.2, 0.8, 1.0],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      // Top bar with close button
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Text(
+                              'Vista previa',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            const SizedBox(width: 48),
+                          ],
+                        ),
+                      ),
+
+                      // Center play/pause button
+                      Expanded(
+                        child: Center(
+                          child: GestureDetector(
+                            onTap: _togglePlayback,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: widget.primaryColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: Colors.white,
+                                size: 48,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Bottom progress bar
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: ValueListenableBuilder<VideoPlayerValue>(
+                          valueListenable: widget.videoController,
+                          builder: (context, value, child) {
+                            final position = value.position;
+                            final duration = value.duration;
+                            final progress = duration.inMilliseconds > 0
+                                ? position.inMilliseconds /
+                                      duration.inMilliseconds
+                                : 0.0;
+
+                            return Column(
+                              children: [
+                                // Progress bar
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: progress,
+                                    backgroundColor: Colors.white.withOpacity(
+                                      0.3,
+                                    ),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      widget.primaryColor,
+                                    ),
+                                    minHeight: 4,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                // Time labels
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDuration(position),
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatDuration(duration),
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

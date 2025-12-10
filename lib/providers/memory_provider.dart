@@ -192,4 +192,19 @@ class MemoryProvider extends ChangeNotifier {
     _memoriasFiltradas.removeWhere((m) => m.id == id);
     notifyListeners();
   }
+
+  /// Limpia todo el estado del provider para logout
+  void limpiarTodo() {
+    _misMemorias = [];
+    _memoriasFiltradas = [];
+    _cargando = false;
+    _error = null;
+    _loaded = false;
+    _textoBusqueda = '';
+    _tipoArchivoFiltro = null;
+    _archivosLocales.clear();
+    _pageMis = 0;
+    _hasMoreMis = true;
+    notifyListeners();
+  }
 }
