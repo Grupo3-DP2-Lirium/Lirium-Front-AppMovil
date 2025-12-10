@@ -245,4 +245,22 @@ class CapsuleService {
       throw Exception('Error obteniendo filtros: ${res.statusCode}');
     }
   }
+
+  /// Obtener todas las cápsulas de un memorial específico
+  Future<List<CapsuleModel>> getCapsulesByMemorial(String memorialId) async {
+    final uri = Uri.parse('$baseUrl/capsules/memorial/$memorialId');
+
+    print('DEBUG: Getting capsules for memorial - URI: $uri');
+
+    final res = await _client.get(uri, headers: _http.authHeaders());
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      final List<dynamic> data = jsonMap['data'];
+      return data.map((json) => CapsuleModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Error obteniendo cápsulas del memorial: ${res.statusCode}');
+    }
+  }
+
 }

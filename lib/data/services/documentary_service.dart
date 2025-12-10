@@ -253,4 +253,6 @@ class DocumentaryService {
       throw Exception('Error obteniendo catálogo de música: ${res.statusCode}');
     }
   }
+
+  Future listDocumentaries({required String memorialId, required int page, required int size}) async {}
 }
