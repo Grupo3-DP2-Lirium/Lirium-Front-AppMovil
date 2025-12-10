@@ -4,7 +4,6 @@ import 'package:flutter_frontend/data/services/auth_storage.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/presentation/screens/main/main_navigation_screen.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -84,7 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
           print('⚠️ Failed to obtain FCM token');
         }
       } else {
-        print('❌ Notification permissions not granted: ${settings.authorizationStatus}');
+        print(
+          '❌ Notification permissions not granted: ${settings.authorizationStatus}',
+        );
       }
     } catch (e) {
       print('❌ Error registering FCM token: $e');
@@ -115,7 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
 
         final access = (data['accessToken'] ?? data['token']) as String?;
-        final refresh = (data['refreshToken'] ?? data['refresh_token']) as String?;
+        final refresh =
+            (data['refreshToken'] ?? data['refresh_token']) as String?;
 
         if (access == null || access.isEmpty) {
           _showMessage('No se recibió accessToken');
@@ -129,11 +131,17 @@ class _LoginScreenState extends State<LoginScreen> {
         await StorageService.saveEmail(user.email);
         await StorageService.saveUsedSpace(user.usedSpace);
         await StorageService.saveTotalCapacity(user.totalCapacity);
-        await StorageService.saveDocumentariesPurchased(user.documentariesPurchased);
-        await StorageService.saveDocumentariesAvailable(user.documentariesAvailable);
+        await StorageService.saveDocumentariesPurchased(
+          user.documentariesPurchased,
+        );
+        await StorageService.saveDocumentariesAvailable(
+          user.documentariesAvailable,
+        );
 
         if (user.profilePhoto != null) {
-          await StorageService.saveProfilePhotoUrl(user.profilePhoto!.fileUrl ?? "");
+          await StorageService.saveProfilePhotoUrl(
+            user.profilePhoto!.fileUrl ?? "",
+          );
         }
 
         final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -146,16 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // CRÍTICO: Registrar token FCM DESPUÉS del login exitoso
         await _registerFCMToken();
 
-        _showMessage('¡Login exitoso!');
-
-        // Navegar a la pantalla principal
+        // Mostrar popup de éxito y navegar después de 2 segundos
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainNavigationScreen(),
-          ),
-        );
+        _showSuccessPopup();
       } else if (response.statusCode == 401) {
         _showMessage('Credenciales incorrectas');
       } else {
@@ -169,9 +170,102 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showSuccessPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icono de éxito
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primary,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Mensaje de éxito
+              const Text(
+                '¡Bienvenido de vuelta!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              
+              // Submensaje
+              Text(
+                'Redirigiendo...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              
+              // Indicador de progreso
+              SizedBox(
+                width: 100,
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.grey[200],
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+
+    // Auto-cerrar después de 2 segundos y navegar
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop(); // Cerrar el popup
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -196,7 +290,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintText: 'Tu correo@ejemplo.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.email_outlined,
+                  color: AppColors.primary,
+                ),
                 onChanged: (value) {
                   storage.saveLastEmail(value);
                 },
@@ -204,7 +301,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu correo';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Por favor ingresa un correo válido';
                   }
                   return null;
@@ -218,7 +317,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintText: 'Tu contraseña',
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: AppColors.primary,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -259,11 +361,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Login button
               _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : PrimaryButton(
-                text: 'Iniciar',
-                onPressed: _login,
-              ),
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : PrimaryButton(text: 'Iniciar', onPressed: _login),
               const SizedBox(height: 24),
 
               // Sign up link
@@ -273,10 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text(
                       '¿No tienes cuenta? ',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     SecondaryButton(
                       text: 'Crear cuenta',
