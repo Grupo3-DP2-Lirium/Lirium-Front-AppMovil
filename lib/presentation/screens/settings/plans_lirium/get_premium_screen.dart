@@ -11,6 +11,7 @@ import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widg
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/widgets/receipt_paypal.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import 'package:provider/provider.dart';
+import '../../main/main_navigation_screen.dart';
 // VET/pO7}
 
 class GetPremiumScreen extends StatefulWidget {
@@ -82,8 +83,9 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
         //await StorageService.savePlan(plan['name']);
 
         // Obtener y guardar los permisos actualizados
-        final updatedPermissions =
-        await subscriptionService.getPlanPermissions(plan['idPlan']);
+        final updatedPermissions = await subscriptionService.getPlanPermissions(
+          plan['idPlan'],
+        );
         //await StorageService.savePermissions(updatedPermissions);
 
         // Actualizar estado local del widget
@@ -104,14 +106,13 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
           const gbInBytes = 1024 * 1024 * 1024;
           final newTotalBytes = plan['storageLimitGb'] * gbInBytes;
           await StorageService.saveTotalCapacity(newTotalBytes);
-
         }
         // Mostrar popup de éxito
         await appPopupButtonDefault(
           context: context,
           title: "¡Suscripción exitosa!",
           message:
-          "Tu suscripción ha sido activada correctamente. Ahora tienes acceso a todos los beneficios del plan ${plan['name']}.",
+              "Tu suscripción ha sido activada correctamente. Ahora tienes acceso a todos los beneficios del plan ${plan['name']}.",
           buttons: [
             AppPopupButton(
               text: "Aceptar",
@@ -127,7 +128,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
           context: context,
           title: "Suscripción incompleta",
           message:
-          "La suscripción no fue completada. Puedes intentarlo nuevamente.",
+              "La suscripción no fue completada. Puedes intentarlo nuevamente.",
           buttons: [
             AppPopupButton(
               text: "Cerrar",
@@ -182,9 +183,9 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
       });
     } catch (e) {
       print('Error al cargar planes en pantalla: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar los planes: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar los planes: $e')));
     } finally {
       setState(() {
         _isLoadingPlans = false;
@@ -220,12 +221,10 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   void initState() {
     super.initState();
     _loadPlans();
-
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFA),
       appBar: AppBar(
@@ -305,36 +304,48 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                             title: plan['name'] ?? '',
                             description: plan['description'] ?? '',
                             price: () {
-                              final double basePrice = double.tryParse(plan['price']?.toString() ?? '0') ?? 0;
+                              final double basePrice =
+                                  double.tryParse(
+                                    plan['price']?.toString() ?? '0',
+                                  ) ??
+                                  0;
                               final String currency = plan['currency'] ?? 'USD';
                               return '$currency ${basePrice.toStringAsFixed(2)}';
                             }(),
                             recommended: false,
-                            isSelected: selectedPlanIndex == plans.indexOf(plan),
+                            isSelected:
+                                selectedPlanIndex == plans.indexOf(plan),
                             onTap: () {
                               setState(() {
                                 selectedPlanIndex = plans.indexOf(plan);
                               });
                             },
                             permissions: plan['permissions'] != null
-                                ? (plan['permissions'] as List).map((p) => p['name'].toString()).toList()
+                                ? (plan['permissions'] as List)
+                                      .map((p) => p['name'].toString())
+                                      .toList()
                                 : [],
                             // Atributos extra - Convertir double a int si es necesario
                             storageLimitGb: plan['storageLimitGb'] != null
                                 ? (plan['storageLimitGb'] is double
-                                ? plan['storageLimitGb'] as double
-                                : (plan['storageLimitGb'] as num).toDouble())
+                                      ? plan['storageLimitGb'] as double
+                                      : (plan['storageLimitGb'] as num)
+                                            .toDouble())
                                 : null,
 
                             maxCollaborations: plan['maxCollaborations'] != null
                                 ? (plan['maxCollaborations'] is int
-                                    ? plan['maxCollaborations']
-                                    : (plan['maxCollaborations'] as num).toInt())
+                                      ? plan['maxCollaborations']
+                                      : (plan['maxCollaborations'] as num)
+                                            .toInt())
                                 : null,
-                            maxDocumentariesPerMonth: plan['maxDocumentariesPerMonth'] != null
+                            maxDocumentariesPerMonth:
+                                plan['maxDocumentariesPerMonth'] != null
                                 ? (plan['maxDocumentariesPerMonth'] is int
-                                    ? plan['maxDocumentariesPerMonth']
-                                    : (plan['maxDocumentariesPerMonth'] as num).toInt())
+                                      ? plan['maxDocumentariesPerMonth']
+                                      : (plan['maxDocumentariesPerMonth']
+                                                as num)
+                                            .toInt())
                                 : null,
                             supportLevel: plan['supportLevel'],
                           ),
@@ -350,10 +361,24 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                       onPressed: _isLoadingPaypal ? null : _subscribeRecurring,
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        // Marcar que completó el primer login
+                        await StorageService.markFirstLoginCompleted();
+
+                        // Navegar al home con plan gratuito
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MainNavigationScreen(),
+                          ),
+                        );
+                      },
                       child: const Text(
-                        "Omitir por ahora",
-                        style: TextStyle(color: Color(0xFFFC7171), fontSize: 15),
+                        "Continuar con plan gratuito",
+                        style: TextStyle(
+                          color: Color(0xFFFC7171),
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                     const Text(

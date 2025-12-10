@@ -3,7 +3,9 @@ import '../../components/components.dart';
 import 'memories_question_screen.dart';
 
 class PreserveQuestionScreen extends StatefulWidget {
-  const PreserveQuestionScreen({super.key});
+  const PreserveQuestionScreen({super.key, required this.userEmail});
+
+  final String userEmail;
 
   @override
   State<PreserveQuestionScreen> createState() => _PreserveQuestionScreenState();
@@ -46,7 +48,7 @@ class _PreserveQuestionScreenState extends State<PreserveQuestionScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const MemoriesQuestionScreen(),
+                    builder: (context) => MemoriesQuestionScreen(userEmail: widget.userEmail),
                   ),
                 );
               }
