@@ -85,4 +85,12 @@ class ReflectionProvider extends ChangeNotifier {
     if (query.isEmpty) return [];
     return await _service.searchReflections(query);
   }
+
+  /// Limpia todo el estado del provider para logout
+  void limpiarTodo() {
+    _reflections = [];
+    _isLoading = false;
+    _hasLoadedOnce = false;
+    notifyListeners();
+  }
 }

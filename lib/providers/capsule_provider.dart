@@ -286,6 +286,19 @@ class CapsuleProvider extends ChangeNotifier {
     _pollingTimer = null;
   }
 
+  /// Limpia todo el estado del provider para logout
+  void limpiarTodo() {
+    _stopPolling();
+    _capsules = [];
+    _filters = [];
+    _loading = false;
+    _loadingFilters = false;
+    _error = null;
+    _hasLoadedOnce = false;
+    _processingCapsules.clear();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _stopPolling();

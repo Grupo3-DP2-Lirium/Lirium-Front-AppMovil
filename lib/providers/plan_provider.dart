@@ -87,4 +87,13 @@ class SubscriptionProvider extends ChangeNotifier {
     print(">>> REFRESH PLAN END <<<");
   }
 
+  /// Limpia todo el estado del provider para logout
+  void limpiarTodo() {
+    _subscription = null;
+    _permissions = [];
+    _extraStorage = [];
+    _isLoaded = false;
+    notifyListeners();
+  }
+
 }
