@@ -26,7 +26,7 @@ import 'about_app/about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-  
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -46,135 +46,162 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
-  // Mostrar diálogo de confirmación
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Cerrar sesión'),
-      content: const Text('¿Estás seguro que deseas cerrar sesión?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  setState(() {
-    _isLoggingOut = true;
-  });
-
-  try {
-    // 1. Obtener email actual ANTES de limpiar
-    final user = await _authService.getCurrentUser();
-    String? currentEmail;
-    if (user != null) {
-      currentEmail = (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])?.toString();
-    }
-    currentEmail ??= await _authStorage.getLastEmail();
-
-    // 2. Cerrar sesión en backend
-    try {
-      await _authService.logout();
-    } catch (e) {
-      print('⚠️ Error en logout del backend: $e');
-      // Continuar de todas formas
-    }
-
-    // 3️. Limpiar TODOS los tokens y storage
-    await _authStorage.clear();
-    await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
-    
-    // 4️. Guardar solo el email para prellenar
-    if (currentEmail != null && currentEmail.isNotEmpty) {
-      await _authStorage.saveLastEmail(currentEmail);
-    }
-
-    // 5️. LIMPIAR HTTP SERVICES (tokens)
-    HttpService().clearToken();
-    HttpClient.resetInstance();
-    print('✅ HTTP Services limpiados');
-
-    // 6️. DESREGISTRAR FCM TOKEN
-    try {
-      final fcmService = FirebaseMessagingService();
-      await fcmService.unregisterToken();
-      print('✅ FCM Token desregistrado');
-    } catch (e) {
-      print('⚠️ Error desregistrando FCM token: $e');
-    }
-
-    // 7️. LIMPIAR TODOS LOS PROVIDERS
-    if (!mounted) return;
-    
-    // Limpiar MemorialProvider
-    final memorialProvider = Provider.of<MemorialProvider>(context, listen: false);
-    memorialProvider.limpiarTodo();
-    
-    // Limpiar MemoryProvider
-    final memoryProvider = Provider.of<MemoryProvider>(context, listen: false);
-    memoryProvider.limpiarTodo();
-    
-    // Limpiar DocumentaryProvider
-    final documentaryProvider = Provider.of<DocumentaryProvider>(context, listen: false);
-    documentaryProvider.limpiarTodo();
-    
-    // Limpiar CapsuleProvider
-    final capsuleProvider = Provider.of<CapsuleProvider>(context, listen: false);
-    capsuleProvider.limpiarTodo();
-    
-    // Limpiar ReflectionProvider
-    final reflectionProvider = Provider.of<ReflectionProvider>(context, listen: false);
-    reflectionProvider.limpiarTodo();
-    
-    // Limpiar SubscriptionProvider
-    final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
-    subscriptionProvider.limpiarTodo();
-    
-    // Limpiar MemoriesByMemorialProvider
-    final memoriesByMemorialProvider = Provider.of<MemoriesByMemorialProvider>(context, listen: false);
-    memoriesByMemorialProvider.clear();
-    
-    print('✅ Todos los providers limpiados');
-
-    // 6️⃣ Navegar al login
-    if (!mounted) return;
-    
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => LoginScreen(initialEmail: currentEmail),
-      ),
-      (route) => false, // Eliminar TODO el stack
-    );
-
-    print('✅ Logout completado exitosamente');
-    
-  } catch (e) {
-    print('❌ Error en logout: $e');
-    
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error al cerrar sesión: $e'),
-        backgroundColor: Colors.red,
+    // Mostrar diálogo de confirmación
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
       ),
     );
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoggingOut = false;
-      });
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      // 1. Obtener email actual ANTES de limpiar
+      final user = await _authService.getCurrentUser();
+      String? currentEmail;
+      if (user != null) {
+        currentEmail =
+            (user['email'] ?? user['correo'] ?? user['username'] ?? user['sub'])
+                ?.toString();
+      }
+      currentEmail ??= await _authStorage.getLastEmail();
+
+      // 2. Cerrar sesión en backend
+      try {
+        await _authService.logout();
+      } catch (e) {
+        print('⚠️ Error en logout del backend: $e');
+        // Continuar de todas formas
+      }
+
+      // 3️. Limpiar TODOS los tokens y storage
+      await _authStorage.clear();
+      await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
+
+      // 4️. Guardar solo el email para prellenar
+      if (currentEmail != null && currentEmail.isNotEmpty) {
+        await _authStorage.saveLastEmail(currentEmail);
+      }
+
+      // 5️. LIMPIAR HTTP SERVICES (tokens)
+      HttpService().clearToken();
+      HttpClient.resetInstance();
+      print('✅ HTTP Services limpiados');
+
+      // 6️. DESREGISTRAR FCM TOKEN
+      try {
+        final fcmService = FirebaseMessagingService();
+        await fcmService.unregisterToken();
+        print('✅ FCM Token desregistrado');
+      } catch (e) {
+        print('⚠️ Error desregistrando FCM token: $e');
+      }
+
+      // 7️. LIMPIAR TODOS LOS PROVIDERS
+      if (!mounted) return;
+
+      // Limpiar UserProvider
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      userProvider.logout();
+
+      // Limpiar MemorialProvider
+      final memorialProvider = Provider.of<MemorialProvider>(
+        context,
+        listen: false,
+      );
+      memorialProvider.limpiarTodo();
+
+      // Limpiar MemoryProvider
+      final memoryProvider = Provider.of<MemoryProvider>(
+        context,
+        listen: false,
+      );
+      memoryProvider.limpiarTodo();
+
+      // Limpiar DocumentaryProvider
+      final documentaryProvider = Provider.of<DocumentaryProvider>(
+        context,
+        listen: false,
+      );
+      documentaryProvider.limpiarTodo();
+
+      // Limpiar CapsuleProvider
+      final capsuleProvider = Provider.of<CapsuleProvider>(
+        context,
+        listen: false,
+      );
+      capsuleProvider.limpiarTodo();
+
+      // Limpiar ReflectionProvider
+      final reflectionProvider = Provider.of<ReflectionProvider>(
+        context,
+        listen: false,
+      );
+      reflectionProvider.limpiarTodo();
+
+      // Limpiar SubscriptionProvider
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(
+        context,
+        listen: false,
+      );
+      subscriptionProvider.limpiarTodo();
+
+      // Limpiar MemoriesByMemorialProvider
+      final memoriesByMemorialProvider =
+          Provider.of<MemoriesByMemorialProvider>(context, listen: false);
+      memoriesByMemorialProvider.clear();
+
+      print('✅ Todos los providers limpiados');
+
+      // 6️⃣ Navegar al login
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => LoginScreen(initialEmail: currentEmail),
+        ),
+        (route) => false, // Eliminar TODO el stack
+      );
+
+      print('✅ Logout completado exitosamente');
+    } catch (e) {
+      print('❌ Error en logout: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cerrar sesión: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -203,10 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Row(
               children: [
-                ProfileAvatar(
-                  radius: 30,
-                  photoUrl: photoUrl,
-                ),
+                ProfileAvatar(radius: 30, photoUrl: photoUrl),
                 SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -257,9 +281,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const RemindersListScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const RemindersListScreen()),
               );
             },
           ),
@@ -336,9 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const AboutScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const AboutScreen()),
               );
             },
           ),
