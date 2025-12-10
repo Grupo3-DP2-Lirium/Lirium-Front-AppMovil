@@ -21,6 +21,7 @@ class MemoriesGridScreen extends StatefulWidget {
 
 class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   late ScrollController _scrollController;
+  String _selectedFilter = 'all'; // all, image, video, audio, letter
 
   @override
   void initState() {
@@ -52,6 +53,62 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
     super.dispose();
   }
 
+  List<Memory> _getFilteredMemories(List<Memory> memories) {
+    if (_selectedFilter == 'all') return memories;
+
+    return memories.where((memory) {
+      switch (_selectedFilter) {
+        case 'image':
+          return memory.files.any((f) => f.type == 'image');
+        case 'video':
+          return memory.files.any((f) => f.type == 'video');
+        case 'audio':
+          return memory.files.any((f) => f.type == 'audio');
+        case 'letter':
+          final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+              (memory.files.isEmpty && memory.description.isNotEmpty);
+          return isLetter;
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  Map<String, int> _getFormatCounts(List<Memory> memories) {
+    final counts = {
+      'image': 0,
+      'video': 0,
+      'audio': 0,
+      'letter': 0,
+    };
+
+    for (final memory in memories) {
+      final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+          (memory.files.isEmpty && memory.description.isNotEmpty);
+
+      if (isLetter) {
+        counts['letter'] = counts['letter']! + 1;
+      }
+
+      for (final file in memory.files) {
+        if (file.type == 'image' && counts['image'] != null) {
+          counts['image'] = counts['image']! + 1;
+          break;
+        }
+        if (file.type == 'video' && counts['video'] != null) {
+          counts['video'] = counts['video']! + 1;
+          break;
+        }
+        if (file.type == 'audio' && counts['audio'] != null) {
+          counts['audio'] = counts['audio']! + 1;
+          break;
+        }
+      }
+    }
+
+    return counts;
+  }
+
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<MemoryProvider>();
@@ -61,6 +118,9 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
     final memoriesToShow = prov.memoriasFiltradas.isNotEmpty || prov.textoBusqueda.isNotEmpty
         ? prov.memoriasFiltradas
         : prov.misMemorias;
+
+    final filteredMemories = _getFilteredMemories(memoriesToShow);
+    final formatCounts = _getFormatCounts(memoriesToShow);
 
     Widget _buildEmptyState() {
       return Center(
@@ -82,9 +142,11 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Aún no tienes recuerdos',
-                style: TextStyle(
+              Text(
+                _selectedFilter == 'all'
+                    ? 'Aún no tienes recuerdos'
+                    : 'No hay recuerdos de este tipo',
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -92,41 +154,45 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Crea un recuerdo para revivir un momento especial',
+                _selectedFilter == 'all'
+                    ? 'Crea un recuerdo para revivir un momento especial'
+                    : 'Intenta con otro filtro',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              PrimaryButton(
-                text: 'Crear mi primer recuerdo',
-                icon: Icons.add,
-                onPressed: () async {
-                  final subProvider = context.read<SubscriptionProvider>();
-                  final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+              if (_selectedFilter == 'all') ...[
+                const SizedBox(height: 32),
+                PrimaryButton(
+                  text: 'Crear mi primer recuerdo',
+                  icon: Icons.add,
+                  onPressed: () async {
+                    final subProvider = context.read<SubscriptionProvider>();
+                    final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
-                  if (hasPermission) {
-                    final createdMemory = await Navigator.push<Memory>(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
-                    );
+                    if (hasPermission) {
+                      final createdMemory = await Navigator.push<Memory>(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
+                      );
 
-                    if (createdMemory != null) {
-                      final prov = context.read<MemoryProvider>();
-                      prov.agregarMemoria(createdMemory);
+                      if (createdMemory != null) {
+                        final prov = context.read<MemoryProvider>();
+                        prov.agregarMemoria(createdMemory);
+                      }
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                      ).then((_) async {
+                        await subProvider.refreshPlan();
+                      });
                     }
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
-                    ).then((_) async {
-                      await subProvider.refreshPlan();
-                    });
-                  }
-                },
-              ),
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -143,7 +209,6 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          // Recargar las memorias forzando la actualización
           await prov.cargarMisMemorias(force: true);
         },
         child: Column(
@@ -160,16 +225,67 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
               ),
             ),
 
+            // Chips de filtro por formato
+            if (memoriesToShow.isNotEmpty)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      label: 'Todos',
+                      icon: Icons.grid_view_rounded,
+                      value: 'all',
+                      count: memoriesToShow.length,
+                    ),
+                    const SizedBox(width: 8),
+                    if (formatCounts['image']! > 0)
+                      _buildFilterChip(
+                        label: 'Fotos',
+                        icon: Icons.photo_library_rounded,
+                        value: 'image',
+                        count: formatCounts['image']!,
+                      ),
+                    if (formatCounts['image']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['video']! > 0)
+                      _buildFilterChip(
+                        label: 'Videos',
+                        icon: Icons.videocam_rounded,
+                        value: 'video',
+                        count: formatCounts['video']!,
+                      ),
+                    if (formatCounts['video']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['audio']! > 0)
+                      _buildFilterChip(
+                        label: 'Audios',
+                        icon: Icons.audiotrack_rounded,
+                        value: 'audio',
+                        count: formatCounts['audio']!,
+                      ),
+                    if (formatCounts['audio']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['letter']! > 0)
+                      _buildFilterChip(
+                        label: 'Cartas',
+                        icon: Icons.mail_rounded,
+                        value: 'letter',
+                        count: formatCounts['letter']!,
+                      ),
+                  ],
+                ),
+              ),
+
+            if (memoriesToShow.isNotEmpty) const SizedBox(height: 16),
+
             // Grid memories
             Expanded(
               child: prov.cargando && prov.misMemorias.isEmpty
-                  ? Center(
+                  ? const Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(40),
+                  padding: EdgeInsets.all(40),
                   child: CircularProgressIndicator(color: AppColors.primary),
                 ),
               )
-                  : memoriesToShow.isEmpty
+                  : filteredMemories.isEmpty
                   ? _buildEmptyState()
                   : NotificationListener<ScrollNotification>(
                 onNotification: (scrollInfo) {
@@ -179,7 +295,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                   }
                   return false;
                 },
-                child: _buildGridView(memoriesToShow, prov),
+                child: _buildGridView(filteredMemories, prov),
               ),
             )
           ],
@@ -226,9 +342,71 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
     );
   }
 
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required String value,
+    required int count,
+  }) {
+    final isSelected = _selectedFilter == value;
+
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? Colors.white : AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(label),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withOpacity(0.3)
+                  : AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedFilter = value;
+        });
+      },
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.primary,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : Colors.grey[300]!,
+          width: isSelected ? 0 : 1,
+        ),
+      ),
+    );
+  }
+
   Widget _buildGridView(List<Memory> memories, MemoryProvider prov) {
     return GridView.builder(
-      controller: _scrollController, // importante para scroll infinito
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -236,7 +414,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.8,
       ),
-      itemCount: memories.length + (prov.cargando ? 1 : 0), // si está cargando, muestra loader
+      itemCount: memories.length + (prov.cargando ? 1 : 0),
       itemBuilder: (context, index) {
         if (index < memories.length) {
           final memory = memories[index];
@@ -254,7 +432,6 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             },
           );
         } else {
-          // Loader final mientras carga más
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(16),

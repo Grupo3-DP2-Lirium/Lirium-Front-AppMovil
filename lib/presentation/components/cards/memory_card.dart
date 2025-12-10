@@ -68,7 +68,6 @@ class _MemoryCardState extends State<MemoryCard> {
   void didUpdateWidget(covariant MemoryCard oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Si cambió la URL del primer archivo, reinicializa el video
     final oldUrl = oldWidget.memory.files.isNotEmpty ? oldWidget.memory.files.first.url : '';
     final newUrl = widget.memory.files.isNotEmpty ? widget.memory.files.first.url : '';
 
@@ -77,6 +76,15 @@ class _MemoryCardState extends State<MemoryCard> {
       _videoController = null;
       _initializeVideoIfNeeded();
     }
+  }
+
+  bool _isLetter() {
+    return widget.memory.title.toLowerCase().contains('carta personal') ||
+        (widget.memory.files.isEmpty && widget.memory.description.isNotEmpty);
+  }
+
+  bool _isAudio() {
+    return widget.memory.files.any((f) => f.type == 'audio');
   }
 
   @override
@@ -103,8 +111,34 @@ class _MemoryCardState extends State<MemoryCard> {
     );
   }
 
+  Color _getMediaBackgroundColor() {
+    if (_isLetter()) {
+      return const Color(0xFFF3E5F5); // Moradito suave
+    } else if (_isAudio()) {
+      return const Color(0xFFFCE4EC); // Rosadito suave
+    }
+    return Colors.grey[100]!;
+  }
+
   Widget _buildMediaPreview() {
     if (widget.memory.files.isEmpty) {
+      // Para cartas (sin archivos)
+      if (_isLetter()) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.mail_rounded, size: 50, color: Colors.purple[300]),
+              const SizedBox(height: 8),
+              Text(
+                "Carta",
+                style: TextStyle(fontSize: 14, color: Colors.purple[400], fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        );
+      }
+
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -145,13 +179,16 @@ class _MemoryCardState extends State<MemoryCard> {
         ),
       );
     } else if (isAudio) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.mic, size: 40, color: Colors.grey),
-            SizedBox(height: 8),
-            Text("Audio", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Icon(Icons.audiotrack_rounded, size: 50, color: Colors.pink[300]),
+            const SizedBox(height: 8),
+            Text(
+              "Audio",
+              style: TextStyle(fontSize: 14, color: Colors.pink[400], fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       );
@@ -195,7 +232,7 @@ class _MemoryCardState extends State<MemoryCard> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: _getMediaBackgroundColor(),
               borderRadius: BorderRadius.circular(8),
             ),
             child: _buildMediaPreview(),
@@ -216,8 +253,8 @@ class _MemoryCardState extends State<MemoryCard> {
         if (dateToShow != null) ...[
           const SizedBox(height: 4),
           Text(
-          _formatDate(dateToShow),
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            _formatDate(dateToShow),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
       ],

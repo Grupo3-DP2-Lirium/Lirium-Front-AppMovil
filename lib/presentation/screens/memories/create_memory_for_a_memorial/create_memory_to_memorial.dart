@@ -62,7 +62,7 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // ocupa todo el ancho disponible
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AppTitle(
               title: "Crea un Recuerdo",
@@ -86,75 +86,129 @@ class _CreateMemoryToMemorialState extends State<CreateMemoryToMemorial> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Mis memoriales", style: Theme.of(context).textTheme.headlineSmall),
+                  Text("Mis memoriales",
+                      style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: misFiltrados.length,
-                      padding: const EdgeInsets.only(right: 0),
-                      itemBuilder: (_, index) => Padding(
-                        padding: EdgeInsets.only(
-                          right: index == misFiltrados.length - 1 ? 0 : 12,
-                        ),
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.3,
-                          child: MemorialCard(
-                            memorial: misFiltrados[index],
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => CreateMemorySelectType(
-                                    memorialId: misFiltrados[index].idMemorial,
-                                    memorialName: misFiltrados[index].nickname,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
 
-                        ),
+                  SizedBox(
+                    height: 180,
+                    child: misFiltrados.isEmpty
+                        ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off,
+                              size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            searchQuery.isEmpty
+                                ? 'No tienes memoriales aún'
+                                : 'No se encontraron resultados',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
                       ),
+                    )
+                        : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 4),
+                      separatorBuilder: (_, __) =>
+                      const SizedBox(width: 12),
+                      itemCount: misFiltrados.length,
+                      itemBuilder: (_, index) {
+                        final m = misFiltrados[index];
+                        final cardWidth =
+                            MediaQuery.of(context).size.width * 0.35;
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AspectRatio(
+                            aspectRatio: 3 / 4,
+                            child: MemorialCard(
+                              memorial: m,
+                              onTap: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CreateMemorySelectType(
+                                      memorialId: m.idMemorial,
+                                      memorialName: m.nickname,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
+
+            // Colaborando
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Colaboraciones", style: Theme.of(context).textTheme.headlineSmall),
+                  Text("Colaborando",
+                      style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: colabFiltrados.length,
-                      padding: const EdgeInsets.only(right: 0),
-                      itemBuilder: (_, index) => Padding(
-                        padding: EdgeInsets.only(
-                          right: index == colabFiltrados.length - 1 ? 0 : 12,
-                        ),
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.3,
-                          child: MemorialCard(
-                            memorial: colabFiltrados[index],
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => CreateMemorySelectType(
-                                    memorialId: colabFiltrados[index].idMemorial,
-                                    memorialName: colabFiltrados[index].nickname,
-                                  ),
-                                ),
-                              );
-                            },
+
+                  SizedBox(
+                    height: 180,
+                    child: colabFiltrados.isEmpty
+                        ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline,
+                              size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            searchQuery.isEmpty
+                                ? 'No estás colaborando en memoriales aún'
+                                : 'No se encontraron resultados',
+                            style: TextStyle(color: Colors.grey[600]),
                           ),
-                        ),
+                        ],
                       ),
+                    )
+                        : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 4),
+                      separatorBuilder: (_, __) =>
+                      const SizedBox(width: 12),
+                      itemCount: colabFiltrados.length,
+                      itemBuilder: (_, index) {
+                        final m = colabFiltrados[index];
+                        final cardWidth =
+                            MediaQuery.of(context).size.width * 0.35;
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AspectRatio(
+                            aspectRatio: 3 / 4,
+                            child: MemorialCard(
+                              memorial: m,
+                              onTap: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CreateMemorySelectType(
+                                      memorialId: m.idMemorial,
+                                      memorialName: m.nickname,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

@@ -25,7 +25,6 @@ class WriteLetterScreen extends StatefulWidget {
 class _WriteLetterScreenState extends State<WriteLetterScreen> {
   final TextEditingController _letterController = TextEditingController();
   final MemoryService _memoryService = MemoryService();
-  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -39,7 +38,14 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    // Pop-up de Guardando
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
 
     try {
       final request = MemoryCreateRequest(
@@ -60,6 +66,8 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
       Provider.of<MemoryProvider>(context, listen: false)
           .agregarMemoria(createdMemory);
 
+      Navigator.pop(context); // Cerrar popup de guardando
+
       // Mostrar popup de éxito
       await appPopupButtonDefault(
         context: context,
@@ -76,9 +84,8 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
         ],
       );
     } catch (e) {
+      Navigator.pop(context); // Cerrar popup de guardando si hay error
       _showError('Error al guardar la carta: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -87,15 +94,6 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Carta guardada exitosamente!'),
-        backgroundColor: Colors.green,
       ),
     );
   }
@@ -161,8 +159,8 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
 
               // Botón PrimaryButton debajo
               PrimaryButton(
-                text: _isSaving ? 'Guardando...' : 'Guardar',
-                onPressed: _isSaving ? null : _saveLetter,
+                text: 'Guardar',
+                onPressed: _saveLetter,
               ),
             ],
           ),

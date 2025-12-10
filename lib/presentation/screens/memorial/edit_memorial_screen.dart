@@ -382,66 +382,12 @@ class _EditMemorialScreenState extends State<EditMemorialScreen> {
 
                       // Avatar con funcionalidad de cambio de foto
                       Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: screenWidth * 0.3,
-                              height: screenWidth * 0.3,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[200],
-                                image: _getAvatarImage() != null
-                                    ? DecorationImage(
-                                  image: _getAvatarImage()!,
-                                  fit: BoxFit.cover,
-                                )
-                                    : null,
-                              ),
-                              child: _getAvatarImage() == null
-                                  ? Icon(
-                                Icons.image_outlined,
-                                size: screenWidth * 0.12,
-                                color: Colors.grey[400],
-                              )
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  // Usar ProfileAvatar para seleccionar imagen
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Cambiar foto'),
-                                      content: ProfileAvatar(
-                                        radius: 60,
-                                        showCameraIcon: true,
-                                        placeholderIcon: Icons.image_outlined,
-                                        onImageChanged: (file) {
-                                          setState(() => _imageFile = file);
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: ProfileAvatar(
+                          radius: 60,
+                          showCameraIcon: true,
+                          placeholderIcon: Icons.image_outlined,
+                          onImageChanged: (file) => setState(() => _imageFile = file),
+                          photoUrl: _currentImageUrl,
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.03),

@@ -26,9 +26,11 @@ class _SelectMemorialCapsuleScreenState
       if (provider.misMemoriales.isEmpty) {
         provider.cargarMisMemoriales(force: true);
       }
+      if (provider.colaborativos.isEmpty) {
+        provider.cargarColaborativos(force: true);
+      }
     });
   }
-
 
   void _onMemorialSelected(String memorialId, String memorialName) {
     Navigator.push(
@@ -46,7 +48,15 @@ class _SelectMemorialCapsuleScreenState
   Widget build(BuildContext context) {
     final memorialProvider = context.watch<MemorialProvider>();
 
+    // Filtrado por search
     final misFiltrados = memorialProvider.misMemoriales
+        .where((m) =>
+        m.nickname.toLowerCase().contains(searchQuery.toLowerCase()))
+        .toList();
+
+    final colabFiltrados = searchQuery.isEmpty
+        ? memorialProvider.colaborativos
+        : memorialProvider.colaborativos
         .where((m) =>
         m.nickname.toLowerCase().contains(searchQuery.toLowerCase()))
         .toList();
@@ -118,6 +128,65 @@ class _SelectMemorialCapsuleScreenState
                       itemCount: misFiltrados.length,
                       itemBuilder: (_, index) {
                         final m = misFiltrados[index];
+                        final cardWidth =
+                            MediaQuery.of(context).size.width * 0.35;
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AspectRatio(
+                            aspectRatio: 3 / 4,
+                            child: MemorialCard(
+                              memorial: m,
+                              onTap: () => _onMemorialSelected(
+                                  m.idMemorial, m.name),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Colaborando
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Colaborando",
+                      style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 16),
+
+                  SizedBox(
+                    height: 180,
+                    child: colabFiltrados.isEmpty
+                        ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline,
+                              size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            searchQuery.isEmpty
+                                ? 'No estás colaborando en memoriales aún'
+                                : 'No se encontraron resultados',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
+                        : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 4),
+                      separatorBuilder: (_, __) =>
+                      const SizedBox(width: 12),
+                      itemCount: colabFiltrados.length,
+                      itemBuilder: (_, index) {
+                        final m = colabFiltrados[index];
                         final cardWidth =
                             MediaQuery.of(context).size.width * 0.35;
 
