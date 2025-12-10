@@ -3,6 +3,7 @@ import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_documentales_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
+import 'package:flutter_frontend/presentation/screens/settings/reminders_list_screen.dart';
 import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/user_provider.dart';
@@ -203,12 +204,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingItem(
             icon: Icons.notifications,
             title: 'Notificaciones',
-            subtitle: 'Configurar alertas y recordatorios',
+            subtitle: 'Configura las notificaciones que recibes',
+            onTap: () {},
+          ),
+          SettingItem(
+            icon: Icons.notifications,
+            title: 'Recordatorios',
+            subtitle: 'Gestiona tus recordatorios',
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const NotificationsSettingsScreen(),
+                  builder: (_) => const RemindersListScreen(),
                 ),
               );
             },

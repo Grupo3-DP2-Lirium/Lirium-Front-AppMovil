@@ -16,6 +16,7 @@ class MemoryProvider extends ChangeNotifier {
   String? _error;
   bool _loaded = false;
   String _textoBusqueda = '';
+  String? _tipoArchivoFiltro; // 'image', 'video', 'audio', 'text', null
   final Map<String, List<File>> _archivosLocales = {};
 
   List<Memory> get misMemorias => _misMemorias;
@@ -24,13 +25,13 @@ class MemoryProvider extends ChangeNotifier {
   String? get error => _error;
   bool get loaded => _loaded;
   String get textoBusqueda => _textoBusqueda;
+  String? get tipoArchivoFiltro => _tipoArchivoFiltro;
   Map<String, List<File>> get archivosLocales => _archivosLocales;
 
   int _pageMis = 0;
   bool _hasMoreMis = true;
 
   Future<void> cargarMisMemorias({bool force = false}) async {
-
     if (force) {
       _misMemorias = [];
       _memoriasFiltradas = [];
@@ -44,10 +45,13 @@ class MemoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _service.listMemoriesByAuthor(page: _pageMis, size: 6);
+      final result = await _service.listMemoriesByAuthor(
+        page: _pageMis,
+        size: 6,
+      );
       // forzar a lista vacía si es null
       _misMemorias.addAll(result.items);
-      _memoriasFiltradas = List.from(_misMemorias);
+      _aplicarFiltros(); // Aplicar filtros en lugar de copiar directamente
       _hasMoreMis = (result.page + 1) < result.totalPages;
       _pageMis++;
     } catch (e) {
@@ -59,9 +63,17 @@ class MemoryProvider extends ChangeNotifier {
   }
 
   /// Descargar archivo desde URL y devolver un File personalizado con ruta local
-  Future<File> _descargarArchivo(String url, String memoryId, String originalName, String type, String mimeType) async {
+  Future<File> _descargarArchivo(
+    String url,
+    String memoryId,
+    String originalName,
+    String type,
+    String mimeType,
+  ) async {
     final dir = await getApplicationDocumentsDirectory();
-    final ext = originalName.contains('.') ? '' : '.${url.split('.').last.split('?').first}';
+    final ext = originalName.contains('.')
+        ? ''
+        : '.${url.split('.').last.split('?').first}';
     final filePath = '${dir.path}/memory_${memoryId}_${originalName}$ext';
 
     final localFile = io.File(filePath);
@@ -87,28 +99,76 @@ class MemoryProvider extends ChangeNotifier {
     );
   }
 
-  /// Filtrar memorias según texto
+  /// Filtrar memorias según texto y tipo de archivo
   void filtrarMemorias(String texto) {
     _textoBusqueda = texto;
-    if (texto.isEmpty) {
-      _memoriasFiltradas = List.from(_misMemorias);
-    } else {
-      _memoriasFiltradas = _misMemorias
-          .where((m) =>
-      (m.title?.toLowerCase().contains(texto.toLowerCase()) ?? false) ||
-          (m.description
-              ?.toLowerCase()
-              .contains(texto.toLowerCase()) ??
-              false))
+    _aplicarFiltros();
+  }
+
+  /// Filtrar memorias por tipo de archivo
+  void filtrarPorTipoArchivo(String? tipo) {
+    _tipoArchivoFiltro = tipo;
+    _aplicarFiltros();
+  }
+
+  /// Limpiar filtro de tipo de archivo
+  void limpiarFiltroTipoArchivo() {
+    _tipoArchivoFiltro = null;
+    _aplicarFiltros();
+  }
+
+  /// Limpiar todos los filtros
+  void limpiarTodosFiltros() {
+    _textoBusqueda = '';
+    _tipoArchivoFiltro = null;
+    _aplicarFiltros();
+  }
+
+  /// Aplicar todos los filtros activos
+  void _aplicarFiltros() {
+    List<Memory> memoriasFiltradas = List.from(_misMemorias);
+
+    // Filtro por texto
+    if (_textoBusqueda.isNotEmpty) {
+      memoriasFiltradas = memoriasFiltradas
+          .where(
+            (m) =>
+                (m.title.toLowerCase().contains(
+                  _textoBusqueda.toLowerCase(),
+                )) ||
+                (m.description.toLowerCase().contains(
+                  _textoBusqueda.toLowerCase(),
+                )),
+          )
           .toList();
     }
+
+    // Filtro por tipo de archivo
+    if (_tipoArchivoFiltro != null) {
+      memoriasFiltradas = memoriasFiltradas.where((m) {
+        switch (_tipoArchivoFiltro) {
+          case 'image':
+            return m.images.isNotEmpty;
+          case 'video':
+            return m.videos.isNotEmpty;
+          case 'audio':
+            return m.audios.isNotEmpty;
+          case 'text':
+            return m.files.isEmpty || m.files.every((f) => f.type == 'text');
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    _memoriasFiltradas = memoriasFiltradas;
     notifyListeners();
   }
 
   /// Agregar memoria nueva
   void agregarMemoria(Memory memoria) {
     _misMemorias.insert(0, memoria);
-    filtrarMemorias(_textoBusqueda); // actualiza también el filtro
+    _aplicarFiltros(); // actualiza también los filtros
     notifyListeners();
   }
 
@@ -116,7 +176,7 @@ class MemoryProvider extends ChangeNotifier {
   void actualizarMemoria(int index, Memory memoriaActualizada) {
     if (index >= 0 && index < _misMemorias.length) {
       _misMemorias[index] = memoriaActualizada;
-      filtrarMemorias(_textoBusqueda);
+      _aplicarFiltros();
       notifyListeners();
     }
   }

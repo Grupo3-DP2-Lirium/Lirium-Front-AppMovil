@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/reminder.dart';
-import 'package:flutter_frontend/presentation/screens/main/widgets/mini_timeline_card.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class ReminderCarousel extends StatefulWidget {
   final List<Reminder> reminders;
@@ -51,6 +51,12 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
     }
   }
 
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.reminders.isEmpty) {
@@ -66,7 +72,7 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
       children: [
         // Carrusel de recordatorios
         SizedBox(
-          height: 100,
+          height: 90,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -78,14 +84,8 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
             itemBuilder: (context, index) {
               final reminder = displayReminders[index];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: MiniTimelineCard(
-                  title: _formatReminderDate(reminder.notificationDate),
-                  subtitle: reminder.title,
-                  onTap: () {
-                    // TODO: Navegar a detalles del recordatorio o editarlo
-                  },
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildReminderCard(reminder),
               );
             },
           ),
@@ -95,7 +95,7 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
         
         // Indicadores de página + botón "Ver todos"
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -110,7 +110,7 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _currentPage == index
-                          ? const Color(0xFF6366F1)
+                          ? AppColors.primary
                           : Colors.grey[300],
                     ),
                   ),
@@ -124,7 +124,7 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
                   child: const Text(
                     'Ver todos',
                     style: TextStyle(
-                      color: Color(0xFF6366F1),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -133,6 +133,91 @@ class _ReminderCarouselState extends State<ReminderCarousel> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildReminderCard(Reminder reminder) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icono
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.event,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Contenido
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  reminder.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      _formatReminderDate(reminder.notificationDate),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      ' • ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    Text(
+                      _formatTime(reminder.notificationDate),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

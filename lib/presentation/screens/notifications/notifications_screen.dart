@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/notification_service.dart';
 import 'package:flutter_frontend/domain/entities/notification.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -246,31 +247,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Color _getNotificationColor(NotificationType type) {
-    switch (type) {
-      case NotificationType.REMINDER:
-        return const Color(0xFF6366F1);
-      case NotificationType.COMMENT:
-        return Colors.blue;
-      case NotificationType.MEMORIAL_SHARED:
-        return Colors.purple;
-      case NotificationType.SUBSCRIPTION:
-        return Colors.orange;
-      case NotificationType.PAYMENT:
-        return Colors.green;
-      case NotificationType.DOCUMENTARY:
-        return Colors.red;
-      case NotificationType.REFLECTION:
-        return Colors.teal;
-      case NotificationType.COLLABORATION:
-        return Colors.indigo;
-      case NotificationType.SYSTEM:
-        return const Color(0xFFFF6B6B).withOpacity(0.5);
-    }
+    // ✅ TODOS los tipos usan el color primario para consistencia
+    return AppColors.primary;
   }
 
-  /// ✅ CRÍTICO: Comparar SIEMPRE en UTC
   String _formatTimeAgo(DateTime utcDateTime) {
-    // Ambas fechas en UTC para comparación correcta
     final nowUtc = DateTime.now().toUtc();
     final difference = nowUtc.difference(utcDateTime);
     
@@ -325,7 +306,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: const Text(
                 'Marcar todas',
                 style: TextStyle(
-                  color: Color(0xFF6366F1),
+                  color: AppColors.primary,
                   fontSize: 13,
                 ),
               ),
@@ -333,12 +314,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _errorMessage != null
               ? _buildErrorState()
               : _notifications.isEmpty
                   ? _buildEmptyState()
                   : RefreshIndicator(
+                      color: AppColors.primary,
                       onRefresh: _loadNotifications,
                       child: ListView.builder(
                         controller: _scrollController,
@@ -349,7 +331,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             return const Center(
                               child: Padding(
                                 padding: EdgeInsets.all(16),
-                                child: CircularProgressIndicator(),
+                                child: CircularProgressIndicator(color: AppColors.primary),
                               ),
                             );
                           }
@@ -386,7 +368,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ElevatedButton(
               onPressed: _loadNotifications,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
+                backgroundColor: AppColors.primary,
               ),
               child: const Text('Reintentar'),
             ),
@@ -458,12 +440,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : const Color(0xFFFF6B6B).withOpacity(0.5),
+          color: notification.isRead 
+              ? Colors.white 
+              : AppColors.primary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: notification.isRead
                 ? Colors.grey[300]!
-                : const Color(0xFFFF6B6B).withOpacity(0.5), // Rosa pastel más marcado
+                : AppColors.primary.withOpacity(0.3),
             width: notification.isRead ? 1 : 2,
           ),
           boxShadow: [
@@ -518,7 +502,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               width: 8,
                               height: 8,
                               decoration: const BoxDecoration(
-                                color: const Color(0xFFFF6B6B),   // 🔴 Rojo siempre
+                                color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
                             ),

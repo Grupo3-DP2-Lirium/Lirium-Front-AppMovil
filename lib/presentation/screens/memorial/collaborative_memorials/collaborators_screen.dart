@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/services/collaborator_service.dart';
 import 'package:flutter_frontend/data/models/collaborator_response.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/generate_invite_code_dialog.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_email_dialog.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/collaborative_memorials/invite_by_whatsapp_dialog.dart'; // ✅ NUEVO
@@ -240,7 +241,7 @@ class _CollaboratorsScreenState extends State<CollaboratorsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Código generado'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: AppColors.primary,
                       ),
                     );
                   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import '../../../../providers/reflection_provider.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../../data/models/reflection_model.dart';
@@ -130,8 +131,6 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 _buildHeaderCTA(),
-                const SizedBox(height: 16),
-
                 for (final key in sortedKeys) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -157,33 +156,35 @@ class _MyPersonalSpaceScreenState extends State<MyPersonalSpaceScreen> {
 
   Widget _buildHeaderCTA() {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
 
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        Center(
-          child: Column(
-            children: [
-              Text(
-                '¿Cómo estás hoy?',
-                style: textTheme.titleLarge?.copyWith(
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: 240,
-                child: PrimaryButton(
-                  text: 'Empezar a escribir...',
-                  onPressed: _navigateToNewReflection,
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            '¿Cómo estás hoy?',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.normal,
+              color: AppColors.primary2,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: 200,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                backgroundColor: AppColors.primary,
+              ),
+              onPressed: _navigateToNewReflection,
+              child: const Text('Empezar a escribir...'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
