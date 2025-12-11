@@ -86,8 +86,8 @@ Future<void> appPopupButtonDefault({
                                         fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                   onPressed: () {
-                                    Navigator.pop(dialogContext);
                                     buttons[0].onPressed();
+                                    Navigator.pop(dialogContext);
                                   },
                                 ),
                               )
@@ -108,8 +108,8 @@ Future<void> appPopupButtonDefault({
                                               buttons.length == 1 ? AppColors.primary :
                                               (index == 0 ? Colors.grey[200] : AppColors.primary)),
                                           onPressed: () {
-                                            Navigator.pop(dialogContext);
                                             btn.onPressed();
+                                            Navigator.pop(dialogContext);
                                           },
                                           child: Text(
                                             btn.text,

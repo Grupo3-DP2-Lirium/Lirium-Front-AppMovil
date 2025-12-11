@@ -54,14 +54,14 @@ class _SubscriptionPlanDetailsScreenState
         AppPopupButton(
           text: "No",
           onPressed: () {
-            Navigator.pop(context);
+            //Navigator.pop(context);
             completer.complete(false);
           },
         ),
         AppPopupButton(
           text: "Sí",
           onPressed: () {
-            Navigator.pop(context);
+            //entNavigator.pop(context);
             completer.complete(true);
           },
         ),
