@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/question_category.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'answer_question_screen.dart';
 
@@ -42,18 +43,11 @@ class _SelectQuestionsState extends State<SelectQuestions> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Preguntas",
-          style: AppColors.h5.copyWith(color: AppColors.textPrimary),
-        ),
-        centerTitle: true,
+      appBar: CustomMemoryAppBar(
+        title: 'Preguntas',
+        onBack: () => Navigator.pop(context),
+        showBackButton: true,
+        appBarHeight: MediaQuery.of(context).size.height * 0.09,
       ),
       body: SafeArea(
         child: Column(
