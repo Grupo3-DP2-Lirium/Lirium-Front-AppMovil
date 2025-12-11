@@ -7,19 +7,19 @@ import '../models/extra_storage_response.dart';
 /// Servicio para manejar almacenamiento seguro de tokens
 class StorageService {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
   static const String _tokenKey = 'jwt_token';
- static const String _emailKey = 'user_email';
+  static const String _emailKey = 'user_email';
   static const String _fullNameKey = 'user_full_name';
   static const String _nameKey = 'user_name';
   static const String _usedSpaceKey = 'user_used_space';
   static const String _totalCapacityKey = 'user_total_capacity';
-  static const String _documentariesPurchasedKey = 'user_documentaries_purchased';
-  static const String _documentariesAvailableKey = 'user_documentaries_available';
+  static const String _documentariesPurchasedKey =
+      'user_documentaries_purchased';
+  static const String _documentariesAvailableKey =
+      'user_documentaries_available';
 
   static Future<void> saveProfilePhotoUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
@@ -33,7 +33,10 @@ class StorageService {
 
   /// Guarda la cantidad de documentarios adquiridos
   static Future<void> saveDocumentariesPurchased(int value) async {
-    await _storage.write(key: _documentariesPurchasedKey, value: value.toString());
+    await _storage.write(
+      key: _documentariesPurchasedKey,
+      value: value.toString(),
+    );
   }
 
   /// Obtiene la cantidad de documentarios adquiridos
@@ -44,7 +47,10 @@ class StorageService {
 
   /// Guarda la cantidad de documentarios disponibles
   static Future<void> saveDocumentariesAvailable(int value) async {
-    await _storage.write(key: _documentariesAvailableKey, value: value.toString());
+    await _storage.write(
+      key: _documentariesAvailableKey,
+      value: value.toString(),
+    );
   }
 
   /// Obtiene la cantidad de documentarios disponibles
@@ -71,7 +77,9 @@ class StorageService {
     return str != null ? double.tryParse(str) ?? 15.0 : 15.0; // default 15GB
   }
 
-  static Future<void> saveFullSubscriptionJson(Map<String, dynamic> json) async {
+  static Future<void> saveFullSubscriptionJson(
+    Map<String, dynamic> json,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("subscription_full_json", jsonEncode(json));
   }
@@ -235,4 +243,111 @@ class StorageService {
     }
   }
 
+  // ============ PRIMER LOGIN POR USUARIO ============
+
+  static const String _firstLoginPrefix = 'first_login_completed_';
+
+  /// Verifica si el usuario específico ya completó su primer login
+  static Future<bool> hasCompletedFirstLogin([String? userEmail]) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Si no se proporciona email, intentar obtenerlo del token actual
+    String? email = userEmail;
+    if (email == null) {
+      final user = await getUserFromToken();
+      email = user?['email'] ?? user?['sub'];
+    }
+
+    // Si no hay email, asumir que no ha completado el primer login
+    if (email == null) {
+      print('🔍 hasCompletedFirstLogin: No email found, returning false');
+      return false;
+    }
+
+    // Normalizar email (trim y lowercase para consistencia)
+    email = email.trim().toLowerCase();
+    final key = '$_firstLoginPrefix$email';
+    final result = prefs.getBool(key) ?? false;
+    print('🔍 hasCompletedFirstLogin: email=$email, key=$key, result=$result');
+    return result;
+  }
+
+  /// Marca que el usuario específico completó su primer login
+  static Future<void> markFirstLoginCompleted([String? userEmail]) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Si no se proporciona email, intentar obtenerlo del token actual
+    String? email = userEmail;
+    if (email == null) {
+      final user = await getUserFromToken();
+      email = user?['email'] ?? user?['sub'];
+    }
+
+    // Si no hay email, no hacer nada
+    if (email == null) {
+      print(
+        '❌ markFirstLoginCompleted: No email found, cannot mark as completed',
+      );
+      return;
+    }
+
+    // Normalizar email (trim y lowercase para consistencia)
+    email = email.trim().toLowerCase();
+    final key = '$_firstLoginPrefix$email';
+    await prefs.setBool(key, true);
+    print(
+      '✅ markFirstLoginCompleted: email=$email, key=$key, marked as completed',
+    );
+  }
+
+  /// Limpia el estado del primer login para un usuario específico
+  static Future<void> clearFirstLoginStateForUser(String userEmail) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_firstLoginPrefix$userEmail';
+    await prefs.remove(key);
+  }
+
+  /// Limpia TODOS los estados de primer login (para limpieza completa)
+  static Future<void> clearAllFirstLoginStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+
+    for (final key in keys) {
+      if (key.startsWith(_firstLoginPrefix)) {
+        await prefs.remove(key);
+      }
+    }
+  }
+
+  /// Método de debug para listar todos los usuarios que han completado el primer login
+  static Future<List<String>> getCompletedFirstLoginUsers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    final completedUsers = <String>[];
+
+    for (final key in keys) {
+      if (key.startsWith(_firstLoginPrefix)) {
+        final isCompleted = prefs.getBool(key) ?? false;
+        if (isCompleted) {
+          final email = key.substring(_firstLoginPrefix.length);
+          completedUsers.add(email);
+        }
+      }
+    }
+
+    print(
+      '🔍 DEBUG: Usuarios que han completado primer login: $completedUsers',
+    );
+    return completedUsers;
+  }
+
+  /// Método de debug para resetear el estado de primer login de un usuario específico
+  /// (útil para testing)
+  static Future<void> resetFirstLoginForUser(String userEmail) async {
+    final prefs = await SharedPreferences.getInstance();
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final key = '$_firstLoginPrefix$normalizedEmail';
+    await prefs.remove(key);
+    print('🔄 DEBUG: Reset primer login para usuario: $normalizedEmail');
+  }
 }

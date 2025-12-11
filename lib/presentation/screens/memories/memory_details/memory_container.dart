@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/file.dart' as domain;
 import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/image_improvement_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
@@ -54,6 +55,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   bool _isEditing = false;
   bool _isCreating = false;
   late final bool _hadOriginalFiles;
+
+  // 🔥 CONSTANTES DE VALIDACIÓN
+  static const int maxFileSizeBytes = 100 * 1024 * 1024; // 100MB en bytes
+  static const int maxTotalSizeBytes = 200 * 1024 * 1024; // 200MB en bytes
 
   void setEditMode(bool value) {
     if (!mounted) return;
@@ -118,6 +123,80 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     _videoControllers.clear();
     _recorder.closeRecorder();
     super.dispose();
+  }
+
+  // 🔥 MÉTODO: Calcular tamaño total de archivos
+  int _calculateTotalFileSize() {
+    int total = 0;
+    
+    // Sumar archivos existentes
+    for (var file in _localFiles) {
+      total += file.size.toInt();
+    }
+    
+    return total;
+  }
+
+  // 🔥 MÉTODO: Validar tamaño individual del archivo
+  Future<bool> _validateFileSize(File file, BuildContext context) async {
+    final fileSize = await file.length();
+    
+    if (fileSize > maxFileSizeBytes) {
+      final sizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+      
+      if (!context.mounted) return false;
+      
+      await appPopupButtonDefault(
+        context: context,
+        title: "Archivo demasiado grande",
+        message: "El archivo seleccionado pesa $sizeMB MB.\n\n"
+            "El tamaño máximo permitido es de 100 MB por archivo.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      
+      return false;
+    }
+    
+    return true;
+  }
+
+  // 🔥 MÉTODO: Validar tamaño total de todos los archivos
+  Future<bool> _validateTotalSize(int newFileSize, BuildContext context) async {
+    final currentTotal = _calculateTotalFileSize();
+    final projectedTotal = currentTotal + newFileSize;
+    
+    if (projectedTotal > maxTotalSizeBytes) {
+      final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
+      final newFileMB = (newFileSize / (1024 * 1024)).toStringAsFixed(2);
+      final projectedMB = (projectedTotal / (1024 * 1024)).toStringAsFixed(2);
+      
+      if (!context.mounted) return false;
+      
+      await appPopupButtonDefault(
+        context: context,
+        title: "Límite de almacenamiento excedido",
+        message: "Ya tienes $currentMB MB en archivos.\n"
+            "El nuevo archivo pesa $newFileMB MB.\n\n"
+            "Total proyectado: $projectedMB MB\n"
+            "Límite máximo: 200 MB\n\n"
+            "Por favor, elimina algunos archivos antes de continuar.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      
+      return false;
+    }
+    
+    return true;
   }
 
   @override
@@ -234,7 +313,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                   onTap: () {
                     print('📸 Opción imagen seleccionada');
                     Navigator.pop(modalContext);
-                    // Usar el context original, no el del modal
                     _addFile(context, "image");
                   },
                 ),
@@ -277,7 +355,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     widget.onFileChanged?.call("delete", index, file);
   }
 
-  // =============== CORREGIDO: Flujo simplificado ===============
+  // =============== ACTUALIZADO: Flujo con validaciones ===============
   Future<void> _addFile(BuildContext context, String type) async {
     if (type == "image") {
       await _addImageWithImprovement(context);
@@ -290,13 +368,25 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     final file = File(picked.path);
     if (!await file.exists()) return;
 
+    // 🔥 VALIDACIÓN 1: Tamaño individual
+    if (!await _validateFileSize(file, context)) {
+      return; // Detener si excede 100MB
+    }
+    
+    final fileSize = await file.length();
+    
+    // 🔥 VALIDACIÓN 2: Tamaño total
+    if (!await _validateTotalSize(fileSize, context)) {
+      return; // Detener si excede 200MB total
+    }
+
     final newFile = domain.File(
       id: "",
       url: picked.path,
       name: picked.name,
       type: type,
       mimeType: _guessMimeType(picked.path),
-      size: (await picked.length()).toDouble(),
+      size: fileSize.toDouble(),
       uploadedDate: DateTime.now(),
       originalName: picked.name,
     );
@@ -318,7 +408,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     });
   }
 
-  // =============== MEJORADO: Dar opción de mejorar o usar directamente ===============
+  // =============== ACTUALIZADO: Agregar validaciones para imágenes ===============
   Future<void> _addImageWithImprovement(BuildContext context) async {
     print('🎬 _addImageWithImprovement iniciado');
     
@@ -382,6 +472,23 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       }
 
       print('✅ Imagen seleccionada: ${pickedFile.path}');
+
+      // 🔥 VALIDACIÓN TEMPRANA: Verificar tamaño antes de continuar
+      final file = File(pickedFile.path);
+      if (!await file.exists()) {
+        print('❌ El archivo no existe');
+        return;
+      }
+
+      if (!await _validateFileSize(file, context)) {
+        return; // Detener si excede 100MB
+      }
+
+      final fileSize = await file.length();
+      
+      if (!await _validateTotalSize(fileSize, context)) {
+        return; // Detener si excede 200MB total
+      }
 
       if (!context.mounted) return;
       await Future.delayed(const Duration(milliseconds: 200));
@@ -497,8 +604,8 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
 
       // PASO FINAL: Agregar imagen a la lista
       print('📁 Verificando archivo: $finalImagePath');
-      final file = File(finalImagePath);
-      if (!await file.exists()) {
+      final finalFile = File(finalImagePath);
+      if (!await finalFile.exists()) {
         print('❌ El archivo no existe: $finalImagePath');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -511,6 +618,17 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         return;
       }
 
+      // 🔥 REVALIDAR después de mejora (por si cambió el tamaño)
+      if (!await _validateFileSize(finalFile, context)) {
+        return;
+      }
+
+      final finalFileSize = await finalFile.length();
+      
+      if (!await _validateTotalSize(finalFileSize, context)) {
+        return;
+      }
+
       print('✅ Archivo válido, creando domain.File...');
 
       final newFile = domain.File(
@@ -519,7 +637,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         name: finalImagePath.split('/').last,
         type: "image",
         mimeType: _guessMimeType(finalImagePath),
-        size: (await file.length()).toDouble(),
+        size: finalFileSize.toDouble(),
         uploadedDate: DateTime.now(),
         originalName: finalImagePath.split('/').last,
       );
@@ -571,13 +689,54 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     final file = File(picked.path);
     if (!await file.exists()) return;
 
+    // 🔥 VALIDACIÓN 1: Tamaño individual
+    if (!await _validateFileSize(file, context)) {
+      return;
+    }
+
+    final fileSize = await file.length();
+
+    // Para edición de audio, calcular sin el audio actual
+    int currentTotal = _calculateTotalFileSize();
+    final existingIndex = _localFiles.indexWhere((f) => f.type == "audio");
+    if (existingIndex != -1) {
+      currentTotal -= _localFiles[existingIndex].size.toInt();
+    }
+
+    // 🔥 VALIDACIÓN 2: Tamaño total (sin contar el audio que se va a reemplazar)
+    final projectedTotal = currentTotal + fileSize;
+    if (projectedTotal > maxTotalSizeBytes) {
+      final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
+      final newFileMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+      final projectedMB = (projectedTotal / (1024 * 1024)).toStringAsFixed(2);
+      
+      if (!context.mounted) return;
+      
+      await appPopupButtonDefault(
+        context: context,
+        title: "Límite de almacenamiento excedido",
+        message: "Archivos actuales (sin audio): $currentMB MB.\n"
+            "El nuevo archivo pesa $newFileMB MB.\n\n"
+            "Total proyectado: $projectedMB MB\n"
+            "Límite máximo: 200 MB\n\n"
+            "Por favor, elimina algunos archivos antes de continuar.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      return;
+    }
+
     final newFile = domain.File(
       id: "",
       url: picked.path,
       name: picked.name,
       type: type,
       mimeType: _guessMimeType(picked.path),
-      size: (await picked.length()).toDouble(),
+      size: fileSize.toDouble(),
       uploadedDate: DateTime.now(),
       originalName: picked.name,
     );
@@ -718,7 +877,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       await player.closePlayer();
       return result;
     }
-    // Para video (imagen ya no usa este método)
+    // Para video
     if (!context.mounted) return null;
     return showModalBottomSheet<XFile?>(
       context: context,

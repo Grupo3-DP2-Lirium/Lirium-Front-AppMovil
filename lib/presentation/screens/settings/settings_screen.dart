@@ -99,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 3️. Limpiar TODOS los tokens y storage
       await _authStorage.clear();
       await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
+      // NOTA: NO limpiamos el estado del primer login para que persista por usuario
 
       // 4️. Guardar solo el email para prellenar
       if (currentEmail != null && currentEmail.isNotEmpty) {

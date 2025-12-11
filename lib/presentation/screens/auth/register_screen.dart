@@ -4,7 +4,7 @@ import 'package:flutter_frontend/presentation/components/inputs/custom_text_fiel
 import '../../components/components.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/register_request.dart';
-import '../setup/preserve_question_screen.dart';
+import 'login_screen.dart';
 import 'dart:io';
 
 class RegisterScreen extends StatefulWidget {
@@ -77,7 +77,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: 'Nombre',
                 hintText: 'Tu nombre',
                 controller: _nameController,
-                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.primary,
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu nombre';
@@ -95,7 +98,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: 'Primer apellido',
                 hintText: 'Tu primer apellido',
                 controller: _lastNameController,
-                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.primary,
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu primer apellido';
@@ -113,7 +119,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 label: 'Segundo apellido (opcional)',
                 hintText: 'Tu segundo apellido',
                 controller: _secondLastNameController,
-                prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.primary,
+                ),
                 validator: (value) {
                   if (value != null && value.isNotEmpty && value.length < 2) {
                     return 'El segundo apellido debe tener al menos 2 caracteres';
@@ -129,12 +138,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'correo@ejemplo.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.email_outlined,
+                  color: AppColors.primary,
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingresa tu email';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Por favor ingresa un email válido';
                   }
                   return null;
@@ -148,7 +162,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'Mínimo 8 caracteres',
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: AppColors.primary,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -172,7 +189,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   final hasDigit = RegExp(r'\d').hasMatch(value);
                   final hasSpecialChar = RegExp(r'[@$!%*?&#_]').hasMatch(value);
 
-                  if (!hasLowercase || !hasUppercase || !hasDigit || !hasSpecialChar) {
+                  if (!hasLowercase ||
+                      !hasUppercase ||
+                      !hasDigit ||
+                      !hasSpecialChar) {
                     return 'Debe contener: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial';
                   }
                   return null;
@@ -186,10 +206,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'Repite tu contraseña',
                 controller: _confirmPasswordController,
                 obscureText: _obscureConfirmPassword,
-                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: AppColors.primary,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
                     color: AppColors.textSecondary,
                   ),
                   onPressed: () {
@@ -214,9 +239,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               _isLoading
                   ? const CircularProgressIndicator(color: AppColors.primary)
                   : PrimaryButton(
-                text: 'Crear Cuenta',
-                onPressed: _handleRegister,
-              ),
+                      text: 'Crear Cuenta',
+                      onPressed: _handleRegister,
+                    ),
               const SizedBox(height: 20),
 
               // Login link
@@ -225,18 +250,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Text(
                     '¿Ya tienes cuenta? ',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                   SecondaryButton(
-                      text: 'Inicia sesión',
-                      textColor: AppColors.primary,
-                      isFullWidth: false,
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                    text: 'Inicia sesión',
+                    textColor: AppColors.primary,
+                    isFullWidth: false,
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
                   ),
                 ],
               ),
@@ -267,7 +289,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-
       final registerRequest = RegisterRequest(
         firstName: _nameController.text.trim(),
         firstLastName: _lastNameController.text.trim(),
@@ -278,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
       );
 
-      final userResponse = await _authService.register(registerRequest, _profileImage?.path);
+      await _authService.register(registerRequest, _profileImage?.path);
 
       setState(() {
         _isLoading = false;
@@ -288,18 +309,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '¡Bienvenido ${userResponse['firstName']}! Cuenta creada exitosamente',
+              '¡Cuenta creada exitosamente! Ahora puedes iniciar sesión',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
 
-        // Navegar a las preguntas de configuración
+        // Navegar al login con el email prellenado
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const PreserveQuestionScreen(),
+            builder: (context) =>
+                LoginScreen(initialEmail: _emailController.text.trim()),
           ),
         );
       }
@@ -314,14 +336,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (e.toString().contains('Email already exists') ||
             e.toString().contains('Email ya está registrado')) {
           errorMessage =
-          'Este email ya está registrado. Usa otro email o inicia sesión.';
+              'Este email ya está registrado. Usa otro email o inicia sesión.';
         } else if (e.toString().contains('Error de validación')) {
           errorMessage =
-          'Por favor verifica que todos los campos estén correctos';
+              'Por favor verifica que todos los campos estén correctos';
         } else if (e.toString().contains('Connection refused') ||
             e.toString().contains('Network')) {
           errorMessage =
-          'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+              'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
