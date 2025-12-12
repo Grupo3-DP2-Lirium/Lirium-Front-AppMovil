@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_frontend/data/services/storage_service.dart';
 import '../../components/components.dart';
 import '../auth/login_screen.dart';
 
@@ -7,9 +7,12 @@ class LegacyScreen extends StatelessWidget {
   const LegacyScreen({super.key});
 
   Future<void> _markOnboardingComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasSeenOnboarding', true);
-    print('✅ Onboarding marcado como completado');
+    try {
+      await StorageService.markOnboardingCompleted();
+      print('✅ LEGACY: Onboarding marcado como completado (SharedPreferences)');
+    } catch (e) {
+      print('❌ LEGACY: Error guardando onboarding: $e');
+    }
   }
 
   @override
@@ -41,8 +44,14 @@ class LegacyScreen extends StatelessWidget {
             nextText: 'Continuar',
             onBack: () => Navigator.pop(context),
             onNext: () async {
+              print('🔵 LEGACY: Botón Continuar presionado');
               await _markOnboardingComplete();
+
+              // Esperar un momento para asegurar que se guardó
+              await Future.delayed(const Duration(milliseconds: 500));
+
               if (context.mounted) {
+                print('🔵 LEGACY: Navegando al LoginScreen');
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),

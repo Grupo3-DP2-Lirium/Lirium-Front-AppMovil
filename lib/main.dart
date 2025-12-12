@@ -160,6 +160,8 @@ class RemoryApp extends StatefulWidget {
 class _RemoryAppState extends State<RemoryApp> {
   final FirebaseMessagingService _fcmService = FirebaseMessagingService();
 
+  Widget? _initialScreen;
+
   @override
   void initState() {
     super.initState();
@@ -172,6 +174,15 @@ class _RemoryAppState extends State<RemoryApp> {
 
     // ✅ Paso 2: Inicializar Firebase Messaging
     await _initializeFirebaseMessaging();
+
+    // ✅ Paso 3: Verificar estado del onboarding
+    final onboardingCompleted = await StorageService.hasCompletedOnboarding();
+    
+    if (mounted) {
+      setState(() {
+        _initialScreen = onboardingCompleted ? const LoginScreen() : const WelcomeScreen();
+      });
+    }
   }
 
   /// ✅ Solicita permisos de notificación al usuario
@@ -477,7 +488,11 @@ class _RemoryAppState extends State<RemoryApp> {
             child: child ?? const SizedBox(),
           );
         },
-        home: const WelcomeScreen(), // Inicia con onboarding
+        home: _initialScreen ?? const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        ),
         routes: {
           '/login': (_) => const LoginScreen(),
         },

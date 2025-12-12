@@ -243,6 +243,19 @@ class StorageService {
     }
   }
 
+  // ============ ONBOARDING ============
+  static const String _onboardingKey = 'onboarding_completed';
+
+  static Future<void> markOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingKey, true);
+  }
+
+  static Future<bool> hasCompletedOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_onboardingKey) ?? false;
+  }
+
   // ============ PRIMER LOGIN POR USUARIO ============
 
   static const String _firstLoginPrefix = 'first_login_completed_';
