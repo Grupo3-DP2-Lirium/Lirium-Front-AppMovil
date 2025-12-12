@@ -52,6 +52,10 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
   Set<String> _uploadingFiles = {};
   List<String> _deletedFileIds = [];
 
+  // 🔥 CONSTANTES DE VALIDACIÓN
+  static const int maxFileSizeBytes = 100 * 1024 * 1024; // 100MB en bytes
+  static const int maxTotalSizeBytes = 200 * 1024 * 1024; // 200MB en bytes
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +74,9 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     _contentController.dispose();
     _audioRecorder?.closeRecorder();
     _recordingTimer?.cancel();
+    for (var controller in _videoControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -83,6 +90,80 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
         _videoControllers[file.localPath!] = controller;
       }
     }
+  }
+
+  // 🔥 MÉTODO: Calcular tamaño total de archivos
+  int _calculateTotalFileSize() {
+    int total = 0;
+    
+    // Sumar archivos adjuntos
+    for (var file in _attachedFiles) {
+      total += file.fileSize;
+    }
+    
+    return total;
+  }
+
+  // 🔥 MÉTODO: Validar tamaño individual del archivo
+  Future<bool> _validateFileSize(File file, BuildContext context) async {
+    final fileSize = await file.length();
+    
+    if (fileSize > maxFileSizeBytes) {
+      final sizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+      
+      if (!context.mounted) return false;
+      
+      await appPopupButtonDefault(
+        context: context,
+        title: "Archivo demasiado grande",
+        message: "El archivo seleccionado pesa $sizeMB MB.\n\n"
+            "El tamaño máximo permitido es de 100 MB por archivo.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      
+      return false;
+    }
+    
+    return true;
+  }
+
+  // 🔥 MÉTODO: Validar tamaño total de todos los archivos
+  Future<bool> _validateTotalSize(int newFileSize, BuildContext context) async {
+    final currentTotal = _calculateTotalFileSize();
+    final projectedTotal = currentTotal + newFileSize;
+    
+    if (projectedTotal > maxTotalSizeBytes) {
+      final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
+      final newFileMB = (newFileSize / (1024 * 1024)).toStringAsFixed(2);
+      final projectedMB = (projectedTotal / (1024 * 1024)).toStringAsFixed(2);
+      
+      if (!context.mounted) return false;
+      
+      await appPopupButtonDefault(
+        context: context,
+        title: "Límite de almacenamiento excedido",
+        message: "Ya tienes $currentMB MB en archivos.\n"
+            "El nuevo archivo pesa $newFileMB MB.\n\n"
+            "Total proyectado: $projectedMB MB\n"
+            "Límite máximo: 200 MB\n\n"
+            "Por favor, elimina algunos archivos antes de continuar.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      
+      return false;
+    }
+    
+    return true;
   }
 
   Future<void> _takePhoto() async {
@@ -302,6 +383,7 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     _recordingTimer = null;
   }
 
+  // =============== ACTUALIZADO: Método con validaciones ===============
   Future<void> _processPickedFile(File file, ReflectionFileType type) async {
     try {
       setState(() {
@@ -310,9 +392,28 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
 
       final fileSize = await file.length();
 
+      // 🔥 VALIDACIÓN 1: Tamaño individual
+      if (!await _validateFileSize(file, context)) {
+        setState(() {
+          _uploadingFiles.remove(file.path);
+        });
+        return;
+      }
+
+      // 🔥 VALIDACIÓN 2: Tamaño total
+      if (!await _validateTotalSize(fileSize, context)) {
+        setState(() {
+          _uploadingFiles.remove(file.path);
+        });
+        return;
+      }
+
       // Verificar límite de almacenamiento para usuarios gratuitos
       if (!await _reflectionService.canAttachFile(fileSize)) {
         _showStorageLimitDialog();
+        setState(() {
+          _uploadingFiles.remove(file.path);
+        });
         return;
       }
 
@@ -338,6 +439,9 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
         _showErrorDialog(
             'Has alcanzado el límite de $maxFiles archivos para tu plan.'
         );
+        setState(() {
+          _uploadingFiles.remove(file.path);
+        });
         return;
       }
 
@@ -367,7 +471,8 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
     } finally {
       setState(() {
         _uploadingFiles.remove(file.path);
-      });    }
+      });
+    }
   }
 
   void _removeAttachedFile(int index) {
@@ -397,6 +502,26 @@ class _NewReflectionScreenState extends State<NewReflectionScreen> {
       _showErrorDialog('Debes escribir al menos un título o contenido');
       return;
     }
+
+    // 🔥 VALIDACIÓN FINAL: Verificar tamaño total antes de guardar
+    final totalSize = _calculateTotalFileSize();
+    if (totalSize > maxTotalSizeBytes) {
+      final totalMB = (totalSize / (1024 * 1024)).toStringAsFixed(2);
+      await appPopupButtonDefault(
+        context: context,
+        title: "Límite excedido",
+        message: "El tamaño total de archivos ($totalMB MB) supera el límite de 200 MB.\n\n"
+            "Por favor, elimina algunos archivos antes de guardar.",
+        buttons: [
+          AppPopupButton(
+            text: "Entendido",
+            onPressed: () {},
+          ),
+        ],
+      );
+      return;
+    }
+
     // Mostrar popup de cargando
     appPopupButtonDefault(
       context: context,

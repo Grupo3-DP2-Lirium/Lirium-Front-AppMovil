@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../../components/components.dart';
 import '../main/main_navigation_screen.dart';
 import '../settings/plans_lirium/get_premium_screen.dart';
+import '../../../data/services/storage_service.dart';
 
 class CollaborationQuestionScreen extends StatefulWidget {
-  const CollaborationQuestionScreen({super.key});
+  const CollaborationQuestionScreen({super.key, required this.userEmail});
+
+  final String userEmail;
 
   @override
   State<CollaborationQuestionScreen> createState() =>
@@ -50,9 +53,17 @@ class _CollaborationQuestionScreenState
       bottomButton: PrimaryButton(
         text: 'Continuar',
         onPressed: selectedOption != null
-            ? () {
-                // Si elige "Sí, quiero que colaboren" -> ir a planes
+            ? () async {
+                // Marcar que completó el primer login para este usuario específico
+                final normalizedEmail = widget.userEmail.trim().toLowerCase();
+                print(
+                  '🔍 COLLABORATION: Marcando primer login completado para: $normalizedEmail',
+                );
+                await StorageService.markFirstLoginCompleted(normalizedEmail);
+                print('✅ COLLABORATION: Primer login marcado como completado');
+
                 if (selectedOption == 'Sí, quiero que colaboren') {
+                  // Ir a planes premium
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -60,7 +71,7 @@ class _CollaborationQuestionScreenState
                     ),
                   );
                 } else {
-                  // Cualquier otra opción -> ir al home con plan FREE
+                  // Ir al home con plan gratuito
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(

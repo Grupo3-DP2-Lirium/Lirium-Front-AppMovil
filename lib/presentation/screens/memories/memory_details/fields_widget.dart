@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/components.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_area.dart';
+import 'package:flutter_frontend/presentation/components/inputs/custom_text_field.dart';
 import 'package:flutter_frontend/presentation/components/selection/list_selector.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_controllers.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -226,7 +228,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
               widget.memory.associatedQuestion!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: AppTextField(
+              child: CustomTextField(
+                label: 'Pregunta',
                 controller: TextEditingController(text: widget.memory.associatedQuestion),
                 enabled: false,
                 hintText: 'Pregunta Default',
@@ -235,7 +238,8 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
           else
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: AppTextField(
+              child: CustomTextField(
+                label: 'Título',
                 hintText: "Escribe un título",
                 controller: widget.titleController,
                 enabled: widget.isEditing,
@@ -243,9 +247,10 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                 (v == null || v.isEmpty) ? "El título es obligatorio" : null,
               ),
             ),
-          AppTextField(
+          CustomTextArea(
+            label: 'Descripción',
             hintText: "Escribe una descripción",
-            maxLines: 10,
+            maxLines: 5,
             controller: widget.descriptionController,
             enabled: widget.isEditing,
             validator: (v) =>

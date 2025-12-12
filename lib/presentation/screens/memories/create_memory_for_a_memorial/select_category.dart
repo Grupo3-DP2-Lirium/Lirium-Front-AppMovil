@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/memorial_data/questions.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/select_questions.dart';
@@ -53,18 +54,11 @@ class _SelectCategoryState extends State<SelectCategory> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Preguntas",
-          style: AppColors.h5.copyWith(color: AppColors.textPrimary),
-        ),
-        centerTitle: true,
+      appBar: CustomMemoryAppBar(
+        title: 'Preguntas',
+        onBack: () => Navigator.pop(context),
+        showBackButton: true,
+        appBarHeight: MediaQuery.of(context).size.height * 0.09,
       ),
       body: SafeArea(
         child: Padding(

@@ -3,6 +3,7 @@ import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/data/services/http_service.dart';
 import 'package:flutter_frontend/data/services/http_client.dart';
 import 'package:flutter_frontend/data/services/firebase_messaging_service.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/extra_documentales_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/subscription_plan_detail_screen.dart';
@@ -46,26 +47,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
+    bool? confirmed = false;
+
     // Mostrar diálogo de confirmación
-    final confirmed = await showDialog<bool>(
+    await appPopupButtonDefault(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro que deseas cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
-              'Cerrar sesión',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
+      title: 'Cerrar sesión',
+      message: '¿Estás seguro que deseas cerrar sesión?',
+      buttons: [
+        AppPopupButton(
+          text: 'Cancelar',
+          onPressed: () {
+            confirmed = false;
+          },
+          color: Colors.grey[200],
+        ),
+        AppPopupButton(
+          text: 'Sí, salir',
+          onPressed: () {
+            confirmed = true;
+          },
+        ),
+      ],
     );
 
     if (confirmed != true) return;
@@ -96,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 3️. Limpiar TODOS los tokens y storage
       await _authStorage.clear();
       await StorageService.clearAll(); // ✅ LIMPIA TODO el storage seguro
+      // NOTA: NO limpiamos el estado del primer login para que persista por usuario
 
       // 4️. Guardar solo el email para prellenar
       if (currentEmail != null && currentEmail.isNotEmpty) {
@@ -167,19 +171,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Limpiar MemoriesByMemorialProvider
       final memoriesByMemorialProvider =
-          Provider.of<MemoriesByMemorialProvider>(context, listen: false);
+      Provider.of<MemoriesByMemorialProvider>(context, listen: false);
       memoriesByMemorialProvider.clear();
 
       print('✅ Todos los providers limpiados');
 
-      // 6️⃣ Navegar al login
+      // 8️. Navegar al login
       if (!mounted) return;
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => LoginScreen(initialEmail: currentEmail),
         ),
-        (route) => false, // Eliminar TODO el stack
+            (route) => false, // Eliminar TODO el stack
       );
 
       print('✅ Logout completado exitosamente');

@@ -3,7 +3,9 @@ import '../../components/components.dart';
 import 'collaboration_question_screen.dart';
 
 class MemoriesQuestionScreen extends StatefulWidget {
-  const MemoriesQuestionScreen({super.key});
+  const MemoriesQuestionScreen({super.key, required this.userEmail});
+
+  final String userEmail;
 
   @override
   State<MemoriesQuestionScreen> createState() => _MemoriesQuestionScreenState();
@@ -47,7 +49,9 @@ class _MemoriesQuestionScreenState extends State<MemoriesQuestionScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const CollaborationQuestionScreen(),
+                    builder: (context) => CollaborationQuestionScreen(
+                      userEmail: widget.userEmail,
+                    ),
                   ),
                 );
               }

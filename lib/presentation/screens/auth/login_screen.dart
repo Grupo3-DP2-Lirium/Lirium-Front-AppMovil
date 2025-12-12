@@ -16,6 +16,7 @@ import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter_frontend/config/api_constants.dart';
 import 'package:provider/provider.dart';
+import '../setup/preserve_question_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialEmail});
@@ -214,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Mensaje de éxito
               const Text(
                 '¡Bienvenido de vuelta!',
@@ -226,18 +227,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              
+
               // Submensaje
               Text(
                 'Redirigiendo...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              
+
               // Indicador de progreso
               SizedBox(
                 width: 100,
@@ -255,15 +253,42 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     // Auto-cerrar después de 2 segundos y navegar
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () async {
       if (mounted && Navigator.canPop(context)) {
         Navigator.of(context).pop(); // Cerrar el popup
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainNavigationScreen(),
-          ),
-        );
+
+        // Verificar si es el primer login del usuario específico
+        final userEmail = _emailController.text.trim().toLowerCase();
+        print('🔍 LOGIN: Verificando primer login para email: $userEmail');
+
+        // Debug: mostrar todos los usuarios que han completado el primer login
+        await StorageService.getCompletedFirstLoginUsers();
+
+        final hasCompletedFirstLogin =
+            await StorageService.hasCompletedFirstLogin(userEmail);
+
+        print('🔍 LOGIN: hasCompletedFirstLogin = $hasCompletedFirstLogin');
+
+        if (!hasCompletedFirstLogin) {
+          // Es el primer login de este usuario -> ir a preguntas de configuración
+          print('✅ LOGIN: Primer login detectado, yendo a configuración');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  PreserveQuestionScreen(userEmail: userEmail),
+            ),
+          );
+        } else {
+          // Este usuario ya completó el primer login -> ir directo al home
+          print('✅ LOGIN: Usuario ya completó primer login, yendo al home');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MainNavigationScreen(),
+            ),
+          );
+        }
       }
     });
   }

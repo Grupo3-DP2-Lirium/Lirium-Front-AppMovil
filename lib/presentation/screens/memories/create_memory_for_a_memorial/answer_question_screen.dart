@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
-import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/memory_saved_screen.dart';
+import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
@@ -41,6 +42,8 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   bool _isRecording = false;
   File? _recordedFile;
   XFile? _videoFile;
+  XFile? _photoFile;
+  bool _isPhoto = false; // true if media is photo, false if video
 
   // Audio recording variables
   FlutterSoundRecorder? _audioRecorder;
@@ -102,14 +105,25 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
       await _memoryService.createMemory(request: request, files: files);
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => MemorySavedScreen(
-              categoryName: widget.categoryName,
-              question: widget.question,
-              memorialId: widget.memorialId,
+        await appPopupButtonDefault(
+          context: context,
+          title: '¡Recuerdo guardado!',
+          message: 'Tu memoria ha sido guardada exitosamente en el memorial.',
+          buttons: [
+            AppPopupButton(
+              text: 'Aceptar',
+              onPressed: () {
+                // Pop 4 times to go back to MemoriesGridScreen
+                // AnswerQuestionScreen -> SelectQuestionsScreen -> SelectCategoryScreen -> CreateMemoryToMemorialScreen -> MemoriesGridScreen
+                int popCount = 4;
+                for (int i = 0; i < popCount; i++) {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
+                }
+              },
             ),
-          ),
+          ],
         );
       }
     } catch (e) {
@@ -151,7 +165,9 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
       if (video != null) {
         setState(() {
           _videoFile = video;
+          _photoFile = null;
           _recordedFile = File(video.path);
+          _isPhoto = false;
         });
         await _initializeVideoPlayer(video.path);
       }
@@ -170,11 +186,318 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
     _videoController?.dispose();
     setState(() {
       _videoFile = null;
+      _photoFile = null;
       _recordedFile = null;
       _videoController = null;
       _isVideoInitialized = false;
       _isVideoPlaying = false;
+      _isPhoto = false;
     });
+  }
+
+  // Show media options modal
+  void _showMediaOptionsModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.image_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Añadir imagen',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '1:1',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  _showImageSourceModal();
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.videocam_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Añadir video',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                trailing: Icon(Icons.rectangle_outlined, size: 20, color: Colors.grey[400]),
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  _showVideoSourceModal();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Show image source selection (camera or gallery)
+  void _showImageSourceModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.camera_alt_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Tomar foto',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.photo_library_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Elegir de galería',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _pickImage(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Show video source selection (camera or gallery)
+  void _showVideoSourceModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.videocam_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Grabar video',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _startVideoRecording();
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.video_library_outlined, color: _primary),
+                ),
+                title: const Text(
+                  'Elegir de galería',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _pickVideoFromGallery();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Pick image from camera or gallery
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      setState(() => _isRecording = true);
+
+      if (source == ImageSource.camera) {
+        await _requestCameraPermission();
+      }
+
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _photoFile = image;
+          _videoFile = null;
+          _recordedFile = File(image.path);
+          _isPhoto = true;
+          _isVideoInitialized = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRecording = false);
+    }
+  }
+
+  // Pick video from gallery
+  Future<void> _pickVideoFromGallery() async {
+    try {
+      setState(() => _isRecording = true);
+
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5),
+      );
+
+      if (video != null) {
+        setState(() {
+          _videoFile = video;
+          _photoFile = null;
+          _recordedFile = File(video.path);
+          _isPhoto = false;
+        });
+        await _initializeVideoPlayer(video.path);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar video: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRecording = false);
+    }
   }
 
   // Video player methods
@@ -614,20 +937,21 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   }
 
   Widget _buildVideoContent() {
+    final bool hasMedia = _videoFile != null || _photoFile != null;
+    
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_videoFile != null) ...[
-            // Video thumbnail preview - fixed height
-            GestureDetector(
-              onTap: _openFullscreenVideo,
-              child: Container(
+          if (hasMedia) ...[
+            // Media preview
+            if (_isPhoto && _photoFile != null) ...[
+              // Photo preview
+              Container(
                 width: double.infinity,
-                height: 180,
+                height: 220,
                 decoration: BoxDecoration(
-                  color: Colors.black,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _primary, width: 2),
                   boxShadow: [
@@ -639,108 +963,142 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                   ],
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Video thumbnail (first frame)
-                    if (_isVideoInitialized && _videoController != null)
-                      Positioned.fill(
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          child: SizedBox(
-                            width: _videoController!.value.size.width,
-                            height: _videoController!.value.size.height,
-                            child: VideoPlayer(_videoController!),
-                          ),
-                        ),
-                      ),
-                    // Dark overlay
-                    Container(color: Colors.black.withOpacity(0.3)),
-                    // Play icon
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: _primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 36,
-                      ),
-                    ),
-                    // Duration badge
-                    if (_isVideoInitialized && _videoController != null)
-                      Positioned(
-                        bottom: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _formatVideoDuration(
-                              _videoController!.value.duration,
-                            ),
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Loading indicator
-                    if (!_isVideoInitialized)
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: _primary),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Cargando video...',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+                child: Image.file(
+                  File(_photoFile!.path),
+                  fit: BoxFit.cover,
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-
-            // Tap to preview hint
-            Text(
-              'Toca para ver el video',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                color: AppColors.textSecondary,
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.image, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Imagen seleccionada',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ] else if (!_isPhoto && _videoFile != null) ...[
+              // Video thumbnail preview
+              GestureDetector(
+                onTap: _openFullscreenVideo,
+                child: Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _primary, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primary.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (_isVideoInitialized && _videoController != null)
+                        Positioned.fill(
+                          child: FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: _videoController!.value.size.width,
+                              height: _videoController!.value.size.height,
+                              child: VideoPlayer(_videoController!),
+                            ),
+                          ),
+                        ),
+                      Container(color: Colors.black.withOpacity(0.3)),
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                      if (_isVideoInitialized && _videoController != null)
+                        Positioned(
+                          bottom: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _formatVideoDuration(
+                                _videoController!.value.duration,
+                              ),
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!_isVideoInitialized)
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: _primary),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Cargando video...',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Toca para ver el video',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Action buttons
             Row(
               children: [
-                // Delete button
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _removeVideo,
@@ -767,7 +1125,6 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Save button
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _saving ? null : _saveMemory,
@@ -802,7 +1159,7 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
               ],
             ),
           ] else ...[
-            // Estado inicial - sin video
+            // Estado inicial - sin media
             Container(
               width: 100,
               height: 100,
@@ -810,11 +1167,11 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                 color: _primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.videocam_outlined, size: 48, color: _primary),
+              child: Icon(Icons.photo_camera_outlined, size: 48, color: _primary),
             ),
             const SizedBox(height: 24),
             Text(
-              'Graba un video para responder\nesta pregunta',
+              'Añade fotos o videos para\nresponder esta pregunta',
               style: AppColors.bodyLarge.copyWith(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w500,
@@ -826,7 +1183,7 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _isRecording ? null : _startVideoRecording,
+                onPressed: _isRecording ? null : _showMediaOptionsModal,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
@@ -844,9 +1201,9 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.videocam),
+                    : const Icon(Icons.add_photo_alternate_outlined),
                 label: Text(
-                  _isRecording ? 'Abriendo cámara...' : 'Grabar Video',
+                  _isRecording ? 'Cargando...' : 'Añadir multimedia',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.w600,
@@ -1160,24 +1517,11 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.categoryName,
-          style: AppColors.h5.copyWith(color: AppColors.textPrimary),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.close, color: AppColors.textSecondary),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
+      appBar: CustomMemoryAppBar(
+        title: widget.categoryName,
+        onBack: () => Navigator.pop(context),
+        showBackButton: true,
+        appBarHeight: MediaQuery.of(context).size.height * 0.09,
       ),
       body: Column(
         children: [
