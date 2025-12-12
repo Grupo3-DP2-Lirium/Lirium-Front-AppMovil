@@ -237,7 +237,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                   const FileTypeFilterButton(),
                   const SizedBox(width: 8),
                   // Botón de filtro por memorial
-                  const MemorialFilterButton(),
+                  //const MemorialFilterButton(),
                 ],
               ),
             ),

@@ -2,10 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_frontend/data/models/documentary_model.dart';
 import 'package:flutter_frontend/data/services/documentary_service.dart';
 
-/// Provider para manejar los documentales de un memorial específico
-/// - Usa DocumentaryService.listDocumentaries(memorialId, page, size)
-/// - Convierte JSON -> DocumentaryModel
-/// - Soporta paginación, recarga, búsqueda local, agregar/actualizar/eliminar en memoria local
+/// Provider para manejar documentales de un memorial (sin paginación)
+/// Usa DocumentaryService.getDocumentariesByMemorial(memorialId)
 class DocumentariesByMemorialProvider extends ChangeNotifier {
   final DocumentaryService _service;
 
@@ -18,51 +16,29 @@ class DocumentariesByMemorialProvider extends ChangeNotifier {
   String? _error;
   bool _loaded = false;
 
-  // Trackear memorial actual
+  // Memorial actual
   String? _currentMemorialId;
 
-  // Paginación
-  int _page = 0;
-  final int _pageSize = 10;
-  bool _hasMore = true;
-
-  // Filtro local
-  String _searchText = '';
-
-  // -------------------------
-  // Getters públicos
-  // -------------------------
+  // Getters
   List<DocumentaryModel> get documentaries => List.unmodifiable(_documentaries);
-
-  List<DocumentaryModel> get filteredDocumentaries {
-    if (_searchText.isEmpty) return documentaries;
-    final q = _searchText.toLowerCase();
-    return _documentaries.where((d) =>
-    d.title.toLowerCase().contains(q) ||
-        d.description.toLowerCase().contains(q)
-    ).toList();
-  }
-
   bool get loading => _loading;
   String? get error => _error;
   bool get loaded => _loaded;
-  bool get hasMore => _hasMore;
-  String get searchText => _searchText;
-  int get currentPage => _page;
-  int get pageSize => _pageSize;
   String? get currentMemorialId => _currentMemorialId;
 
+  /// Cargar documentales de un memorial
   Future<void> loadDocumentaries({ required String memorialId, bool force = false }) async {
-    // Si cambia el memorial, limpiar estado
+    // Si el memorial cambia, limpiar
     if (_currentMemorialId != null && _currentMemorialId != memorialId) {
+      if (kDebugMode) print('Memorial cambió de $_currentMemorialId a $memorialId - limpiando...');
       _clearState();
     }
 
-    // Evitar recargar si ya cargado y no forzado
-    if (_currentMemorialId == memorialId && _loaded && !force) return;
-
-    if (force) _clearState();
-    if (!_hasMore && !force) return;
+    // Evitar recarga innecesaria
+    if (_currentMemorialId == memorialId && _loaded && !force) {
+      if (kDebugMode) print('Documentaries del memorial $memorialId ya cargadas - skipping');
+      return;
+    }
 
     _currentMemorialId = memorialId;
     _loading = true;
@@ -70,65 +46,59 @@ class DocumentariesByMemorialProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _service.listDocumentaries(
-        memorialId: memorialId,
-        page: _page,
-        size: _pageSize,
-      );
+      if (kDebugMode) print('Cargando documentales para memorial: $memorialId');
 
-      if (response == null || response.content == null) {
-        // No hay datos, terminar sin crash
-        _hasMore = false;
-        _loaded = true;
-        return;
+      final response = await _service.getDocumentariesByMemorial(memorialId);
+
+      _documentaries.clear();
+      _documentaries.addAll(response);
+
+      if (kDebugMode) {
+        print('Recibidos ${_documentaries.length} documentales');
+        for (var d in _documentaries) {
+          print('Documental: id=${d.idDocumentary}, title=${d.title}');
+        }
       }
 
-      final nuevos = response.content.map((json) => DocumentaryModel.fromJson(json)).toList();
-      _documentaries.addAll(nuevos);
-
-      final current = response.number ?? 0;
-      final totalPages = response.totalPages ?? 1;
-      _hasMore = (current + 1) < totalPages;
-      _page = current + 1;
       _loaded = true;
 
     } catch (e, st) {
       _error = e.toString();
-      if (kDebugMode) print('DocumentariesByMemorialProvider.loadDocumentaries ERROR: $e\n$st');
+      if (kDebugMode) print('Error cargando documentales: $e\n$st');
     } finally {
       _loading = false;
       notifyListeners();
     }
   }
 
+  /// Recargar documentales
   Future<void> reload({ required String memorialId }) async {
     await loadDocumentaries(memorialId: memorialId, force: true);
   }
 
-  void setSearchText(String txt) {
-    _searchText = txt;
-    notifyListeners();
-  }
-
+  /// Agregar localmente
   void addDocumentary(DocumentaryModel doc) {
     if (_documentaries.any((d) => d.idDocumentary == doc.idDocumentary)) return;
     _documentaries.insert(0, doc);
     notifyListeners();
   }
 
+  /// Actualizar localmente
   void updateDocumentary(String id, DocumentaryModel updated) {
     final idx = _documentaries.indexWhere((d) => d.idDocumentary == id);
-    if (idx >= 0) {
+    if (idx != -1) {
       _documentaries[idx] = updated;
       notifyListeners();
     }
   }
 
+  /// Eliminar localmente
   void removeDocumentary(String id) {
     _documentaries.removeWhere((d) => d.idDocumentary == id);
     notifyListeners();
   }
 
+  /// Limpiar estado
   void clear() {
     _clearState();
     _currentMemorialId = null;
@@ -140,8 +110,5 @@ class DocumentariesByMemorialProvider extends ChangeNotifier {
     _loading = false;
     _error = null;
     _loaded = false;
-    _page = 0;
-    _hasMore = true;
-    _searchText = '';
   }
 }

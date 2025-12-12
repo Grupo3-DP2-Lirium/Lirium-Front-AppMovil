@@ -254,5 +254,22 @@ class DocumentaryService {
     }
   }
 
+  /// Obtener todos los documentales de un memorial específico
+  Future<List<DocumentaryModel>> getDocumentariesByMemorial(String memorialId) async {
+    final uri = Uri.parse('$baseUrl/documentaries/memorial/$memorialId');
+
+    print('DEBUG: Getting documentaries for memorial - URI: $uri');
+
+    final res = await _client.get(uri, headers: _http.authHeaders());
+
+    if (res.statusCode == 200) {
+      final jsonMap = jsonDecode(res.body);
+      final List<dynamic> data = jsonMap['data'];
+      return data.map((json) => DocumentaryModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Error obteniendo documentales del memorial: ${res.statusCode}');
+    }
+  }
+
   Future listDocumentaries({required String memorialId, required int page, required int size}) async {}
 }

@@ -36,7 +36,7 @@ class _VideosTabState extends State<VideosTab> {
         capsulesProvider.loadCapsules(memorialId: widget.memorialId, force: true);
       }
       if (!docsProvider.loaded || docsProvider.currentMemorialId != widget.memorialId) {
-        // docsProvider.loadDocumentaries(memorialId: widget.memorialId, force: true);
+        docsProvider.loadDocumentaries(memorialId: widget.memorialId, force: true);
       }
     });
   }
@@ -100,10 +100,10 @@ class _VideosTabState extends State<VideosTab> {
       builder: (context, capsulesProvider, docsProvider, _) {
         final allVideos = [
           ...capsulesProvider.capsules.where((c) => c.videoUrl != null && c.videoUrl!.isNotEmpty && c.publishedDate != null),
-          // ...docsProvider.documentaries.where((d) => d.videoUrl != null && d.videoUrl!.isNotEmpty)
+          ...docsProvider.documentaries.where((d) => d.videoUrl != null && d.videoUrl!.isNotEmpty && d.publishedDate != null)
         ];
 
-        if (!capsulesProvider.loaded) {
+        if (!capsulesProvider.loaded || !docsProvider.loaded) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
@@ -156,7 +156,7 @@ class _VideosTabState extends State<VideosTab> {
 
     return Stack(
       children: [
-        // Video fondo
+        // Fondo de video
         if (isActive && videoController != null && videoController!.value.isInitialized)
           SizedBox.expand(
             child: FittedBox(
@@ -171,47 +171,86 @@ class _VideosTabState extends State<VideosTab> {
         else
           Container(color: Colors.black),
 
-        // Título + Fecha arriba
+        // Título + Fecha + Etiqueta alineada debajo
         Positioned(
           top: 40,
           left: 20,
           right: 20,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // TÍTULO A LA IZQUIERDA
               Expanded(
                 child: Text(
                   videoItem.title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                    shadows: const [
+                    shadows: [
                       Shadow(offset: Offset(0, 1.5), blurRadius: 4, color: Colors.black87),
                     ],
                   ),
                 ),
               ),
 
-              if (formattedDate.isNotEmpty)
-                Text(
-                  formattedDate,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    shadows: const [
-                      Shadow(offset: Offset(0, 1.5), blurRadius: 4, color: Colors.black87),
-                    ],
-                  ),
+              // COLUMNA: FECHA ARRIBA + ETIQUETA ABAJO
+// FECHA + ETIQUETA: centradas entre sí, pero alineadas a la derecha del Row
+              Align(
+                alignment: Alignment.centerRight, // mueve todo el bloque a la derecha
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center, // centra los hijos (fecha + etiqueta)
+                  children: [
+                    if (formattedDate.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          formattedDate,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            shadows: const [
+                              Shadow(offset: Offset(0, 1.5), blurRadius: 4, color: Colors.black87),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 6),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: videoItem.runtimeType.toString() == "CapsuleModel"
+                            ? const Color(0xFFFF9800).withOpacity(0.85) // naranja
+                            : const Color(0xFF9C27B0).withOpacity(0.85), // morado
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white24,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        videoItem.runtimeType.toString() == "CapsuleModel"
+                            ? "Cápsula"
+                            : "Documental",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
 
-        // Descripción abajo
+        // Descripción
         if ((videoItem.description ?? "").isNotEmpty)
           Positioned(
             bottom: 40,
