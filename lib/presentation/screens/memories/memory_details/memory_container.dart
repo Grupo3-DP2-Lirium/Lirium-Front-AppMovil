@@ -196,12 +196,12 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                   hintText: "Escribe la pregunta",
                 ),
               ),
-            AppTextField(
+            /*AppTextField(
               hintText: "Escribe la pregunta",
               controller: widget.titleController,
               enabled: _isEditing,
               validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
-            ),
+            ),*/
             const SizedBox(height: 16),
             AppTextField(
               hintText: "Escribe la respuesta",

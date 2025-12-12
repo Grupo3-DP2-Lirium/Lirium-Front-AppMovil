@@ -28,7 +28,7 @@ Future<void> appPopupButtonDefault({
   return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => Center(
+      builder: (_) => Center(
         child: Stack(
             children:[
               Container(
@@ -86,7 +86,7 @@ Future<void> appPopupButtonDefault({
                                         fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                   onPressed: () {
-                                    Navigator.pop(dialogContext);
+                                    Navigator.pop(context);
                                     buttons[0].onPressed();
                                   },
                                 ),
@@ -107,10 +107,7 @@ Future<void> appPopupButtonDefault({
                                           color: btn.color ?? (
                                               buttons.length == 1 ? AppColors.primary :
                                               (index == 0 ? Colors.grey[200] : AppColors.primary)),
-                                          onPressed: () {
-                                            Navigator.pop(dialogContext);
-                                            btn.onPressed();
-                                          },
+                                          onPressed: btn.onPressed,
                                           child: Text(
                                             btn.text,
                                             style: TextStyle(
@@ -139,7 +136,7 @@ Future<void> appPopupButtonDefault({
                   child: IconButton(
                     icon: const Icon(Icons.close, color: Colors.grey),
                     onPressed: () {
-                      Navigator.pop(dialogContext);
+                      Navigator.pop(context);
                     },
                   ),
                 ),

@@ -107,7 +107,7 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final subProvider = context.watch<SubscriptionProvider>();
-    
+
     // ✅ CRÍTICO: Colaboradores NO necesitan plan premium
     final isCollaborator = !_detailsState.isOwner;
     final hasPremiumPermission = isCollaborator || subProvider.permissions.contains("CREATE_MEMORIALS");
@@ -150,11 +150,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
             ],
           ),
 
-          // ✅ Botón flotante
-          if (_detailsState.canEdit || _detailsState.isOwner)
+          // Botón flotante
+          if (_selectedTopTab == 0 && (_detailsState.canEdit || _detailsState.isOwner))
             _buildFloatingButton(hasPremiumPermission),
 
-          // ✅ Botón de configuración - Solo si es dueño (NO colaborador)
+          // Botón de configuración - Solo si es dueño (NO colaborador)
           if (_detailsState.isOwner)
             _buildSettingsButton(),
         ],
@@ -163,6 +163,11 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
   }
 
   Widget _buildTabContent() {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final statusBarHeight = mediaQuery.padding.top;
+    final pageViewHeight = screenHeight - statusBarHeight - 110;
+
     switch (_selectedTopTab) {
       case 0:
         return MemoriesTab(
@@ -172,11 +177,14 @@ class _MemorialDetailScreenState extends State<MemorialDetailScreen> {
           physics: const NeverScrollableScrollPhysics(),
         );
       case 1:
-        return VideosTab(
-          memorialId: widget.memorialId,
-          //IMPORTANTE: Pasar el scrollController para que no tenga scroll propio
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+        return SizedBox(
+          height: pageViewHeight,
+          child: VideosTab(
+            memorialId: widget.memorialId,
+            parentScrollController: _scrollController,
+            //shrinkWrap: true,
+            //physics: const NeverScrollableScrollPhysics(),
+          ),
         );
       case 2:
         return InfoTab(detailsState: _detailsState);
