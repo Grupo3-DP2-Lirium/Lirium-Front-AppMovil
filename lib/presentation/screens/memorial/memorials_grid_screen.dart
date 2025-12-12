@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/services/storage_service.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/memorial_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/memorial/new_memorial_screen/relation_memorial_screen.dart';
@@ -29,14 +28,14 @@ class _ProfilesScreenState extends State<ProfilesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Recargar cuando cambien tabs
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() {});
       }
     });
-    
+
     // Cargar plan y permisos
     _loadUserPlanAndPermissions();
     // cargar data después de que el widget se haya montado
@@ -78,7 +77,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         controller: _tabController,
         children: [
           _buildMisMemoriales(provider),
-          _buildCollaborationTab(provider)
+          _buildCollaborationTab(provider),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -96,14 +95,18 @@ class _ProfilesScreenState extends State<ProfilesScreen>
 
       // Si hay memoriales -> mostramos un FAB flotante
       final subProvider = context.read<SubscriptionProvider>();
-      final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+      final hasPermission = subProvider.permissions.contains(
+        "CREATE_MEMORIALS",
+      );
 
       return FloatingActionButton.extended(
         onPressed: () {
           if (hasPermission) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+              MaterialPageRoute(
+                builder: (_) => const NewMemorialRelationScreen(),
+              ),
             ).then((_) {
               // refrescar al volver
               provider.cargarMisMemoriales(force: true);
@@ -125,7 +128,6 @@ class _ProfilesScreenState extends State<ProfilesScreen>
         backgroundColor: AppColors.primary,
       );
     }
-
     // Si estamos en la pestaña "Colaboraciones"
     else {
       // Si NO hay colaboraciones -> no mostrar FAB, ya se muestra en el empty state
@@ -135,12 +137,11 @@ class _ProfilesScreenState extends State<ProfilesScreen>
       return Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              AppColors.primary,
-              AppColors.primary,
-            ],
+            colors: [AppColors.primary, AppColors.primary],
           ),
-          borderRadius: BorderRadius.circular(16), // para matching con el FAB extended
+          borderRadius: BorderRadius.circular(
+            16,
+          ), // para matching con el FAB extended
         ),
         child: FloatingActionButton.extended(
           onPressed: () async {
@@ -163,7 +164,6 @@ class _ProfilesScreenState extends State<ProfilesScreen>
       );
     }
   }
-
 
   Widget _buildMisMemoriales(MemorialProvider provider) {
     if (provider.misMemoriales.isEmpty && provider.cargandoMis) {
@@ -196,7 +196,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -208,19 +208,13 @@ class _ProfilesScreenState extends State<ProfilesScreen>
               const SizedBox(height: 24),
               const Text(
                 'Aún no tienes memoriales',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Crea un memorial para preservar los recuerdos de quienes más amas',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -229,17 +223,23 @@ class _ProfilesScreenState extends State<ProfilesScreen>
                 icon: Icons.add,
                 onPressed: () {
                   final subProvider = context.read<SubscriptionProvider>();
-                  final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
+                  final hasPermission = subProvider.permissions.contains(
+                    "CREATE_MEMORIALS",
+                  );
                   // Verificar permisos / plan
                   if (hasPermission) {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const NewMemorialRelationScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const NewMemorialRelationScreen(),
+                      ),
                     );
                   } else {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const GetPremiumScreen(),
+                      ),
                     ).then((_) async {
                       // Se ejecuta al volver
                       await _loadUserPlanAndPermissions();
@@ -267,14 +267,13 @@ class _ProfilesScreenState extends State<ProfilesScreen>
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: provider.misMemoriales.length + 1,
           itemBuilder: (context, index) {
-
             // 👇 este check es CLAVE
             if (index == provider.misMemoriales.length) {
               return provider.cargandoMis
                   ? const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator()),
-              )
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
                   : const SizedBox.shrink();
             }
 
@@ -286,14 +285,27 @@ class _ProfilesScreenState extends State<ProfilesScreen>
               profilePhotoBase64: m.profilePhotoBase64,
               profilePhotoUrl: m.profilePhotoUrl,
               isShared: m.isCollaborative,
+              memorialId: m.isCollaborative ? m.idMemorial : null,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial),
+                    builder: (_) =>
+                        MemorialDetailScreen(memorialId: m.idMemorial),
                   ),
                 );
               },
+              onRemoveUser: m.isCollaborative
+                  ? () {
+                      // TODO: Implementar lógica para remover usuario
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Usuario eliminado del memorial'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  : null,
             );
           },
         ),
@@ -332,7 +344,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -344,19 +356,13 @@ class _ProfilesScreenState extends State<ProfilesScreen>
               const SizedBox(height: 24),
               const Text(
                 'Aún no tienes colaboraciones',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Ingresa un código para unirte y compartir momentos especiales.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -364,10 +370,7 @@ class _ProfilesScreenState extends State<ProfilesScreen>
                 text: 'Ingresar código',
                 icon: Icons.qr_code,
                 gradient: const LinearGradient(
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primary,
-                  ],
+                  colors: [AppColors.primary, AppColors.primary],
                 ),
                 onPressed: () async {
                   final result = await Navigator.push<bool>(
@@ -402,10 +405,23 @@ class _ProfilesScreenState extends State<ProfilesScreen>
             profilePhotoBase64: m.profilePhotoBase64,
             profilePhotoUrl: m.profilePhotoUrl,
             isShared: true,
+            memorialId: m.idMemorial,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => MemorialDetailScreen(memorialId: m.idMemorial)),
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MemorialDetailScreen(memorialId: m.idMemorial),
+                ),
+              );
+            },
+            onRemoveUser: () {
+              // TODO: Implementar lógica para remover usuario de colaboración
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Usuario eliminado de la colaboración'),
+                  backgroundColor: Colors.green,
+                ),
               );
             },
           );

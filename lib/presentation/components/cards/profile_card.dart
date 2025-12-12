@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/presentation/components/cards/collaborator_actions_menu.dart';
 
 class ProfileCard extends StatelessWidget {
   final String name;
@@ -9,6 +10,9 @@ class ProfileCard extends StatelessWidget {
   final String? profilePhotoUrl;
   final bool isShared;
   final VoidCallback onTap;
+  final VoidCallback? onViewCollaborators;
+  final String? memorialId;
+  final VoidCallback? onRemoveUser;
 
   const ProfileCard({
     super.key,
@@ -19,6 +23,9 @@ class ProfileCard extends StatelessWidget {
     this.profilePhotoUrl,
     this.isShared = false,
     required this.onTap,
+    this.onViewCollaborators,
+    this.memorialId,
+    this.onRemoveUser,
   });
 
   ImageProvider _getImage() {
@@ -43,7 +50,7 @@ class ProfileCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 6,
               offset: const Offset(0, 2),
@@ -60,10 +67,7 @@ class ProfileCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.grey[300],
-                image: DecorationImage(
-                  image: _getImage(),
-                  fit: BoxFit.cover,
-                ),
+                image: DecorationImage(image: _getImage(), fit: BoxFit.cover),
               ),
             ),
             const SizedBox(width: 12),
@@ -75,7 +79,10 @@ class ProfileCard extends StatelessWidget {
                   Text(
                     name,
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -90,7 +97,7 @@ class ProfileCard extends StatelessWidget {
                       linkType!,
                       style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                     ),
-                  ]
+                  ],
                 ],
               ),
             ),
@@ -98,13 +105,35 @@ class ProfileCard extends StatelessWidget {
             // Iconos a la derecha
             Column(
               children: [
-                Icon(
-                  isShared ? Icons.groups_2 : Icons.person_outline,
-                  color: Colors.black54,
-                  size: 24,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Menu de acciones para colaboradores (solo si es compartido y hay memorialId)
+                    if (isShared && memorialId != null) ...[
+                      CollaboratorActionsMenu(
+                        memorialId: memorialId!,
+                        memorialName: name,
+                        collaboratorId:
+                            'user_id', // TODO: Obtener el ID real del colaborador
+                        collaboratorName: name,
+                        onRemoveUser: onRemoveUser,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    // Icono principal
+                    Icon(
+                      isShared ? Icons.groups_2 : Icons.person_outline,
+                      color: Colors.black54,
+                      size: 24,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                const Icon(Icons.chevron_right, color: Colors.black38, size: 24),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.black38,
+                  size: 24,
+                ),
               ],
             ),
           ],

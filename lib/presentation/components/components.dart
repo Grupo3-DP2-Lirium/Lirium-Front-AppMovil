@@ -17,6 +17,7 @@ export 'forms/file_type_filter_button.dart';
 export 'cards/profile_card.dart';
 export 'cards/memory_card.dart';
 export 'cards/setting_item.dart';
+export 'cards/collaborator_actions_menu.dart';
 
 // Selection
 export 'selection/option_card.dart';
