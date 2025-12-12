@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/data/models/memory_create_request.dart';
 import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
 import '../../../../providers/memory_provider.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../components/common/app_pop_up.dart';
@@ -65,6 +66,9 @@ class _WriteLetterScreenState extends State<WriteLetterScreen> {
 
       Provider.of<MemoryProvider>(context, listen: false)
           .agregarMemoria(createdMemory);
+
+      final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+      memoriesProvider.addMemory(createdMemory);
 
       Navigator.pop(context); // Cerrar popup de guardando
 

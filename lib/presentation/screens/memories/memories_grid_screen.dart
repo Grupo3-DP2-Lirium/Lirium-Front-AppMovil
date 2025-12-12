@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/data/services/memory_service.dart';
 import 'package:flutter_frontend/domain/entities/memory.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
+import 'package:flutter_frontend/presentation/components/forms/search_field.dart';
 import 'package:flutter_frontend/presentation/screens/memories/create_memory_for_a_memorial/create_memory_to_memorial.dart';
 import 'package:flutter_frontend/presentation/screens/memories/memory_details/memory_detail_screen.dart';
 import 'package:flutter_frontend/presentation/screens/settings/plans_lirium/get_premium_screen.dart';
 import 'package:flutter_frontend/providers/memory_provider.dart';
-import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:flutter_frontend/providers/plan_provider.dart';
 import '../../components/components.dart';
 import 'package:provider/provider.dart';
@@ -20,29 +21,18 @@ class MemoriesGridScreen extends StatefulWidget {
 
 class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   late ScrollController _scrollController;
-  late TextEditingController _searchController;
+  String _selectedFilter = 'all'; // all, image, video, audio, letter
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _searchController = TextEditingController();
     _scrollController.addListener(_onScroll);
 
     // Carga inicial
     Future.microtask(() {
-      final memoryProv = context.read<MemoryProvider>();
-      final memorialProv = context.read<MemorialProvider>();
-
-      memoryProv.cargarMisMemorias();
-
-      // Cargar memoriales para el filtro si no están cargados
-      if (!memorialProv.loadedMis) {
-        memorialProv.cargarMisMemoriales();
-      }
-      if (!memorialProv.loadedColab) {
-        memorialProv.cargarColaborativos();
-      }
+      final prov = context.read<MemoryProvider>();
+      prov.cargarMisMemorias();
     });
   }
 
@@ -51,7 +41,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
 
     // Si estamos a 200px del final y no se está cargando nada
     if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
+        _scrollController.position.maxScrollExtent - 200 &&
         !prov.cargando) {
       prov.cargarMisMemorias(); // carga la siguiente página
     }
@@ -60,8 +50,63 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _searchController.dispose();
     super.dispose();
+  }
+
+  List<Memory> _getFilteredMemories(List<Memory> memories) {
+    if (_selectedFilter == 'all') return memories;
+
+    return memories.where((memory) {
+      switch (_selectedFilter) {
+        case 'image':
+          return memory.files.any((f) => f.type == 'image');
+        case 'video':
+          return memory.files.any((f) => f.type == 'video');
+        case 'audio':
+          return memory.files.any((f) => f.type == 'audio');
+        case 'letter':
+          final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+              (memory.files.isEmpty && memory.description.isNotEmpty);
+          return isLetter;
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  Map<String, int> _getFormatCounts(List<Memory> memories) {
+    final counts = {
+      'image': 0,
+      'video': 0,
+      'audio': 0,
+      'letter': 0,
+    };
+
+    for (final memory in memories) {
+      final isLetter = memory.title.toLowerCase().contains('carta personal') ||
+          (memory.files.isEmpty && memory.description.isNotEmpty);
+
+      if (isLetter) {
+        counts['letter'] = counts['letter']! + 1;
+      }
+
+      for (final file in memory.files) {
+        if (file.type == 'image' && counts['image'] != null) {
+          counts['image'] = counts['image']! + 1;
+          break;
+        }
+        if (file.type == 'video' && counts['video'] != null) {
+          counts['video'] = counts['video']! + 1;
+          break;
+        }
+        if (file.type == 'audio' && counts['audio'] != null) {
+          counts['audio'] = counts['audio']! + 1;
+          break;
+        }
+      }
+    }
+
+    return counts;
   }
 
   @override
@@ -70,67 +115,14 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
     double screenHeight = MediaQuery.of(context).size.height;
     double appBarHeight = screenHeight * 0.09;
 
-    final memoriesToShow =
-        prov.memoriasFiltradas.isNotEmpty ||
-            prov.textoBusqueda.isNotEmpty ||
-            prov.tipoArchivoFiltro != null
+    final memoriesToShow = prov.memoriasFiltradas.isNotEmpty || prov.textoBusqueda.isNotEmpty
         ? prov.memoriasFiltradas
         : prov.misMemorias;
 
+    final filteredMemories = _getFilteredMemories(memoriesToShow);
+    final formatCounts = _getFormatCounts(memoriesToShow);
+
     Widget _buildEmptyState() {
-      // Verificar si hay filtros activos
-      final hasFilters =
-          prov.textoBusqueda.isNotEmpty || prov.tipoArchivoFiltro != null;
-
-      if (hasFilters) {
-        // Estado vacío para filtros sin resultados
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.search_off,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'No se encontraron recuerdos',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Intenta cambiar los filtros o buscar algo diferente',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                PrimaryButton(
-                  text: 'Limpiar filtros',
-                  icon: Icons.clear_all,
-                  onPressed: () {
-                    _searchController.clear();
-                    prov.limpiarTodosFiltros();
-                    _scrollController.jumpTo(0);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      // Estado vacío normal (sin recuerdos)
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -140,7 +132,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -150,51 +142,57 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Aún no tienes recuerdos',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                _selectedFilter == 'all'
+                    ? 'Aún no tienes recuerdos'
+                    : 'No hay recuerdos de este tipo',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Crea un recuerdo para revivir un momento especial',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                _selectedFilter == 'all'
+                    ? 'Crea un recuerdo para revivir un momento especial'
+                    : 'Intenta con otro filtro',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              PrimaryButton(
-                text: 'Crear mi primer recuerdo',
-                icon: Icons.add,
-                onPressed: () async {
-                  final subProvider = context.read<SubscriptionProvider>();
-                  final hasPermission = subProvider.permissions.contains(
-                    "CREATE_MEMORIALS",
-                  );
+              if (_selectedFilter == 'all') ...[
+                const SizedBox(height: 32),
+                PrimaryButton(
+                  text: 'Crear mi primer recuerdo',
+                  icon: Icons.add,
+                  onPressed: () async {
+                    final subProvider = context.read<SubscriptionProvider>();
+                    final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
-                  if (hasPermission) {
-                    final createdMemory = await Navigator.push<Memory>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CreateMemoryToMemorial(),
-                      ),
-                    );
+                    if (hasPermission) {
+                      final createdMemory = await Navigator.push<Memory>(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
+                      );
 
-                    if (createdMemory != null) {
-                      final prov = context.read<MemoryProvider>();
-                      prov.agregarMemoria(createdMemory);
+                      if (createdMemory != null) {
+                        final prov = context.read<MemoryProvider>();
+                        prov.agregarMemoria(createdMemory);
+                      }
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+                      ).then((_) async {
+                        await subProvider.refreshPlan();
+                      });
                     }
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const GetPremiumScreen(),
-                      ),
-                    ).then((_) async {
-                      await subProvider.refreshPlan();
-                    });
-                  }
-                },
-              ),
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -211,244 +209,204 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          // Recargar las memorias forzando la actualización
           await prov.cargarMisMemorias(force: true);
         },
         child: Column(
           children: [
-            // Barra de búsqueda y filtro
+            // Barra de búsqueda
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  // Barra de búsqueda
-                  Expanded(
-                    child: AppSearchBar(
-                      controller: _searchController,
-                      hintText: 'Buscar recuerdos...',
-                      onChanged: (text) {
-                        prov.filtrarMemorias(text);
-                        _scrollController.jumpTo(0);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Botón de filtro por tipo de archivo
-                  const FileTypeFilterButton(),
-                  const SizedBox(width: 8),
-                  // Botón de filtro por memorial
-                  //const MemorialFilterButton(),
-                ],
+              padding: const EdgeInsets.all(16),
+              child: AppSearchBar(
+                hintText: 'Buscar recuerdos...',
+                onChanged: (text) {
+                  prov.filtrarMemorias(text);
+                  _scrollController.jumpTo(0);
+                },
               ),
             ),
 
-            // Indicador de filtros activos
-            if (prov.textoBusqueda.isNotEmpty || prov.tipoArchivoFiltro != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            // Chips de filtro por formato
+            if (memoriesToShow.isNotEmpty)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Icon(Icons.filter_alt, size: 16, color: Colors.grey[600]),
+                    _buildFilterChip(
+                      label: 'Todos',
+                      icon: Icons.grid_view_rounded,
+                      value: 'all',
+                      count: memoriesToShow.length,
+                    ),
                     const SizedBox(width: 8),
-                    Text(
-                      '${memoriesToShow.length} resultado${memoriesToShow.length != 1 ? 's' : ''} • ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w600,
+                    if (formatCounts['image']! > 0)
+                      _buildFilterChip(
+                        label: 'Fotos',
+                        icon: Icons.photo_library_rounded,
+                        value: 'image',
+                        count: formatCounts['image']!,
                       ),
-                    ),
-                    // Chip de búsqueda por texto
-                    if (prov.textoBusqueda.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '"${prov.textoBusqueda}"',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                    if (formatCounts['image']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['video']! > 0)
+                      _buildFilterChip(
+                        label: 'Videos',
+                        icon: Icons.videocam_rounded,
+                        value: 'video',
+                        count: formatCounts['video']!,
                       ),
-                    // Chip de filtro por tipo de archivo
-                    if (prov.tipoArchivoFiltro != null)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getFileTypeIcon(prov.tipoArchivoFiltro!),
-                              size: 12,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _getFileTypeName(prov.tipoArchivoFiltro!),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                    if (formatCounts['video']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['audio']! > 0)
+                      _buildFilterChip(
+                        label: 'Audios',
+                        icon: Icons.audiotrack_rounded,
+                        value: 'audio',
+                        count: formatCounts['audio']!,
                       ),
-
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {
-                        _searchController.clear();
-                        prov.limpiarTodosFiltros();
-                        _scrollController.jumpTo(0);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    if (formatCounts['audio']! > 0) const SizedBox(width: 8),
+                    if (formatCounts['letter']! > 0)
+                      _buildFilterChip(
+                        label: 'Cartas',
+                        icon: Icons.mail_rounded,
+                        value: 'letter',
+                        count: formatCounts['letter']!,
                       ),
-                      child: const Text(
-                        'Limpiar todo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
 
+            if (memoriesToShow.isNotEmpty) const SizedBox(height: 16),
+
             // Grid memories
             Expanded(
               child: prov.cargando && prov.misMemorias.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40),
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                  : memoriesToShow.isEmpty
+                  ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              )
+                  : filteredMemories.isEmpty
                   ? _buildEmptyState()
                   : NotificationListener<ScrollNotification>(
-                      onNotification: (scrollInfo) {
-                        if (!prov.cargando &&
-                            scrollInfo.metrics.pixels >=
-                                scrollInfo.metrics.maxScrollExtent - 200) {
-                          prov.cargarMisMemorias();
-                        }
-                        return false;
-                      },
-                      child: _buildGridView(memoriesToShow, prov),
-                    ),
-            ),
+                onNotification: (scrollInfo) {
+                  if (!prov.cargando &&
+                      scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                    prov.cargarMisMemorias();
+                  }
+                  return false;
+                },
+                child: _buildGridView(filteredMemories, prov),
+              ),
+            )
           ],
         ),
       ),
       floatingActionButton: memoriesToShow.isNotEmpty
           ? Builder(
-              builder: (context) {
-                final subProvider = context.watch<SubscriptionProvider>();
-                final hasPermission = subProvider.permissions.contains(
-                  "CREATE_MEMORIALS",
-                );
+        builder: (context) {
+          final subProvider = context.watch<SubscriptionProvider>();
+          final hasPermission = subProvider.permissions.contains("CREATE_MEMORIALS");
 
-                return FloatingActionButton.extended(
-                  onPressed: hasPermission
-                      ? () async {
-                          final createdMemory = await Navigator.push<Memory>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CreateMemoryToMemorial(),
-                            ),
-                          );
+          return FloatingActionButton.extended(
+            onPressed: hasPermission
+                ? () async {
+              final createdMemory = await Navigator.push<Memory>(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateMemoryToMemorial()),
+              );
 
-                          if (createdMemory != null) {
-                            final prov = context.read<MemoryProvider>();
-                            prov.agregarMemoria(createdMemory);
-                          }
-                        }
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const GetPremiumScreen(),
-                            ),
-                          ).then((_) async {
-                            await subProvider.refreshPlan();
-                            setState(() {});
-                          });
-                        },
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Crear Recuerdo',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  backgroundColor: AppColors.primary.withOpacity(
-                    hasPermission ? 1.0 : 0.6,
-                  ),
-                );
-              },
-            )
+              if (createdMemory != null) {
+                final prov = context.read<MemoryProvider>();
+                prov.agregarMemoria(createdMemory);
+              }
+            }
+                : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GetPremiumScreen()),
+              ).then((_) async {
+                await subProvider.refreshPlan();
+                setState(() {});
+              });
+            },
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Crear Recuerdo',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: AppColors.primary.withOpacity(hasPermission ? 1.0 : 0.6),
+          );
+        },
+      )
           : null,
     );
   }
 
-  IconData _getFileTypeIcon(String tipo) {
-    switch (tipo) {
-      case 'image':
-        return Icons.image;
-      case 'video':
-        return Icons.videocam;
-      case 'audio':
-        return Icons.audiotrack;
-      case 'text':
-        return Icons.text_fields;
-      default:
-        return Icons.file_present;
-    }
-  }
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required String value,
+    required int count,
+  }) {
+    final isSelected = _selectedFilter == value;
 
-  String _getFileTypeName(String tipo) {
-    switch (tipo) {
-      case 'image':
-        return 'Imágenes';
-      case 'video':
-        return 'Videos';
-      case 'audio':
-        return 'Audios';
-      case 'text':
-        return 'Textos';
-      default:
-        return 'Archivos';
-    }
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? Colors.white : AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(label),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withOpacity(0.3)
+                  : AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedFilter = value;
+        });
+      },
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.primary,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : Colors.grey[300]!,
+          width: isSelected ? 0 : 1,
+        ),
+      ),
+    );
   }
 
   Widget _buildGridView(List<Memory> memories, MemoryProvider prov) {
     return GridView.builder(
-      controller: _scrollController, // importante para scroll infinito
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -456,9 +414,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
         mainAxisSpacing: 12,
         childAspectRatio: 0.8,
       ),
-      itemCount:
-          memories.length +
-          (prov.cargando ? 1 : 0), // si está cargando, muestra loader
+      itemCount: memories.length + (prov.cargando ? 1 : 0),
       itemBuilder: (context, index) {
         if (index < memories.length) {
           final memory = memories[index];
@@ -468,9 +424,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             onTap: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => MemoryDetailScreen(memory: memory),
-                ),
+                MaterialPageRoute(builder: (_) => MemoryDetailScreen(memory: memory)),
               );
               if (result is Memory) {
                 prov.actualizarMemoria(index, result);
@@ -478,7 +432,6 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             },
           );
         } else {
-          // Loader final mientras carga más
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(16),
