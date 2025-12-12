@@ -15,7 +15,12 @@ import '../../main/main_navigation_screen.dart';
 // VET/pO7}
 
 class GetPremiumScreen extends StatefulWidget {
-  const GetPremiumScreen({super.key});
+  final int? onboardingSelection;
+  
+  const GetPremiumScreen({
+    super.key, 
+    this.onboardingSelection,
+  });
 
   @override
   State<GetPremiumScreen> createState() => _GetPremiumScreenState();
@@ -220,6 +225,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
   @override
   void initState() {
     super.initState();
+    print("🚀 GET_PREMIUM_SCREEN: InitState llamado. Cargando planes...");
     _loadPlans();
   }
 
@@ -374,7 +380,7 @@ class _GetPremiumScreenState extends State<GetPremiumScreen> {
                         );
                       },
                       child: const Text(
-                        "Continuar con plan gratuito",
+                        "Omitir",
                         style: TextStyle(
                           color: Color(0xFFFC7171),
                           fontSize: 15,

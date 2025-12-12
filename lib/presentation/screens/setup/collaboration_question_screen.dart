@@ -62,23 +62,13 @@ class _CollaborationQuestionScreenState
                 await StorageService.markFirstLoginCompleted(normalizedEmail);
                 print('✅ COLLABORATION: Primer login marcado como completado');
 
-                if (selectedOption == 'Sí, quiero que colaboren') {
-                  // Ir a planes premium
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const GetPremiumScreen(),
-                    ),
-                  );
-                } else {
-                  // Ir al home con plan gratuito
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MainNavigationScreen(),
-                    ),
-                  );
-                }
+                // Todas las opciones van a la pantalla de suscripción
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GetPremiumScreen(),
+                  ),
+                );
               }
             : null,
       ),
