@@ -75,12 +75,13 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
             prov.textoBusqueda.isNotEmpty ||
             prov.tipoArchivoFiltro != null
         ? prov.memoriasFiltradas
-        : prov.misMemorias;
+        : prov.memoriasFiltradas;
 
     Widget _buildEmptyState() {
       // Verificar si hay filtros activos
       final hasFilters =
-          prov.textoBusqueda.isNotEmpty || prov.tipoArchivoFiltro != null;
+          prov.textoBusqueda.isNotEmpty ||
+          prov.tipoArchivoFiltro != null ;
 
       if (hasFilters) {
         // Estado vacío para filtros sin resultados

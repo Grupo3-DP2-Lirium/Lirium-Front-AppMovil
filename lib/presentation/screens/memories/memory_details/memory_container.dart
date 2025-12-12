@@ -263,35 +263,115 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     return _buildQA();
   }
 
-  Widget _buildQA() => SingleChildScrollView(
+  Widget _buildQA() {
+    final hasQuestion = widget.memory.associatedQuestion != null &&
+        widget.memory.associatedQuestion!.trim().isNotEmpty;
+
+    final personName = "esa persona";
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            if (widget.memory.associatedQuestion != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: AppTextField(
-                  controller: TextEditingController(text: widget.memory.associatedQuestion),
-                  enabled: false,
-                  hintText: "Escribe la pregunta",
+
+            if (hasQuestion)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3F2FD), // azul
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.help_outline_rounded,
+                        size: 32, color: Colors.blue[400]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Pregunta",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.memory.associatedQuestion!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blueGrey[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            /*AppTextField(
-              hintText: "Escribe la pregunta",
-              controller: widget.titleController,
-              enabled: _isEditing,
-              validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
-            ),*/
-            const SizedBox(height: 16),
+
+            // ================= CARTA PERSONAL =================
+            if (!hasQuestion)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E5F5), // morado suave
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mail_rounded,
+                        size: 32, color: Colors.purple[400]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Carta personal",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple[700],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "¿Qué te gustaría decirle a $personName?",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.purple[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ================= TEXTO =================
             AppTextField(
-              hintText: "Escribe la respuesta",
+              hintText: hasQuestion
+                  ? "Escribe la respuesta"
+                  : "Escribe tu carta aquí",
               controller: widget.descriptionController,
               enabled: _isEditing,
               maxLines: 20,
-              validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
+              validator: (v) =>
+              (v == null || v.isEmpty) ? "Este campo es obligatorio" : null,
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
   void _showAddOptions(BuildContext context) {
     print('🎬 _showAddOptions llamado');
@@ -703,7 +783,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       currentTotal -= _localFiles[existingIndex].size.toInt();
     }
 
-    // 🔥 VALIDACIÓN 2: Tamaño total (sin contar el audio que se va a reemplazar)
+    // VALIDACIÓN 2: Tamaño total (sin contar el audio que se va a reemplazar)
     final projectedTotal = currentTotal + fileSize;
     if (projectedTotal > maxTotalSizeBytes) {
       final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
