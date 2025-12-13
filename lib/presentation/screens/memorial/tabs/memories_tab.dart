@@ -36,11 +36,11 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
   // Filtros disponibles
   final List<FilterChipData> _filters = const [
     FilterChipData(key: 'all', label: 'Recientes', icon: Icons.access_time_rounded),
-    FilterChipData(key: 'gallery', label: 'Galería', icon: Icons.photo_library_rounded),
-    FilterChipData(key: 'images', label: 'Formato', icon: Icons.image_rounded),
     FilterChipData(key: 'timeline', label: 'Línea de Tiempo', icon: Icons.timeline_rounded),
     FilterChipData(key: 'themes', label: 'Temáticas', icon: Icons.category_rounded),
     FilterChipData(key: 'moments', label: 'Momentos', icon: Icons.ac_unit_rounded),
+    FilterChipData(key: 'gallery', label: 'Galería', icon: Icons.photo_library_rounded),
+    FilterChipData(key: 'images', label: 'Formato', icon: Icons.image_rounded),
   ];
 
   @override
