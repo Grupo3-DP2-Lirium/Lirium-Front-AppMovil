@@ -128,24 +128,24 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   // 🔥 MÉTODO: Calcular tamaño total de archivos
   int _calculateTotalFileSize() {
     int total = 0;
-    
+
     // Sumar archivos existentes
     for (var file in _localFiles) {
       total += file.size.toInt();
     }
-    
+
     return total;
   }
 
   // 🔥 MÉTODO: Validar tamaño individual del archivo
   Future<bool> _validateFileSize(File file, BuildContext context) async {
     final fileSize = await file.length();
-    
+
     if (fileSize > maxFileSizeBytes) {
       final sizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-      
+
       if (!context.mounted) return false;
-      
+
       await appPopupButtonDefault(
         context: context,
         title: "Archivo demasiado grande",
@@ -158,10 +158,10 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
           ),
         ],
       );
-      
+
       return false;
     }
-    
+
     return true;
   }
 
@@ -169,14 +169,14 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   Future<bool> _validateTotalSize(int newFileSize, BuildContext context) async {
     final currentTotal = _calculateTotalFileSize();
     final projectedTotal = currentTotal + newFileSize;
-    
+
     if (projectedTotal > maxTotalSizeBytes) {
       final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
       final newFileMB = (newFileSize / (1024 * 1024)).toStringAsFixed(2);
       final projectedMB = (projectedTotal / (1024 * 1024)).toStringAsFixed(2);
-      
+
       if (!context.mounted) return false;
-      
+
       await appPopupButtonDefault(
         context: context,
         title: "Límite de almacenamiento excedido",
@@ -192,25 +192,27 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
           ),
         ],
       );
-      
+
       return false;
     }
-    
+
     return true;
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
     if (_localFiles.isNotEmpty) {
       final file = _localFiles.first;
       final fileType = file.type;
       final previewHeight =
-          fileType == "audio" ? widget.screenHeight * 0.10 : widget.screenHeight * 0.40;
+      fileType == "audio" ? widget.screenHeight * 0.10 : widget.screenHeight * 0.40;
       return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (fileType == "audio") _buildQA(hideDescription: _localFiles.isNotEmpty && _localFiles.first.type == "audio"),
             PreviewWidget(
               localFiles: _localFiles,
               currentFileIndex: _currentFileIndex,
@@ -263,39 +265,119 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     return _buildQA();
   }
 
-  Widget _buildQA() => SingleChildScrollView(
+  Widget _buildQA({bool hideDescription = false}) {
+    final hasQuestion = widget.memory.associatedQuestion != null &&
+        widget.memory.associatedQuestion!.trim().isNotEmpty;
+
+    final personName = "esa persona";
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           children: [
-            if (widget.memory.associatedQuestion != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: AppTextField(
-                  controller: TextEditingController(text: widget.memory.associatedQuestion),
-                  enabled: false,
-                  hintText: "Escribe la pregunta",
+            if (hasQuestion)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3F2FD), // azul
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.help_outline_rounded,
+                        size: 32, color: Colors.blue[400]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Pregunta",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.memory.associatedQuestion!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blueGrey[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            /*AppTextField(
-              hintText: "Escribe la pregunta",
-              controller: widget.titleController,
-              enabled: _isEditing,
-              validator: (v) => (v == null || v.isEmpty) ? "La pregunta es obligatoria" : null,
-            ),*/
-            const SizedBox(height: 16),
-            AppTextField(
-              hintText: "Escribe la respuesta",
-              controller: widget.descriptionController,
-              enabled: _isEditing,
-              maxLines: 20,
-              validator: (v) => (v == null || v.isEmpty) ? "La respuesta es obligatoria" : null,
-            ),
+
+            // ================= CARTA PERSONAL =================
+            if (!hasQuestion)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E5F5), // morado suave
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mail_rounded,
+                        size: 32, color: Colors.purple[400]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Carta personal",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple[700],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "¿Qué te gustaría decirle a $personName?",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.purple[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ================= TEXTO =================
+            if (!hideDescription)
+              AppTextField(
+                hintText: hasQuestion
+                    ? "Escribe la respuesta"
+                    : "Escribe tu carta aquí",
+                controller: widget.descriptionController,
+                enabled: _isEditing,
+                maxLines: 20,
+                validator: (v) =>
+                (v == null || v.isEmpty) ? "Este campo es obligatorio" : null,
+              ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
   void _showAddOptions(BuildContext context) {
     print('🎬 _showAddOptions llamado');
-    
+
     try {
       showModalBottomSheet(
         context: context,
@@ -361,7 +443,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       await _addImageWithImprovement(context);
       return;
     }
-    
+
     // Para video y audio, mantener el flujo original
     final picked = await _pickFile(type, context);
     if (picked == null) return;
@@ -372,9 +454,9 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
     if (!await _validateFileSize(file, context)) {
       return; // Detener si excede 100MB
     }
-    
+
     final fileSize = await file.length();
-    
+
     // 🔥 VALIDACIÓN 2: Tamaño total
     if (!await _validateTotalSize(fileSize, context)) {
       return; // Detener si excede 200MB total
@@ -411,7 +493,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
   // =============== ACTUALIZADO: Agregar validaciones para imágenes ===============
   Future<void> _addImageWithImprovement(BuildContext context) async {
     print('🎬 _addImageWithImprovement iniciado');
-    
+
     try {
       // PASO 1: Elegir fuente (Galería o Cámara)
       print('📋 Abriendo modal de selección de fuente...');
@@ -451,7 +533,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         print('❌ Usuario canceló selección de fuente');
         return;
       }
-      
+
       if (!context.mounted) {
         print('❌ Context no disponible después de selección');
         return;
@@ -485,7 +567,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       }
 
       final fileSize = await file.length();
-      
+
       if (!await _validateTotalSize(fileSize, context)) {
         return; // Detener si excede 200MB total
       }
@@ -494,7 +576,6 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       await Future.delayed(const Duration(milliseconds: 200));
       if (!context.mounted) return;
 
-      // PASO 3: Preguntar si quiere mejorar con IA
       print('🤔 Preguntando si desea mejorar con IA...');
 
       final bool? shouldEnhance = await showModalBottomSheet<bool>(
@@ -518,7 +599,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
                 const SizedBox(height: 12),
                 const Text(
                   'Solo se pueden subir imágenes hasta de 1MB. '
-                  'Ampliación de límite pensada próximamente… 😉',
+                      'Ampliación de límite pensada próximamente… 😉',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -573,7 +654,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
         // FLUJO CON MEJORA: Ir directo a ImageImprovementScreen
         print('🚀 Usuario eligió mejorar con IA, navegando directo a mejora...');
         await Future.delayed(const Duration(milliseconds: 300));
-        
+
         if (!context.mounted) return;
 
         final String? enhancedPath = await Navigator.push<String>(
@@ -624,7 +705,7 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       }
 
       final finalFileSize = await finalFile.length();
-      
+
       if (!await _validateTotalSize(finalFileSize, context)) {
         return;
       }
@@ -654,24 +735,24 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       });
 
       print('✅ Imagen agregada exitosamente a _localFiles (total: ${_localFiles.length})');
-      
+
       // Mostrar confirmación
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(shouldEnhance 
-              ? '✨ Imagen mejorada agregada' 
-              : '📸 Imagen agregada'),
+            content: Text(shouldEnhance
+                ? '✨ Imagen mejorada agregada'
+                : '📸 Imagen agregada'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
       }
-      
+
     } catch (e, stackTrace) {
       print('❌ Error en _addImageWithImprovement: $e');
       print('Stack trace: $stackTrace');
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -703,15 +784,15 @@ class _MemoryContainerState extends State<MemoryContainer> with AutomaticKeepAli
       currentTotal -= _localFiles[existingIndex].size.toInt();
     }
 
-    // 🔥 VALIDACIÓN 2: Tamaño total (sin contar el audio que se va a reemplazar)
+    // VALIDACIÓN 2: Tamaño total (sin contar el audio que se va a reemplazar)
     final projectedTotal = currentTotal + fileSize;
     if (projectedTotal > maxTotalSizeBytes) {
       final currentMB = (currentTotal / (1024 * 1024)).toStringAsFixed(2);
       final newFileMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
       final projectedMB = (projectedTotal / (1024 * 1024)).toStringAsFixed(2);
-      
+
       if (!context.mounted) return;
-      
+
       await appPopupButtonDefault(
         context: context,
         title: "Límite de almacenamiento excedido",
