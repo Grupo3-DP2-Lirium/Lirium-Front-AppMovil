@@ -338,6 +338,8 @@ class _CapsulesTabState extends State<CapsulesTab> {
   }
 
   void _confirmDelete(CapsuleModel capsule) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     appPopupButtonDefault(
       context: context,
       title: 'Eliminar cápsula',
@@ -345,32 +347,50 @@ class _CapsulesTabState extends State<CapsulesTab> {
       buttons: [
         AppPopupButton(
           text: 'Cancelar',
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pop(context); // Solo cierra el popup
+          },
         ),
         AppPopupButton(
           text: 'Eliminar',
-          //color: Colors.red,
-          onPressed: () async {
-            // Captura el context del widget tree actual antes del async
-            final nav = Navigator.of(context);
-            final messenger = ScaffoldMessenger.of(context);
-
-            final provider = context.read<CapsuleProvider>();
-            final success = await provider.deleteCapsule(capsule.idCapsule);
-
-            if (success && mounted) {
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Cápsula eliminada'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            }
+          onPressed: () {
+            Navigator.pop(context); // Cierra el popup primero
+            _deleteCapsuleAsync(capsule, scaffoldMessenger);
           },
         ),
       ],
     );
   }
+
+  Future<void> _deleteCapsuleAsync(
+      CapsuleModel capsule, ScaffoldMessengerState messenger) async {
+    // Mostrar popup de loading
+    appPopupButtonDefault(
+      context: context,
+      title: "",
+      message: "",
+      buttons: [AppPopupButton(text: "", onPressed: () {})],
+      isLoading: true,
+    );
+
+    // Ejecutar la operación async
+    final provider = context.read<CapsuleProvider>();
+    final success = await provider.deleteCapsule(capsule.idCapsule);
+
+    // Cerrar el popup de loading
+    if (context.mounted) Navigator.pop(context);
+
+    // Mostrar snackbar según resultado
+    if (success && context.mounted) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Cápsula eliminada'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
 
   void _confirmCancel(CapsuleModel capsule) {
     showDialog(

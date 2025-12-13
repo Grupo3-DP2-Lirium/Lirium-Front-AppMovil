@@ -147,16 +147,19 @@ class PreviewWidgetState extends State<PreviewWidget> {
           _initializeVideoController(file);
         }
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: FilePreview(
-            key: PageStorageKey(file.key),
-            videoController: widget.videoControllers[file.key],
-            type: file.type,
-            url: file.url,
-            onEdit: (file.type == 'audio' && widget.isEditing)
-                ? () => widget.editFile(context, 'audio', index: index)
-                : null,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: FilePreview(
+              key: PageStorageKey(file.key),
+              videoController: widget.videoControllers[file.key],
+              type: file.type,
+              url: file.url,
+              onEdit: (file.type == 'audio' && widget.isEditing)
+                  ? () => widget.editFile(context, 'audio', index: index)
+                  : null,
+            ),
           ),
         );
       },

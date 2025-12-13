@@ -431,30 +431,52 @@ class _DocumentariesTabState extends State<DocumentariesTab> {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, documentary, DocumentaryProvider provider) {
+  void _showDeleteDialog(
+      BuildContext context,
+      documentary,
+      DocumentaryProvider provider,
+      ) {
     appPopupButtonDefault(
       context: context,
       title: 'Eliminar documental',
-      message: '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
+      message:
+      '¿Estás seguro de que deseas eliminar este documental? Esta acción no se puede deshacer.',
       buttons: [
         AppPopupButton(
           text: 'Cancelar',
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pop(context); // Cierra el popup de confirmación
+          },
         ),
         AppPopupButton(
           text: 'Eliminar',
           onPressed: () async {
+            // Cerrar popup de confirmación
+            Navigator.pop(context);
+
+            // Mostrar popup de loading
+            appPopupButtonDefault(
+                context: context,
+                title: "",
+                message: "",
+                buttons: [AppPopupButton(text: "", onPressed: () {})],
+                isLoading: true,
+            );
+
+            // Ejecutar la operación async
             final success = await provider.deleteDocumentary(
               documentary.idDocumentary,
             );
 
+            // Cerrar popup de loading
+            if (context.mounted) Navigator.pop(context);
+
+            // Mostrar resultado
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    success
-                        ? 'Documental eliminado'
-                        : 'Error al eliminar documental',
+                    success ? 'Documental eliminado' : 'Error al eliminar documental',
                   ),
                   backgroundColor: success ? Colors.green : Colors.red,
                 ),

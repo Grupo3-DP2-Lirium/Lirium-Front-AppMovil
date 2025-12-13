@@ -80,7 +80,12 @@ class _MemoryCardState extends State<MemoryCard> {
 
   bool _isLetter() {
     return widget.memory.title.toLowerCase().contains('carta personal') ||
-        (widget.memory.files.isEmpty && widget.memory.description.isNotEmpty);
+        (widget.memory.files.isEmpty && widget.memory.description.isNotEmpty && widget.memory.associatedQuestion==null);
+  }
+
+  bool _isQuestion() {
+    return widget.memory.associatedQuestion != null &&
+        widget.memory.associatedQuestion!.isNotEmpty;
   }
 
   bool _isAudio() {
@@ -116,27 +121,51 @@ class _MemoryCardState extends State<MemoryCard> {
       return const Color(0xFFF3E5F5); // Moradito suave
     } else if (_isAudio()) {
       return const Color(0xFFFCE4EC); // Rosadito suave
+    } else if (_isQuestion()) {
+      return const Color(0xFFE3F2FD); // Celestito SUAVE
     }
+
     return Colors.grey[100]!;
   }
 
   Widget _buildMediaPreview() {
     if (widget.memory.files.isEmpty) {
-      // Para cartas (sin archivos)
-      if (_isLetter()) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.mail_rounded, size: 50, color: Colors.purple[300]),
-              const SizedBox(height: 8),
-              Text(
-                "Carta",
-                style: TextStyle(fontSize: 14, color: Colors.purple[400], fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-        );
+      // Para cartas o preguntas (sin archivos)
+      if (widget.memory.files.isEmpty) {
+
+        // Caso 1: es carta
+        if (_isLetter()) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.mail_rounded, size: 50, color: Colors.purple[300]),
+                const SizedBox(height: 8),
+                Text(
+                  "Carta",
+                  style: TextStyle(fontSize: 14, color: Colors.purple[400], fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Caso 2: es pregunta
+        if (_isQuestion()) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.help_outline_rounded, size: 50, color: Colors.blue[300]),
+                const SizedBox(height: 8),
+                Text(
+                  "Pregunta",
+                  style: TextStyle(fontSize: 14, color: Colors.blue[400], fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          );
+        }
       }
 
       return const Center(

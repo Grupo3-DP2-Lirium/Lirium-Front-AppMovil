@@ -5,12 +5,15 @@ import 'package:flutter_frontend/domain/enums/memory_origin_type.dart';
 import 'package:flutter_frontend/presentation/components/common/app_bar.dart';
 import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
 import 'package:flutter_frontend/presentation/components/common/app_pop_up.dart';
+import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
+import 'package:flutter_frontend/providers/memory_provider.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 /// Pantalla para responder una pregunta seleccionada.
@@ -105,6 +108,21 @@ class _AnswerQuestionScreenState extends State<AnswerQuestionScreen> {
       await _memoryService.createMemory(request: request, files: files);
 
       if (mounted) {
+        final createdMemoryResponse = await _memoryService.createMemory(
+            request: request,
+            files: files
+        );
+
+        final createdMemory = createdMemoryResponse.toEntity();
+
+        // Actualizar MemoryProvider
+        Provider.of<MemoryProvider>(context, listen: false)
+            .agregarMemoria(createdMemory);
+
+        // AGREGAR: Actualizar MemoriesByMemorialProvider
+        final memoriesProvider = context.read<MemoriesByMemorialProvider>();
+        memoriesProvider.addMemory(createdMemory);
+
         await appPopupButtonDefault(
           context: context,
           title: '¡Recuerdo guardado!',

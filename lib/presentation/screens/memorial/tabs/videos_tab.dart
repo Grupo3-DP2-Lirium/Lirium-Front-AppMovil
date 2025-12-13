@@ -1,259 +1,329 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/data/models/file_response.dart';
-import 'package:flutter_frontend/data/models/memory_response.dart';
-import 'package:flutter_frontend/data/models/user_lite_response.dart';
-import 'package:flutter_frontend/presentation/components/common/app_colors.dart';
-import 'package:flutter_frontend/providers/memories_by_memorial_provider.dart';
-import 'package:flutter_frontend/domain/entities/memory.dart';
+import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
+import '../../../../providers/capsules_by_memorial_provider.dart';
+import '../../../../providers/documentary_by_memorial_provider.dart';
+import '../../../components/common/app_colors.dart';
 
 class VideosTab extends StatefulWidget {
   final String memorialId;
-  final bool shrinkWrap;
-  final ScrollPhysics? physics;
+  final ScrollController parentScrollController;
 
   const VideosTab({
     super.key,
     required this.memorialId,
-    this.shrinkWrap = false,
-    this.physics,
+    required this.parentScrollController,
   });
 
   @override
   State<VideosTab> createState() => _VideosTabState();
 }
 
-class _VideosTabState extends State<VideosTab> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+class _VideosTabState extends State<VideosTab> {
+  final PageController _pageController = PageController(initialPage: 0);
+  int _currentPage = 0;
+  VideoPlayerController? videoController;
+  bool _firstVideoFullyVisible = false;
 
   @override
   void initState() {
     super.initState();
-    // Cuando carga el memorial y antes que termine
-    // de cargar los recuerdos cambiar a esta tab, carga el doble de recuerdos
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<MemoriesByMemorialProvider>();
+      final capsulesProvider = context.read<CapsulesByMemorialProvider>();
+      final docsProvider = context.read<DocumentariesByMemorialProvider>();
 
-      // Solo cargar si:
-      // 1. No está cargado aún, O
-      // 2. Es un memorial diferente
-      final needsLoad = !provider.loaded ||
-          provider.currentMemorialId != widget.memorialId;
-
-      if (needsLoad) {
-        print('📡 Cargando memorias para memorial: ${widget.memorialId}');
-        provider.loadMemories(memorialId: widget.memorialId, force: true);
-      } else {
-        print('✅ Memorias ya cargadas para este memorial');
+      if (!capsulesProvider.loaded || capsulesProvider.currentMemorialId != widget.memorialId) {
+        capsulesProvider.loadCapsules(memorialId: widget.memorialId, force: true);
+      }
+      if (!docsProvider.loaded || docsProvider.currentMemorialId != widget.memorialId) {
+        docsProvider.loadDocumentaries(memorialId: widget.memorialId, force: true);
       }
     });
   }
 
+  void _initializeVideo(dynamic videoItem) {
+    if (videoController != null) {
+      videoController!.pause();
+      videoController!.dispose();
+    }
+
+    if (videoItem.videoUrl == null || videoItem.videoUrl!.isEmpty) return;
+
+    videoController = VideoPlayerController.network(videoItem.videoUrl!)
+      ..initialize().then((_) {
+        setState(() {});
+        videoController!.play();
+        videoController!.setLooping(true);
+      });
+  }
+
+  @override
+  void dispose() {
+    videoController?.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification n) {
+    final parent = widget.parentScrollController;
+    if (!parent.hasClients) return false;
+
+    if (_currentPage == 0 && n is ScrollUpdateNotification) {
+      final dy = n.scrollDelta ?? 0;
+
+      // Solo el primer scroll hacia abajo
+      if (!_firstVideoFullyVisible && dy > 0) {
+        // Marcar que el primer video ya fue visto completamente
+        _firstVideoFullyVisible = true;
+        return true; // bloquear PageView hasta que video0 se vea
+      }
+
+      // Ceder scroll al padre si ya se vio video0
+      if (_firstVideoFullyVisible) {
+        if (dy > 0 && parent.offset < parent.position.maxScrollExtent) {
+          parent.jumpTo((parent.offset + dy).clamp(0.0, parent.position.maxScrollExtent));
+          return true;
+        }
+        if (dy < 0 && parent.offset > 0) {
+          parent.jumpTo((parent.offset + dy).clamp(0.0, parent.position.maxScrollExtent));
+          return true;
+        }
+      }
+    }
+
+    return false; // resto de páginas scroll normal
+  }
+
   @override
   Widget build(BuildContext context) {
-    super.build(context);
+    return Consumer2<CapsulesByMemorialProvider, DocumentariesByMemorialProvider>(
+      builder: (context, capsulesProvider, docsProvider, _) {
+        final allVideos = [
+          ...capsulesProvider.capsules.where((c) =>
+          c.videoUrl != null &&
+              c.videoUrl!.isNotEmpty &&
+              c.publishedDate != null),
+          ...docsProvider.documentaries.where((d) =>
+          d.videoUrl != null &&
+              d.videoUrl!.isNotEmpty &&
+              d.publishedDate != null),
+        ];
 
-    return Consumer<MemoriesByMemorialProvider>(
-      builder: (context, provider, _) {
-        if (provider.loading && provider.memories.isEmpty) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        if (!capsulesProvider.loaded || !docsProvider.loaded) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
         }
 
-        // Convertir Memory entities a MemoryResponse
-        final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
-        final memoriesWithVideos = memories.where((m) => m.files.any((f) => f.isVideo)).toList();
-
-        if (memoriesWithVideos.isEmpty) {
-          return _buildEmptyState();
+        if (allVideos.isEmpty) {
+          return SizedBox.expand(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.video_library_outlined,
+                        size: 64,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'No hay videos disponibles',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Cuando agregues cápsulas o documentales,\n aparecerán aquí.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
         }
 
-        return ListView.builder(
-          shrinkWrap: widget.shrinkWrap, // para arreglar el scroll
-          physics: widget.physics, //// para arreglar el scroll
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          itemCount: memoriesWithVideos.length,
-          itemBuilder: (context, index) => _buildVideoCard(memoriesWithVideos[index]),
+        // Estado normal con videos
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height,
+            child: PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              physics: const BouncingScrollPhysics(),
+              onPageChanged: (index) {
+                _currentPage = index;
+                _initializeVideo(allVideos[index]);
+              },
+              itemCount: allVideos.length,
+              itemBuilder: (context, index) {
+                final videoItem = allVideos[index];
+                final isActive = index == _currentPage;
+                return _buildVideoPage(videoItem, isActive);
+              },
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _buildVideoCard(MemoryResponse memory) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 1,
-      shadowColor: Colors.black.withOpacity(0.08),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (memory.files.isNotEmpty)
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.purple[300]!, Colors.pink[300]!],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+  Widget _buildVideoPage(dynamic videoItem, bool isActive) {
+    if (isActive && videoController == null) {
+      _initializeVideo(videoItem);
+    }
+
+    final String formattedDate = videoItem.publishedDate != null
+        ? "${videoItem.publishedDate.day.toString().padLeft(2, '0')} "
+        "${_monthName(videoItem.publishedDate.month)} "
+        "${videoItem.publishedDate.year}"
+        : "";
+
+    return Stack(
+      children: [
+        // Fondo de video
+        if (isActive && videoController != null && videoController!.value.isInitialized)
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: videoController!.value.size.width,
+                height: videoController!.value.size.height,
+                child: VideoPlayer(videoController!),
+              ),
+            ),
+          )
+        else
+          Container(color: Colors.black),
+
+        // Título + Fecha + Etiqueta alineada debajo
+        Positioned(
+          top: 40,
+          left: 20,
+          right: 20,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TÍTULO A LA IZQUIERDA
+              Expanded(
+                child: Text(
+                  videoItem.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(offset: Offset(0, 1.5), blurRadius: 4, color: Colors.black87),
+                    ],
+                  ),
+                ),
+              ),
+
+              // COLUMNA: FECHA ARRIBA + ETIQUETA ABAJO
+// FECHA + ETIQUETA: centradas entre sí, pero alineadas a la derecha del Row
+              Align(
+                alignment: Alignment.centerRight, // mueve todo el bloque a la derecha
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center, // centra los hijos (fecha + etiqueta)
+                  children: [
+                    if (formattedDate.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          formattedDate,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            shadows: const [
+                              Shadow(offset: Offset(0, 1.5), blurRadius: 4, color: Colors.black87),
+                            ],
+                          ),
                         ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.videocam_rounded, size: 64, color: Colors.white70),
-                      ),
-                    ),
-                  ),
-                ),
-                // Play overlay
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.3),
-                        ],
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.play_circle_filled,
-                        size: 56,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
+
+                    const SizedBox(height: 6),
+
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        color: videoItem.runtimeType.toString() == "CapsuleModel"
+                            ? const Color(0xFFFF9800).withOpacity(0.85) // naranja
+                            : const Color(0xFF9C27B0).withOpacity(0.85), // morado
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white24,
+                          width: 1,
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.videocam_rounded, size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Video',
-                            style: AppColors.labelSmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        videoItem.runtimeType.toString() == "CapsuleModel"
+                            ? "Cápsula"
+                            : "Documental",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(memory.title, style: AppColors.h6.copyWith(fontSize: 17)),
-                if (memory.description != null && memory.description!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    memory.description!,
-                    style: AppColors.bodyMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              ),
+            ],
+          ),
+        ),
+
+        // Descripción
+        if ((videoItem.description ?? "").isNotEmpty)
+          Positioned(
+            bottom: 40,
+            left: 20,
+            right: 20,
+            child: Text(
+              videoItem.description!,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 15,
+                height: 1.3,
+                fontWeight: FontWeight.w400,
+                shadows: const [
+                  Shadow(offset: Offset(0, 1.2), blurRadius: 3, color: Colors.black87),
                 ],
-              ],
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.videocam_off_rounded,
-                size: 64,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No hay videos',
-              style: AppColors.h5,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Los videos que agregues aparecerán aquí',
-              style: AppColors.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
+  String _monthName(int month) {
+    const months = [
+      "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+      "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+    ];
+    return months[month - 1];
   }
 
-  MemoryResponse _memoryToResponse(Memory memory) {
-    return MemoryResponse(
-      idMemory: memory.id,
-      type: memory.type,
-      title: memory.title,
-      description: memory.description,
-      photoDate: memory.photoDate,
-      location: memory.location,
-      visible: memory.visible,
-      tags: memory.tags,
-      associatedQuestion: memory.associatedQuestion,
-      files: memory.files.map((f) => FileResponse(
-        idFile: f.id,
-        fileName: f.name,
-        originalFileName: f.originalName,
-        fileType: f.type,
-        mimeType: f.mimeType,
-        fileSize: f.size,
-        fileUrl: f.url,
-        uploadedDate: f.uploadedDate,
-      )).toList(),
-      totalUsedSpace: memory.totalUsedSpace,
-      createdDate: memory.createdDate,
-      updateDate: memory.updateDate,
-      latitude: memory.latitude,
-      longitude: memory.longitude,
-      esLineaTiempo: memory.esLineaTiempo,        // USA EL VALOR DE MEMORY
-      categories: memory.categories,               // USA EL VALOR DE MEMORY
-      moments: memory.moments,                     // USA EL VALOR DE MEMORY
-      author: memory.author != null ? UserLiteResponse(  // USA EL VALOR DE MEMORY
-        idUser: memory.author!.id,
-        name: memory.author!.name,
-        profilePhotoUrl: memory.author!.profilePhotoUrl,
-      ) : null,
-    );
-  }
 }

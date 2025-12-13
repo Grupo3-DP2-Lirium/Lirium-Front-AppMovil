@@ -59,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           text: 'Cancelar',
           onPressed: () {
             confirmed = false;
+            Navigator.pop(context); // cerrar popup
           },
           color: Colors.grey[200],
         ),
@@ -66,12 +67,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           text: 'Sí, salir',
           onPressed: () {
             confirmed = true;
+            Navigator.pop(context); // cerrar popup
           },
         ),
       ],
     );
 
     if (confirmed != true) return;
+
+    appPopupButtonDefault(
+        context: context,
+        title: "",
+        message: "",
+        buttons: [AppPopupButton(text: "", onPressed: () {})],
+        isLoading: true,
+    );
 
     setState(() {
       _isLoggingOut = true;
