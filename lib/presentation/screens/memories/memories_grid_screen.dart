@@ -265,7 +265,7 @@ class _MemoriesGridScreenState extends State<MemoriesGridScreen> {
                     if (formatCounts['audio']! > 0) const SizedBox(width: 8),
                     if (formatCounts['letter']! > 0)
                       _buildFilterChip(
-                        label: 'Cartas',
+                        label: 'Texto',
                         icon: Icons.mail_rounded,
                         value: 'letter',
                         count: formatCounts['letter']!,
