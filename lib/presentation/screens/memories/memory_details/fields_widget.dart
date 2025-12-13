@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../create_memory_for_a_memorial/timeline_banner.dart';
+
 class MemoryFormulario extends StatefulWidget {
   final Memory memory;
   final bool isEditing;
@@ -129,6 +131,9 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
         bottom: BorderSide(color: AppColors.inactive, width: 1),
       ),
       children: [
+        // ===== BANNER INFO =====
+        const TimelineDataHintBanner(),
+        const SizedBox(height: 12),
         // Fila Mes + Año
         Padding(
           padding: const EdgeInsets.only(bottom: 16),

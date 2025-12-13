@@ -119,8 +119,50 @@ class _MemoriesTabState extends State<MemoriesTab> with AutomaticKeepAliveClient
           );
         }
         if (provider.memories.isEmpty) {
-          return _buildEmptyState('No hay recuerdos', Icons.photo_library_outlined);
-        }
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(90),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.photo_library_outlined,
+                        size: 64,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'No hay recuerdos aún',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Crea el primer recuerdo y\nmantén viva esta historia',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            );
+          }
 
         final memories = provider.memories.map((m) => _memoryToResponse(m)).toList();
 

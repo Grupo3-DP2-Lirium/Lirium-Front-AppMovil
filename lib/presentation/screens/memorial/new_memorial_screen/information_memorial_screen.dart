@@ -16,6 +16,8 @@ import 'package:flutter_frontend/providers/memorial_provider.dart';
 import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 
+import '../../../components/common/app_bar.dart';
+
 class InformationMemorialScreen extends StatefulWidget {
   final String relation;
 
@@ -221,7 +223,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
 
       // Switch colaborativo
       BooleanSelectorSwitch(
-        label: "Perfil colaborativo",
+        label: "Memorial sea colaborativo",
         value: _isCollaborative,
         onChanged: (v) => setState(() => _isCollaborative = v),
       ),
@@ -229,19 +231,19 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    double appBarHeight = screenHeight * 0.09;
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-      ),
       backgroundColor: Colors.white,
+      appBar: CustomMemoryAppBar(
+        title: "Información y Detalles",
+        onBack: () => Navigator.pop(context),
+        appBarHeight:appBarHeight,
+        showBackButton: false,
+      ),
       body: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: screenWidth * 0.04,
-          vertical: screenHeight * 0.03,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -253,10 +255,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Center(
-                        child: AppTitle(title: "Información y Detalles"),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
+                      SizedBox(height: screenHeight * 0.03),
                       Center(
                         child: ProfileAvatar(
                           radius: screenWidth * 0.15,
@@ -268,7 +267,7 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
                       SizedBox(height: screenHeight * 0.03),
                       // Form fields with spacing
                       ...fields.map((field) => Padding(
-                        padding: EdgeInsets.only(bottom: screenHeight * 0.02),
+                        padding: EdgeInsets.only(bottom: screenHeight * 0.01),
                         child: field,
                       )),
                     ],
@@ -277,23 +276,32 @@ class _InformationMemorialScreenState extends State<InformationMemorialScreen> {
               ),
             ),
             // Footer buttons: "Back" and "Save"
-            Row(
-              children: [
-                Expanded(
-                  child: SecondaryButton(
-                    text: "Regresar",
-                    textColor: AppColors.primary,
-                    onPressed: () => Navigator.pop(context),
-                  ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: screenHeight * 0.01,
+                  top: screenHeight * 0.02,
                 ),
-                SizedBox(width: screenWidth * 0.04),
-                Expanded(
-                  child: PrimaryButton(
-                    text: "Guardar", //CambiarPopUPS
-                    onPressed: _saveMemorial,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        text: "Regresar",
+                        textColor: AppColors.primary,
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.04),
+                    Expanded(
+                      child: PrimaryButton(
+                        text: "Guardar",
+                        onPressed: _saveMemorial,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ],
         ),
