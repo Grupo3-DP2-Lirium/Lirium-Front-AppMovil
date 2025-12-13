@@ -262,7 +262,7 @@ class _FilePreviewState extends State<FilePreview> with AutomaticKeepAliveClient
       children: [
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.inactive,
               borderRadius: BorderRadius.circular(16),

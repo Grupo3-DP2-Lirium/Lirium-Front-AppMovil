@@ -99,8 +99,14 @@ class _VideosTabState extends State<VideosTab> {
     return Consumer2<CapsulesByMemorialProvider, DocumentariesByMemorialProvider>(
       builder: (context, capsulesProvider, docsProvider, _) {
         final allVideos = [
-          ...capsulesProvider.capsules.where((c) => c.videoUrl != null && c.videoUrl!.isNotEmpty && c.publishedDate != null),
-          ...docsProvider.documentaries.where((d) => d.videoUrl != null && d.videoUrl!.isNotEmpty && d.publishedDate != null)
+          ...capsulesProvider.capsules.where((c) =>
+          c.videoUrl != null &&
+              c.videoUrl!.isNotEmpty &&
+              c.publishedDate != null),
+          ...docsProvider.documentaries.where((d) =>
+          d.videoUrl != null &&
+              d.videoUrl!.isNotEmpty &&
+              d.publishedDate != null),
         ];
 
         if (!capsulesProvider.loaded || !docsProvider.loaded) {
@@ -110,14 +116,53 @@ class _VideosTabState extends State<VideosTab> {
         }
 
         if (allVideos.isEmpty) {
-          return const Center(
-            child: Text(
-              "No hay videos",
-              style: TextStyle(color: Colors.white),
+          return SizedBox.expand(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.video_library_outlined,
+                        size: 64,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'No hay videos disponibles',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Cuando agregues cápsulas o documentales,\n aparecerán aquí.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.primary2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         }
 
+        // Estado normal con videos
         return NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
           child: SizedBox(

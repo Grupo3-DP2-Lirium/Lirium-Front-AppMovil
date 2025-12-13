@@ -220,22 +220,30 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
 
   // ------------------- Formulario -------------------
   Widget _buildForm() {
+    final hasQuestion = widget.memory.associatedQuestion != null &&
+        widget.memory.associatedQuestion!.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          if (widget.memory.associatedQuestion != null &&
-              widget.memory.associatedQuestion!.isNotEmpty)
+
+          // ================= PREGUNTA =================
+          if (hasQuestion)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: CustomTextField(
                 label: 'Pregunta',
-                controller: TextEditingController(text: widget.memory.associatedQuestion),
+                controller: TextEditingController(
+                  text: widget.memory.associatedQuestion,
+                ),
                 enabled: false,
                 hintText: 'Pregunta Default',
               ),
-            )
-          else
+            ),
+
+          // ================= TÍTULO (NO AUDIO) =================
+          if (!hasQuestion && !_isAudioMemory)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: CustomTextField(
@@ -247,26 +255,35 @@ class _MemoryFormularioState extends State<MemoryFormulario> {
                 (v == null || v.isEmpty) ? "El título es obligatorio" : null,
               ),
             ),
-          CustomTextArea(
-            label: 'Descripción',
-            hintText: "Escribe una descripción",
-            maxLines: 5,
-            controller: widget.descriptionController,
-            enabled: widget.isEditing,
-            validator: (v) =>
-            (v == null || v.isEmpty) ? "La descripción es obligatoria" : null,
-          ),
+
+          // ================= DESCRIPCIÓN (NO AUDIO) =================
+          if (!_isAudioMemory)
+            CustomTextArea(
+              label: 'Descripción',
+              hintText: "Escribe una descripción",
+              maxLines: 5,
+              controller: widget.descriptionController,
+              enabled: widget.isEditing,
+              validator: (v) =>
+              (v == null || v.isEmpty) ? "La descripción es obligatoria" : null,
+            ),
         ],
       ),
     );
+  }
+
+  bool get _isAudioMemory {
+    return widget.memory.audios.isNotEmpty &&
+        widget.memory.images.isEmpty &&
+        widget.memory.videos.isEmpty;
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildMetaData(),
-        _buildForm(),
+        if (!_isAudioMemory) _buildMetaData(),
+        if (!_isAudioMemory) _buildForm(),
       ],
     );
   }
