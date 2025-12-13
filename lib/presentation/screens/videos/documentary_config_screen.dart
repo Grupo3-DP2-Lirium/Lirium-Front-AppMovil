@@ -33,7 +33,8 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
   String _selectedStyle = 'warm';
   String _selectedTone = 'nostalgic';
-  String? _selectedMusic;
+  String? _selectedMusic; // Este es el trackId real que se envía al backend
+  String? _selectedMusicPreview; // Este es el previewId para la UI
   bool _isLoading = false;
   bool _isPlaying = false;
   String? _currentPlayingTrack;
@@ -413,7 +414,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
               track.previewId,
               track.name,
               '${track.description} • ${track.duration}',
-              track.id,
+              track.previewId,
             ),
           );
         }).toList(),
@@ -423,13 +424,14 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
 
   Widget _buildMusicOption(
       String? trackId, String? previewId, String name, String subtitle, String? previewUrl) {
-    final isSelected = _selectedMusic == previewId;
+    final isSelected = _selectedMusicPreview == previewId;
     final isPlayingThis = _isPlaying && _currentPlayingTrack == previewId;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedMusic = trackId; //Se envía la url de la pista real
+          _selectedMusicPreview = previewId; // Para la UI
+          _selectedMusic = trackId; // Para enviar al backend
         });
       },
       child: Container(
@@ -545,7 +547,7 @@ class _DocumentaryConfigScreenState extends State<DocumentaryConfigScreen> {
           : _narrativeFocusController.text.trim(),
       emotionalTone: _selectedTone,
       durationPerMemory: 5,
-      musicTrack: _selectedMusic,
+      musicTrack: _selectedMusic, // Envía el trackId real (la URL completa)
       styleFilter: _selectedStyle,
       transitionType: 'fade',
       resolution: '720p',

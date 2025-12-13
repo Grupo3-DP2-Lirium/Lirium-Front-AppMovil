@@ -5,14 +5,14 @@ class ApiConstants {
   static String get baseUrl {
     if (kIsWeb) {
       // Para navegador web (Chrome, Firefox, etc.)
-      return "https://lirium-backend.calmsmoke-a4ab58e7.eastus2.azurecontainerapps.io/api";
-      //return "http://localhost:8080/api";
+      //return "https://lirium-backend.calmsmoke-a4ab58e7.eastus2.azurecontainerapps.io/api";
+      return "http://localhost:8080/api";
     } else {
       // Para celular físico en la misma red Wi-Fi
       //return "http://192.168.18.177:8080/api"; // <- tu IP de Wi-Fi
       // Si quisieras seguir usando el emulador:
-      return "https://lirium-backend.calmsmoke-a4ab58e7.eastus2.azurecontainerapps.io/api";
-      //return "http://10.0.2.2:8080/api";
+      //return "https://lirium-backend.calmsmoke-a4ab58e7.eastus2.azurecontainerapps.io/api";
+      return "http://10.0.2.2:8080/api";
     }
   }
 
